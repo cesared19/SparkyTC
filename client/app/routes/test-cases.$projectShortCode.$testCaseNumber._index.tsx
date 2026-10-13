@@ -2,6 +2,8 @@ import { Link, useOutletContext } from '@remix-run/react'
 import { TestCaseOutletContext } from '~/models/types'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '~/components/DateDisplay'
+import { LinkifiedText } from '~/components/LinkifiedText'
+import { AttachmentGallery } from '~/components/AttachmentGallery'
 
 export default function TestCaseDetails() {
 	const { project, testCase, propertyValues } =
@@ -45,8 +47,12 @@ export default function TestCaseDetails() {
 						<label className="block text-base font-semibold text-gray-700">
 							Description
 						</label>
-						<div className="mt-1 text-sm text-gray-700">
-							{testCase.description || 'No description provided'}
+						<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+							{testCase.description ? (
+								<LinkifiedText text={testCase.description} />
+							) : (
+								'No description provided'
+							)}
 						</div>
 					</div>
 				</div>
@@ -59,15 +65,18 @@ export default function TestCaseDetails() {
 						{propertyValues.map((propertyValue) => (
 							<div
 								key={
-									propertyValue.propertyConfiguration
-										.propertyConfigurationID
+									propertyValue.propertyConfiguration.propertyConfigurationID
 								}
 							>
 								<div className="text-sm font-medium text-gray-900">
 									{propertyValue.propertyConfiguration.title}
 								</div>
 								<div className="mt-2 text-sm text-gray-700">
-									{propertyValue.value || 'Not set'}
+									{propertyValue.value ? (
+										<LinkifiedText text={propertyValue.value} />
+									) : (
+										'Not set'
+									)}
 								</div>
 							</div>
 						))}
@@ -79,8 +88,23 @@ export default function TestCaseDetails() {
 						Test Instructions
 					</h3>
 					<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
-						{testCase.testInstructions || 'No test instructions provided'}
+						{testCase.testInstructions ? (
+							<LinkifiedText text={testCase.testInstructions} />
+						) : (
+							'No test instructions provided'
+						)}
 					</div>
+				</div>
+
+				<div>
+					<h3 className="text-xl font-semibold text-gray-900 mb-2">
+						Images and Videos
+					</h3>
+					<AttachmentGallery
+						testCaseID={testCase.testCaseID}
+						attachments={testCase.attachments ?? []}
+						editable
+					/>
 				</div>
 			</div>
 		</div>

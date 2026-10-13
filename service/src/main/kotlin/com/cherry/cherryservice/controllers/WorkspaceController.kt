@@ -5,11 +5,16 @@ import com.cherry.cherryservice.dto.documents.TestRunExportType
 import com.cherry.cherryservice.dto.projects.CreateWorkspaceProjectDTO
 import com.cherry.cherryservice.dto.properties.CreatePropertyConfigurationDTO
 import com.cherry.cherryservice.dto.properties.UpdatePropertyConfigurationDTO
+import com.cherry.cherryservice.dto.testcases.BatchCreateTestCasesDTO
 import com.cherry.cherryservice.dto.testcases.CreateTestCaseDTO
 import com.cherry.cherryservice.dto.testruns.CreateTestRunDTO
 import com.cherry.cherryservice.dto.testruns.UpdateTestCaseRunDTO
+import com.cherry.cherryservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.cherry.cherryservice.dto.testruns.UpdateTestRunDTO
 import com.cherry.cherryservice.services.WorkspaceService
+import org.springframework.core.io.ByteArrayResource
+import org.springframework.core.io.Resource
+import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -21,7 +26,9 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 import java.util.UUID
 
 @RestController
@@ -51,6 +58,35 @@ class WorkspaceController(
     @PostMapping("/test-cases/{projectShortCode}")
     fun createTestCase(@PathVariable projectShortCode: String, @RequestBody request: CreateTestCaseDTO): ResponseEntity<Any> {
         workspaceService.createTestCase(projectShortCode, request)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PostMapping("/test-cases/{projectShortCode}/batch")
+    fun batchCreateTestCases(@PathVariable projectShortCode: String, @RequestBody request: BatchCreateTestCasesDTO): ResponseEntity<Any> {
+        val createdCount = workspaceService.batchCreateTestCases(projectShortCode, request)
+        return ResponseEntity.ok(DataResponse(data = mapOf("createdCount" to createdCount)))
+    }
+
+    @PostMapping("/test-cases/{testCaseID}/attachments", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun uploadTestCaseAttachments(@PathVariable testCaseID: UUID, @RequestPart("files") files: List<MultipartFile>): ResponseEntity<Any> {
+        val attachments = workspaceService.uploadTestCaseAttachments(testCaseID, files)
+        return ResponseEntity.ok(DataResponse(data = attachments))
+    }
+
+    @GetMapping("/attachments/{attachmentID}")
+    fun retrieveAttachment(@PathVariable attachmentID: UUID): ResponseEntity<Resource> {
+        val content = workspaceService.retrieveAttachmentContent(attachmentID)
+
+        // returning a Resource lets Spring honor HTTP range requests, which browsers rely on for video seeking
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(content.fileName, Charsets.UTF_8).build().toString())
+            .contentType(MediaType.parseMediaType(content.contentType))
+            .body(ByteArrayResource(content.data))
+    }
+
+    @DeleteMapping("/attachments/{attachmentID}")
+    fun deleteAttachment(@PathVariable attachmentID: UUID): ResponseEntity<Any> {
+        workspaceService.deleteAttachment(attachmentID)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
@@ -139,6 +175,12 @@ class WorkspaceController(
     @PutMapping("/test-case-runs/{testCaseRunID}")
     fun updateTestCaseRun(@PathVariable testCaseRunID: UUID, @RequestBody request: UpdateTestCaseRunDTO): ResponseEntity<Any> {
         workspaceService.updateTestCaseRun(testCaseRunID, request)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PutMapping("/test-case-runs/{testCaseRunID}/details")
+    fun updateTestCaseRunDetails(@PathVariable testCaseRunID: UUID, @RequestBody request: UpdateTestCaseRunDetailsDTO): ResponseEntity<Any> {
+        workspaceService.updateTestCaseRunDetails(testCaseRunID, request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 

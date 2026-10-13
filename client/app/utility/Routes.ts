@@ -15,6 +15,18 @@ export class Route {
 		return `/test-cases/${projectShortCode}/${testCaseNumber}`
 	}
 
+	static importTestCases(projectShortCode: string) {
+		return `/test-cases/${projectShortCode}/import`
+	}
+
+	static attachment(attachmentID: string) {
+		return `/attachments/${attachmentID}`
+	}
+
+	static testCaseAttachments(testCaseID: string) {
+		return `/test-case-attachments/${testCaseID}`
+	}
+
 	static viewProjectTestRuns(projectShortCode: string) {
 		return `/test-runs/${projectShortCode}`
 	}
@@ -57,6 +69,18 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}`
 	}
 
+	static batchCreateTestCases(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${projectShortCode}/batch`
+	}
+
+	static testCaseAttachments(testCaseID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}/attachments`
+	}
+
+	static attachment(attachmentID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/attachments/${attachmentID}`
+	}
+
 	static projectTestRuns(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${projectShortCode}`
 	}
@@ -75,6 +99,10 @@ export class APIRoute {
 
 	static testCaseRun(testCaseRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}`
+	}
+
+	static testCaseRunDetails(testCaseRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/details`
 	}
 
 	static nextTestCaseRun(testCaseRunID: string) {

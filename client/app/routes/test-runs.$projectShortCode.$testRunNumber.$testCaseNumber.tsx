@@ -15,12 +15,16 @@ import {
 	ErrorResponse,
 	FetchResponse,
 	TestCaseRun,
+	UpdateTestCaseRunDetails,
 } from '~/models/types'
-import { useState } from 'react'
+import { Project } from '~/models/project'
+import { useEffect, useState } from 'react'
 import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
 import { APIClient } from '../utility/APIClient'
 import { ErrorMessage } from '../components/ErrorMessage'
+import { LinkifiedText } from '~/components/LinkifiedText'
+import { AttachmentGallery } from '~/components/AttachmentGallery'
 
 interface UpdateTestCaseRun extends Record<string, any> {
 	status: TestCaseRunStatus
@@ -35,7 +39,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			throw new Error('Invalid project short code or test run number')
 		}
 
-		const { testCaseRunID, testCaseRunUpdate } = await request.json()
+		const { intent, testCaseRunID, testCaseRunUpdate, detailsUpdate } =
+			await request.json()
+
+		if (intent === 'updateDetails') {
+			await APIClient.put<void>(APIRoute.testCaseRunDetails(testCaseRunID), {
+				body: detailsUpdate,
+			})
+			return { ok: true }
+		}
+
 		await APIClient.put<void>(APIRoute.testCaseRun(testCaseRunID), {
 			body: testCaseRunUpdate,
 		})
@@ -63,13 +76,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestCaseRunDetails() {
 	const params = useParams()
+	const { project, testCaseRuns } =
+		useOutletContext<ProjectTestCaseRunsOutletContext>()
 	const testCaseNumber = Number(params.testCaseNumber)
 	if (!testCaseNumber) {
 		return <p>Test case number is required</p>
 	}
 
-	const { project, testCaseRuns } =
-		useOutletContext<ProjectTestCaseRunsOutletContext>()
 	const testCaseRun = testCaseRuns.find(
 		(run) => run.testCase.testCaseNumber === testCaseNumber
 	)
@@ -77,9 +90,25 @@ export default function TestCaseRunDetails() {
 		return <p>Test case run not found</p>
 	}
 
+	return (
+		<TestCaseRunView
+			key={testCaseRun.testCaseRunID}
+			project={project}
+			testCaseRun={testCaseRun}
+		/>
+	)
+}
+
+interface TestCaseRunViewProps {
+	project: Project
+	testCaseRun: TestCaseRun
+}
+
+function TestCaseRunView({ project, testCaseRun }: TestCaseRunViewProps) {
 	const actionData = useActionData<ErrorResponse>()
 
-	const fetcher = useFetcher()
+	const fetcher = useFetcher<ErrorResponse>()
+	const [isEditing, setIsEditing] = useState(false)
 	const [selectedStatus, setSelectedStatus] = useState<TestCaseRunStatus>(
 		testCaseRun.status
 	)
@@ -121,21 +150,19 @@ export default function TestCaseRunDetails() {
 						)}
 						className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
 					>
-						View{' '}
-						{Tools.testCaseDisplayCode(project, testCaseRun.testCase)}
+						View {Tools.testCaseDisplayCode(project, testCaseRun.testCase)}
 					</Link>
 				</div>
 				<p className="mt-2 text-gray-600">Test Case Run Details</p>
 			</div>
 
 			{actionData && <ErrorMessage message={actionData.message} />}
+			{fetcher.data?.message && <ErrorMessage message={fetcher.data.message} />}
 
 			<div className="space-y-8">
 				<section className="mt-6">
 					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-xl font-semibold text-gray-900">
-							Status
-						</h2>
+						<h2 className="text-xl font-semibold text-gray-900">Status</h2>
 					</div>
 					<div className="flex gap-3">
 						<button
@@ -175,9 +202,7 @@ export default function TestCaseRunDetails() {
 				</section>
 
 				<section>
-					<h2 className="text-xl font-semibold text-gray-900 mb-4">
-						Details
-					</h2>
+					<h2 className="text-xl font-semibold text-gray-900 mb-4">Details</h2>
 					<dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
 						<div>
 							<dt className="text-sm font-medium text-gray-500">
@@ -188,9 +213,7 @@ export default function TestCaseRunDetails() {
 							</dd>
 						</div>
 						<div>
-							<dt className="text-sm font-medium text-gray-500">
-								Created
-							</dt>
+							<dt className="text-sm font-medium text-gray-500">Created</dt>
 							<dd className="mt-1 text-sm text-gray-900">
 								{new Date(testCaseRun.creationDate).toLocaleString()}
 							</dd>
@@ -198,32 +221,63 @@ export default function TestCaseRunDetails() {
 					</dl>
 				</section>
 
-				{testCaseRun.testCase.description && (
-					<section>
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">
-							Description
-						</h2>
-						<div className="prose prose-sm max-w-none">
-							{testCaseRun.testCase.description}
+				{isEditing ? (
+					<TestCaseRunDetailsEditor
+						testCaseRun={testCaseRun}
+						onClose={() => setIsEditing(false)}
+					/>
+				) : (
+					<>
+						<div className="flex justify-end">
+							<button
+								type="button"
+								onClick={() => setIsEditing(true)}
+								className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+							>
+								Edit Test Case Details
+							</button>
 						</div>
-					</section>
+
+						{testCaseRun.description && (
+							<section>
+								<h2 className="text-xl font-semibold text-gray-900 mb-4">
+									Description
+								</h2>
+								<div className="prose prose-sm max-w-none whitespace-pre-wrap">
+									<LinkifiedText text={testCaseRun.description} />
+								</div>
+							</section>
+						)}
+
+						<section>
+							<h2 className="text-xl font-semibold text-gray-900 mb-4">
+								Test Instructions
+							</h2>
+							<div className="prose prose-sm max-w-none whitespace-pre-wrap">
+								{testCaseRun.testInstructions ? (
+									<LinkifiedText text={testCaseRun.testInstructions} />
+								) : (
+									'No test instructions available'
+								)}
+							</div>
+						</section>
+					</>
 				)}
 
 				<section>
 					<h2 className="text-xl font-semibold text-gray-900 mb-4">
-						Test Instructions
+						Images and Videos
 					</h2>
-					<div className="prose prose-sm max-w-none whitespace-pre-wrap">
-						{testCaseRun.testCase.testInstructions ||
-							'No test instructions available'}
-					</div>
+					<AttachmentGallery
+						testCaseID={testCaseRun.testCase.testCaseID}
+						attachments={testCaseRun.testCase.attachments ?? []}
+						editable
+					/>
 				</section>
 
 				<form id="testCaseForm">
 					<section>
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">
-							Notes
-						</h2>
+						<h2 className="text-xl font-semibold text-gray-900 mb-4">Notes</h2>
 						<textarea
 							name="notes"
 							defaultValue={testCaseRun.notes}
@@ -244,5 +298,146 @@ export default function TestCaseRunDetails() {
 				</div>
 			</div>
 		</div>
+	)
+}
+
+interface TestCaseRunDetailsEditorProps {
+	testCaseRun: TestCaseRun
+	onClose: () => void
+}
+
+function TestCaseRunDetailsEditor({
+	testCaseRun,
+	onClose,
+}: TestCaseRunDetailsEditorProps) {
+	const fetcher = useFetcher<ErrorResponse | { ok: true }>()
+	const isSaving = fetcher.state !== 'idle'
+	const error =
+		fetcher.data && 'message' in fetcher.data ? fetcher.data.message : undefined
+
+	useEffect(() => {
+		if (fetcher.state === 'idle' && fetcher.data && 'ok' in fetcher.data) {
+			onClose()
+		}
+	}, [fetcher.state, fetcher.data, onClose])
+
+	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const formData = new FormData(event.currentTarget)
+
+		const detailsUpdate: UpdateTestCaseRunDetails = {
+			title: formData.get('title') as string,
+			description: formData.get('description') as string,
+			testInstructions: formData.get('testInstructions') as string,
+			applyToTestCase: formData.get('applyToTestCase') === 'on',
+		}
+
+		fetcher.submit(
+			{
+				intent: 'updateDetails',
+				testCaseRunID: testCaseRun.testCaseRunID,
+				detailsUpdate,
+			},
+			{ method: 'post', encType: 'application/json' }
+		)
+	}
+
+	const inputClassName =
+		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+
+	return (
+		<form
+			onSubmit={handleSubmit}
+			className="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4"
+		>
+			<h2 className="text-xl font-semibold text-gray-900">
+				Edit Test Case Details
+			</h2>
+
+			{error && <ErrorMessage message={error} />}
+
+			<div>
+				<label
+					htmlFor="runTitle"
+					className="block text-sm font-medium text-gray-700"
+				>
+					Title
+				</label>
+				<input
+					id="runTitle"
+					name="title"
+					type="text"
+					required
+					defaultValue={testCaseRun.title}
+					className={inputClassName}
+				/>
+			</div>
+
+			<div>
+				<label
+					htmlFor="runDescription"
+					className="block text-sm font-medium text-gray-700"
+				>
+					Description
+				</label>
+				<textarea
+					id="runDescription"
+					name="description"
+					rows={3}
+					defaultValue={testCaseRun.description}
+					className={inputClassName}
+				/>
+			</div>
+
+			<div>
+				<label
+					htmlFor="runTestInstructions"
+					className="block text-sm font-medium text-gray-700"
+				>
+					Test Instructions
+				</label>
+				<textarea
+					id="runTestInstructions"
+					name="testInstructions"
+					rows={6}
+					defaultValue={testCaseRun.testInstructions}
+					className={inputClassName}
+				/>
+				<p className="mt-1 text-xs text-gray-500">
+					Links such as https://example.com become clickable
+				</p>
+			</div>
+
+			<label className="flex items-start gap-2 text-sm text-gray-700">
+				<input
+					type="checkbox"
+					name="applyToTestCase"
+					className="mt-0.5 h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+				/>
+				<span>
+					Also update the original test case
+					<span className="block text-xs text-gray-500">
+						When unchecked, the changes only apply to this test run
+					</span>
+				</span>
+			</label>
+
+			<div className="flex justify-end gap-3">
+				<button
+					type="button"
+					onClick={onClose}
+					className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+				>
+					Cancel
+				</button>
+				<button
+					type="submit"
+					disabled={isSaving}
+					className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+				>
+					{isSaving ? 'Saving...' : 'Save Details'}
+				</button>
+			</div>
+		</form>
 	)
 }

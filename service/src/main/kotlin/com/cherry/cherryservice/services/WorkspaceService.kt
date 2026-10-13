@@ -1,9 +1,12 @@
 package com.cherry.cherryservice.services
 
+import com.cherry.cherryservice.dto.attachments.AttachmentContentDTO
+import com.cherry.cherryservice.dto.attachments.TestCaseAttachmentDTO
 import com.cherry.cherryservice.dto.documents.*
 import com.cherry.cherryservice.dto.projects.CreateWorkspaceProjectDTO
 import com.cherry.cherryservice.dto.projects.WorkspaceProjectDTO
 import com.cherry.cherryservice.dto.properties.*
+import com.cherry.cherryservice.dto.testcases.BatchCreateTestCasesDTO
 import com.cherry.cherryservice.dto.testcases.CreateTestCaseDTO
 import com.cherry.cherryservice.dto.testcases.TestCaseDTO
 import com.cherry.cherryservice.dto.testruns.*
@@ -19,6 +22,7 @@ import org.apache.poi.xwpf.usermodel.UnderlinePatterns
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
 import java.io.ByteArrayOutputStream
 import java.util.*
 
@@ -30,6 +34,8 @@ class WorkspaceService(
     private val testCasePropertyValueRepository: TestCasePropertyValueRepository,
     private val testRunRepository: TestRunRepository,
     private val testCaseRunRepository: TestCaseRunRepository,
+    private val testCaseAttachmentRepository: TestCaseAttachmentRepository,
+    private val testCaseAttachmentContentRepository: TestCaseAttachmentContentRepository,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -92,13 +98,38 @@ class WorkspaceService(
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found" }
 
-        require(testCase.title.isNotBlank()) { "Test case must have a title" }
-
         // find the test case with the largest test case number and bump it up by 1
         val largestTestCaseNumber = testCaseRepository.findTopByProjectOrderByTestCaseNumberDesc(project)?.testCaseNumber ?: 0
+        createTestCaseModel(project, largestTestCaseNumber + 1, testCase)
+    }
+
+    @Transactional
+    fun batchCreateTestCases(projectShortCode: String, batch: BatchCreateTestCasesDTO): Int {
+        val project = projectRepository.findByProjectShortCode(projectShortCode)
+        requireNotNull(project) { "No project found" }
+
+        require(batch.testCases.isNotEmpty()) { "There must be at least one test case to import" }
+
+        // the whole batch runs in a single transaction, so any invalid row rolls back the entire import
+        var testCaseNumber = testCaseRepository.findTopByProjectOrderByTestCaseNumberDesc(project)?.testCaseNumber ?: 0
+        for ((index, testCase) in batch.testCases.withIndex()) {
+            testCaseNumber += 1
+            try {
+                createTestCaseModel(project, testCaseNumber, testCase)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("Test case ${index + 1}: ${e.message}", e)
+            }
+        }
+
+        return batch.testCases.size
+    }
+
+    private fun createTestCaseModel(project: WorkspaceProject, testCaseNumber: Long, testCase: CreateTestCaseDTO): TestCase {
+        require(testCase.title.isNotBlank()) { "Test case must have a title" }
+
         val newTestCaseModel = TestCase(
             project = project,
-            testCaseNumber = largestTestCaseNumber + 1,
+            testCaseNumber = testCaseNumber,
             title = testCase.title,
             description = Tools.sanitize(testCase.description),
             testInstructions = Tools.sanitize(testCase.testInstructions),
@@ -106,6 +137,7 @@ class WorkspaceService(
         testCaseRepository.save(newTestCaseModel)
 
         updateTestCasePropertyValues(newTestCaseModel, testCase.propertyValues)
+        return newTestCaseModel
     }
 
     @Transactional
@@ -154,6 +186,9 @@ class WorkspaceService(
 
         // delete all references to this test case from test case property values
         testCasePropertyValueRepository.deleteAllByTestCase(testCase)
+
+        // delete attachments, their binary content is removed by the database cascade
+        testCaseAttachmentRepository.deleteAll(testCase.attachments)
 
         testCaseRepository.delete(testCase)
     }
@@ -373,8 +408,78 @@ class WorkspaceService(
     }
 
     @Transactional
+    fun updateTestCaseRunDetails(testCaseRunID: UUID, updateDTO: UpdateTestCaseRunDetailsDTO) {
+        val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
+        requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+
+        require(updateDTO.title.isNotBlank()) { "Test case must have a title" }
+
+        testCaseRun.title = updateDTO.title
+        testCaseRun.description = Tools.sanitize(updateDTO.description)
+        testCaseRun.testInstructions = Tools.sanitize(updateDTO.testInstructions)
+        testCaseRunRepository.save(testCaseRun)
+
+        if (updateDTO.applyToTestCase) {
+            val testCase = testCaseRun.testCase
+            testCase.title = testCaseRun.title
+            testCase.description = testCaseRun.description
+            testCase.testInstructions = testCaseRun.testInstructions
+            testCaseRepository.save(testCase)
+        }
+    }
+
+    @Transactional
     fun deleteTestCaseRun(testCaseRunID: UUID) {
         testCaseRunRepository.deleteByExternalID(testCaseRunID)
+    }
+
+    @Transactional
+    fun uploadTestCaseAttachments(testCaseID: UUID, files: List<MultipartFile>): List<TestCaseAttachmentDTO> {
+        val testCase = testCaseRepository.findByExternalID(testCaseID)
+        requireNotNull(testCase) { "No test case found with id $testCaseID" }
+
+        require(files.isNotEmpty()) { "At least one file is required" }
+
+        return files.map { file ->
+            val fileName = file.originalFilename?.takeIf { it.isNotBlank() } ?: "attachment"
+            val contentType = file.contentType ?: ""
+            require(isSupportedMediaType(contentType)) { "Unsupported file type for $fileName, only images and videos are allowed" }
+            require(!file.isEmpty) { "File $fileName is empty" }
+
+            val attachment = TestCaseAttachment(
+                testCase = testCase,
+                fileName = fileName,
+                contentType = contentType,
+                fileSize = file.size
+            )
+            testCaseAttachmentRepository.save(attachment)
+            testCaseAttachmentContentRepository.save(TestCaseAttachmentContent(attachment = attachment, data = file.bytes))
+            attachment.toDTO()
+        }
+    }
+
+    @Transactional
+    fun retrieveAttachmentContent(attachmentID: UUID): AttachmentContentDTO {
+        val attachment = testCaseAttachmentRepository.findByExternalID(attachmentID)
+        requireNotNull(attachment) { "No attachment found with id $attachmentID" }
+
+        val content = testCaseAttachmentContentRepository.findByAttachment(attachment)
+        requireNotNull(content) { "No content found for attachment $attachmentID" }
+
+        return AttachmentContentDTO(attachment.fileName, attachment.contentType, content.data)
+    }
+
+    @Transactional
+    fun deleteAttachment(attachmentID: UUID) {
+        val attachment = testCaseAttachmentRepository.findByExternalID(attachmentID)
+        requireNotNull(attachment) { "No attachment found with id $attachmentID" }
+
+        testCaseAttachmentContentRepository.deleteAllByAttachment(attachment)
+        testCaseAttachmentRepository.delete(attachment)
+    }
+
+    private fun isSupportedMediaType(contentType: String): Boolean {
+        return contentType.startsWith("image/") || contentType.startsWith("video/")
     }
 
     @Transactional

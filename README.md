@@ -42,6 +42,29 @@ View the progress of your test run and see the results of each test case.
 
 -  Custom property configuration for test cases
 -  Export test plan and test run results to document
+-  Batch import of test cases from a `.csv` file (see below)
+-  Images and videos attached to test cases, visible while executing a test run
+-  Links inside test case descriptions, instructions and properties are clickable and open in a new tab
+-  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
+
+### Importing test cases from CSV
+
+From a project's test case list, click **Import CSV**. The first row of the file must contain the column names:
+
+| Column              | Required | Notes                                                                                                 |
+| ------------------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| `Title`             | Yes      |                                                                                                       |
+| `Description`       | No       |                                                                                                       |
+| `Test Instructions` | No       | Line breaks are kept when the value is quoted                                                         |
+| _Property title_    | No       | One column per property (e.g. `Priority`, `Type`). Empty required properties use their default value |
+
+Comma, semicolon and tab separated files are supported, and column names and select options are matched case-insensitively. Use **Download template** on the import page to get a file with the columns for your current properties. The rows are previewed and validated before importing, and the import is all-or-nothing.
+
+### Test case attachments
+
+Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
+
+These features require database schema version `0.0.3`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ## Architecture Overview
 
