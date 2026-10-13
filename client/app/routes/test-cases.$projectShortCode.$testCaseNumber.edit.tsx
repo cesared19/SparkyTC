@@ -14,6 +14,7 @@ import {
 } from '~/models/types'
 import { APIClient } from '~/utility/APIClient'
 import { Tools } from '~/utility/Tools'
+import { AttachmentGallery } from '~/components/AttachmentGallery'
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	try {
@@ -75,9 +76,7 @@ export default function EditTestCase() {
 	return (
 		<div>
 			<div className="mb-6">
-				<h2 className="text-2xl font-semibold text-gray-900">
-					Edit Test Case
-				</h2>
+				<h2 className="text-2xl font-semibold text-gray-900">Edit Test Case</h2>
 			</div>
 
 			<TestCaseForm
@@ -89,6 +88,21 @@ export default function EditTestCase() {
 				error={actionData?.message}
 				onDelete={handleDelete}
 			/>
+
+			<div className="mt-8 border-t border-gray-200 pt-6">
+				<h3 className="mb-2 text-base font-semibold text-gray-700">
+					Images and Videos
+				</h3>
+				<p className="mb-3 text-xs text-gray-500">
+					Attachments are saved immediately and are shown when the test case is
+					opened during a test run
+				</p>
+				<AttachmentGallery
+					testCaseID={testCase.testCaseID}
+					attachments={testCase.attachments ?? []}
+					editable
+				/>
+			</div>
 		</div>
 	)
 }

@@ -6,7 +6,10 @@ import com.cherry.cherryservice.dto.properties.CreatePropertyConfigurationDTO
 import com.cherry.cherryservice.dto.properties.PropertyConfigurationDTO
 import com.cherry.cherryservice.dto.properties.PropertyConfigurationType
 import com.cherry.cherryservice.dto.properties.UpdatePropertyConfigurationDTO
+import com.cherry.cherryservice.dto.testcases.BatchCreateTestCasesDTO
 import com.cherry.cherryservice.dto.testcases.CreateTestCaseDTO
+import org.springframework.http.HttpHeaders
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -666,6 +669,202 @@ class WorkspaceControllerTests {
         // Verify test run is complete
         val updatedTestRuns = getTestRuns(project.projectShortCode)
         assertEquals(TestRunStatus.COMPLETE, updatedTestRuns.first().status)
+    }
+
+    @Test
+    fun `should batch create test cases with sequential test case numbers`() {
+        val project = createProject()
+        val properties = getProperties()
+        createTestCase(projectShortCode = project.projectShortCode, title = "Existing Test Case", properties = properties)
+
+        val batch = BatchCreateTestCasesDTO(
+            testCases = listOf("Batch 1", "Batch 2", "Batch 3").map { title ->
+                CreateTestCaseDTO(
+                    title = title,
+                    description = "Imported from https://example.com/spec",
+                    testInstructions = "1. Open https://example.com",
+                    propertyValues = requiredPropertyValues(properties)
+                )
+            }
+        )
+
+        mockMvc.perform(post("/api/v1/workspace/test-cases/${project.projectShortCode}/batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(batch)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.createdCount").value(3))
+
+        val testCases = getTestCases(project.projectShortCode)
+        assertEquals(listOf("Existing Test Case", "Batch 1", "Batch 2", "Batch 3"), testCases.map { it.title })
+        assertEquals(listOf(1L, 2L, 3L, 4L), testCases.map { it.testCaseNumber })
+    }
+
+    @Test
+    fun `should roll back the whole batch when one test case is invalid`() {
+        val project = createProject()
+        val properties = getProperties()
+
+        val batch = BatchCreateTestCasesDTO(
+            testCases = listOf(
+                CreateTestCaseDTO(title = "Valid", description = null, testInstructions = null, propertyValues = requiredPropertyValues(properties)),
+                CreateTestCaseDTO(title = "", description = null, testInstructions = null, propertyValues = requiredPropertyValues(properties)),
+            )
+        )
+
+        mockMvc.perform(post("/api/v1/workspace/test-cases/${project.projectShortCode}/batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(batch)))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value(Matchers.startsWith("Test case 2:")))
+
+        assertEquals(0, getTestCases(project.projectShortCode).size)
+    }
+
+    @Test
+    fun `should upload, retrieve and delete test case attachments`() {
+        val project = createProject()
+        val properties = getProperties()
+        createTestCase(projectShortCode = project.projectShortCode, properties = properties)
+        val testCase = getTestCases(project.projectShortCode).first()
+
+        val imageBytes = byteArrayOf(1, 2, 3, 4, 5)
+        val image = MockMultipartFile("files", "screenshot.png", "image/png", imageBytes)
+        val video = MockMultipartFile("files", "recording.mp4", "video/mp4", byteArrayOf(9, 8, 7))
+
+        mockMvc.perform(multipart("/api/v1/workspace/test-cases/${testCase.testCaseID}/attachments")
+            .file(image)
+            .file(video))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.size()").value(2))
+
+        val attachments = getTestCases(project.projectShortCode).first().attachments
+        assertEquals(listOf("screenshot.png", "recording.mp4"), attachments.map { it.fileName })
+        assertEquals(listOf("image/png", "video/mp4"), attachments.map { it.contentType })
+
+        // attachments are also visible from the test case runs
+        mockMvc.perform(post("/api/v1/workspace/test-runs/${project.projectShortCode}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateTestRunDTO(title = "Run", description = null, testCaseIDs = listOf(testCase.testCaseID)))))
+            .andExpect(status().isOk)
+        val testCaseRun = getTestCaseRuns(project.projectShortCode, getTestRuns(project.projectShortCode).first().testRunNumber).first()
+        assertEquals(2, testCaseRun.testCase.attachments.size)
+
+        val imageResult = mockMvc.perform(get("/api/v1/workspace/attachments/${attachments[0].attachmentID}"))
+            .andExpect(status().isOk)
+            .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "image/png"))
+            .andReturn()
+        assertEquals(imageBytes.toList(), imageResult.response.contentAsByteArray.toList())
+
+        // range requests are needed for video seeking in the browser
+        mockMvc.perform(get("/api/v1/workspace/attachments/${attachments[1].attachmentID}")
+            .header(HttpHeaders.RANGE, "bytes=1-2"))
+            .andExpect(status().isPartialContent)
+
+        mockMvc.perform(delete("/api/v1/workspace/attachments/${attachments[0].attachmentID}"))
+            .andExpect(status().isOk)
+
+        val remaining = getTestCases(project.projectShortCode).first().attachments
+        assertEquals(listOf("recording.mp4"), remaining.map { it.fileName })
+    }
+
+    @Test
+    fun `should reject attachments that are not images or videos`() {
+        val project = createProject()
+        val properties = getProperties()
+        createTestCase(projectShortCode = project.projectShortCode, properties = properties)
+        val testCase = getTestCases(project.projectShortCode).first()
+
+        mockMvc.perform(multipart("/api/v1/workspace/test-cases/${testCase.testCaseID}/attachments")
+            .file(MockMultipartFile("files", "notes.txt", "text/plain", "hello".toByteArray())))
+            .andExpect(status().isBadRequest)
+
+        assertEquals(0, getTestCases(project.projectShortCode).first().attachments.size)
+    }
+
+    @Test
+    fun `should delete test case with attachments`() {
+        val project = createProject()
+        val properties = getProperties()
+        createTestCase(projectShortCode = project.projectShortCode, properties = properties)
+        val testCase = getTestCases(project.projectShortCode).first()
+
+        mockMvc.perform(multipart("/api/v1/workspace/test-cases/${testCase.testCaseID}/attachments")
+            .file(MockMultipartFile("files", "screenshot.png", "image/png", byteArrayOf(1))))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(delete("/api/v1/workspace/test-cases/${testCase.testCaseID}"))
+            .andExpect(status().isOk)
+
+        assertEquals(0, getTestCases(project.projectShortCode).size)
+    }
+
+    @Test
+    fun `should update test case run details without changing the test case`() {
+        val project = createProject()
+        val properties = getProperties()
+        createTestCase(projectShortCode = project.projectShortCode, title = "Original", properties = properties)
+        val testCase = getTestCases(project.projectShortCode).first()
+
+        mockMvc.perform(post("/api/v1/workspace/test-runs/${project.projectShortCode}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateTestRunDTO(title = "Run", description = null, testCaseIDs = listOf(testCase.testCaseID)))))
+            .andExpect(status().isOk)
+        val testRunNumber = getTestRuns(project.projectShortCode).first().testRunNumber
+        val testCaseRun = getTestCaseRuns(project.projectShortCode, testRunNumber).first()
+
+        val update = UpdateTestCaseRunDetailsDTO(
+            title = "Edited in run",
+            description = "Edited description",
+            testInstructions = "Edited instructions",
+            applyToTestCase = false
+        )
+        mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/details")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(update)))
+            .andExpect(status().isOk)
+
+        val updatedRun = getTestCaseRuns(project.projectShortCode, testRunNumber).first()
+        assertEquals("Edited in run", updatedRun.title)
+        assertEquals("Edited description", updatedRun.description)
+        assertEquals("Edited instructions", updatedRun.testInstructions)
+        assertEquals("Original", getTestCases(project.projectShortCode).first().title)
+    }
+
+    @Test
+    fun `should update test case run details and apply them to the test case`() {
+        val project = createProject()
+        val properties = getProperties()
+        createTestCase(projectShortCode = project.projectShortCode, title = "Original", properties = properties)
+        val testCase = getTestCases(project.projectShortCode).first()
+
+        mockMvc.perform(post("/api/v1/workspace/test-runs/${project.projectShortCode}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateTestRunDTO(title = "Run", description = null, testCaseIDs = listOf(testCase.testCaseID)))))
+            .andExpect(status().isOk)
+        val testRunNumber = getTestRuns(project.projectShortCode).first().testRunNumber
+        val testCaseRun = getTestCaseRuns(project.projectShortCode, testRunNumber).first()
+
+        val update = UpdateTestCaseRunDetailsDTO(
+            title = "Edited everywhere",
+            description = "",
+            testInstructions = "New instructions",
+            applyToTestCase = true
+        )
+        mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/details")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(update)))
+            .andExpect(status().isOk)
+
+        val updatedTestCase = getTestCases(project.projectShortCode).first()
+        assertEquals("Edited everywhere", updatedTestCase.title)
+        assertEquals(null, updatedTestCase.description)
+        assertEquals("New instructions", updatedTestCase.testInstructions)
+        // property values are preserved
+        assertEquals(testCase.propertyValues, updatedTestCase.propertyValues)
+    }
+
+    private fun requiredPropertyValues(properties: List<PropertyConfigurationDTO>): Map<UUID, String> {
+        return properties.filter { it.isRequired }.associate { it.propertyConfigurationID to it.defaultValue!! }
     }
 
     private fun createProject(

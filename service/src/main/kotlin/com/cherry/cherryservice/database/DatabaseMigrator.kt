@@ -204,6 +204,31 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.2")
                 }
                 SchemaVersion.VERSION_0_0_2 -> {
+                    // test case media attachments (images and videos)
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_attachments (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            test_case_id BIGINT REFERENCES test_cases(id),
+                            file_name TEXT NOT NULL,
+                            content_type TEXT NOT NULL,
+                            file_size BIGINT NOT NULL
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_attachment_contents (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            attachment_id BIGINT NOT NULL REFERENCES test_case_attachments(id) ON DELETE CASCADE,
+                            data BYTEA NOT NULL
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.3")
+                }
+                SchemaVersion.VERSION_0_0_3 -> {
                     break
                 }
             }

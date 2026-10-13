@@ -9,6 +9,15 @@ export interface TestCase {
 	description?: string
 	testInstructions?: string
 	propertyValues: Record<string, string>
+	attachments?: TestCaseAttachment[]
+}
+
+export interface TestCaseAttachment {
+	attachmentID: string
+	creationDate: number
+	fileName: string
+	contentType: string
+	fileSize: number
 }
 
 export interface CreateTestCase extends Record<string, any> {
@@ -95,6 +104,13 @@ export interface TestCaseRun {
 	description?: string
 	testInstructions?: string
 	notes?: string
+}
+
+export interface UpdateTestCaseRunDetails extends Record<string, any> {
+	title: string
+	description?: string
+	testInstructions?: string
+	applyToTestCase: boolean
 }
 
 export interface UpdateTestRun extends Record<string, any> {

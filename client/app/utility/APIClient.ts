@@ -27,14 +27,19 @@ export class APIClient {
 		options?: RequestOptions
 	): Promise<T> {
 		const response = await this.request(url, method, options)
+		return this.parseJSONResponse<T>(response, method)
+	}
 
+	private static async parseJSONResponse<T>(
+		response: Response,
+		method: string
+	): Promise<T> {
 		const data = await response.json()
 
 		if (!response.ok || data.status === 'ERROR') {
 			const errorResponse = data as ErrorResponse
 			throw new Error(
-				errorResponse.message ||
-					`Failed to ${method.toLowerCase()} resource`
+				errorResponse.message || `Failed to ${method.toLowerCase()} resource`
 			)
 		}
 
@@ -58,6 +63,12 @@ export class APIClient {
 		options?: RequestOptions
 	): Promise<Response> {
 		return this.request(url, 'POST', options)
+	}
+
+	static async postFormData<T>(url: string, formData: FormData): Promise<T> {
+		// the content type header is intentionally omitted so fetch sets the multipart boundary
+		const response = await fetch(url, { method: 'POST', body: formData })
+		return this.parseJSONResponse<T>(response, 'POST')
 	}
 
 	static async put<T>(url: string, options?: RequestOptions): Promise<T> {
