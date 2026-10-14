@@ -65,9 +65,17 @@ export class APIClient {
 		return this.request(url, 'POST', options)
 	}
 
-	static async postFormData<T>(url: string, formData: FormData): Promise<T> {
-		// the content type header is intentionally omitted so fetch sets the multipart boundary
-		const response = await fetch(url, { method: 'POST', body: formData })
+	static async postMultipart<T>(
+		url: string,
+		body: ArrayBuffer,
+		contentType: string
+	): Promise<T> {
+		// the original content type is forwarded as is, since it carries the multipart boundary
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': contentType },
+			body,
+		})
 		return this.parseJSONResponse<T>(response, 'POST')
 	}
 

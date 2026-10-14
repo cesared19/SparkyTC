@@ -10,30 +10,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			throw 'Test case ID is required'
 		}
 
-		const formData = await request.formData()
-		const files = formData
-			.getAll('files')
-			.filter((file): file is File => file instanceof File && file.size > 0)
-		if (files.length === 0) {
+		const contentType = request.headers.get('Content-Type')
+		if (!contentType?.startsWith('multipart/form-data')) {
 			throw 'Select at least one image or video to upload'
 		}
 
-		const unsupportedFile = files.find(
-			(file) =>
-				!file.type.startsWith('image/') && !file.type.startsWith('video/')
-		)
-		if (unsupportedFile) {
-			throw `Unsupported file type for ${unsupportedFile.name}, only images and videos are allowed`
-		}
-
-		const upstreamFormData = new FormData()
-		for (const file of files) {
-			upstreamFormData.append('files', file, file.name)
-		}
-
-		await APIClient.postFormData(
+		// forward the multipart body untouched instead of parsing it here: the File class
+		// returned by request.formData() differs between the dev server and remix-serve,
+		// and the backend already validates the uploaded files
+		await APIClient.postMultipart(
 			APIRoute.testCaseAttachments(testCaseID),
-			upstreamFormData
+			await request.arrayBuffer(),
+			contentType
 		)
 		return { ok: true }
 	} catch (error) {
