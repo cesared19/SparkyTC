@@ -12,11 +12,13 @@ import {
 	ErrorResponse,
 	TestCaseOutletContext,
 } from '~/models/types'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
+import { useIsAdmin } from '~/utility/CurrentUser'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const projectShortCode = params.projectShortCode
 		const testCaseNumber = Number(params.testCaseNumber)
@@ -29,11 +31,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 		if (request.method === 'DELETE') {
 			const { testCaseID } = await request.json()
-			await APIClient.delete(APIRoute.testCase(testCaseID))
+			await api.delete(APIRoute.testCase(testCaseID))
 			return redirect(Route.viewProjectTestCases(projectShortCode))
 		} else if (request.method === 'PUT') {
 			const { testCaseID, testCaseUpdate } = await request.json()
-			await APIClient.put(APIRoute.testCase(testCaseID), {
+			await api.put(APIRoute.testCase(testCaseID), {
 				body: testCaseUpdate,
 			})
 			return redirect(Route.viewTestCase(projectShortCode, testCaseNumber))
@@ -50,6 +52,7 @@ export default function EditTestCase() {
 	const submit = useSubmit()
 	const { testCase, properties } = useOutletContext<TestCaseOutletContext>()
 	const actionData = useActionData<ErrorResponse>()
+	const isAdmin = useIsAdmin()
 
 	function handleSubmit(testCaseUpdate: CreateTestCase) {
 		submit(
@@ -86,7 +89,8 @@ export default function EditTestCase() {
 				onCancel={() => navigate('..')}
 				onSubmit={handleSubmit}
 				error={actionData?.message}
-				onDelete={handleDelete}
+				// deleting test cases is restricted to admins
+				onDelete={isAdmin ? handleDelete : undefined}
 			/>
 
 			<div className="mt-8 border-t border-gray-200 pt-6">

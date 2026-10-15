@@ -40,8 +40,12 @@ class TestRun (
 
     @Column(name = "description")
     var description: String?,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id")
+    var createdBy: User? = null,
 ) {
     fun toDTO(): TestRunDTO {
-        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description)
+        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName)
     }
 }

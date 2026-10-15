@@ -24,7 +24,7 @@ import { Project } from '~/models/project'
 import { useEffect, useState } from 'react'
 import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
-import { APIClient } from '../utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
@@ -37,6 +37,7 @@ interface UpdateTestCaseRun extends Record<string, any> {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const projectShortCode = params.projectShortCode
 		const testRunNumber = Number(params.testRunNumber)
@@ -53,7 +54,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		} = await request.json()
 
 		if (intent === 'createJiraIssue') {
-			const response = await APIClient.post<FetchResponse<JiraLink>>(
+			const response = await api.post<FetchResponse<JiraLink>>(
 				APIRoute.createJiraIssue(testCaseRunID),
 				{ body: { ...jiraIssue, cherryBaseURL: publicBaseURL(request) } }
 			)
@@ -61,17 +62,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		}
 
 		if (intent === 'updateDetails') {
-			await APIClient.put<void>(APIRoute.testCaseRunDetails(testCaseRunID), {
+			await api.put<void>(APIRoute.testCaseRunDetails(testCaseRunID), {
 				body: detailsUpdate,
 			})
 			return { ok: true }
 		}
 
-		await APIClient.put<void>(APIRoute.testCaseRun(testCaseRunID), {
+		await api.put<void>(APIRoute.testCaseRun(testCaseRunID), {
 			body: testCaseRunUpdate,
 		})
 
-		const nextTestCaseRun = await APIClient.get<
+		const nextTestCaseRun = await api.get<
 			FetchResponse<TestCaseRun | undefined>
 		>(APIRoute.nextTestCaseRun(testCaseRunID))
 		if (nextTestCaseRun.data) {
@@ -255,6 +256,16 @@ function TestCaseRunView({
 								{new Date(testCaseRun.creationDate).toLocaleString()}
 							</dd>
 						</div>
+						{testCaseRun.executedBy && (
+							<div>
+								<dt className="text-sm font-medium text-gray-500">
+									Result recorded by
+								</dt>
+								<dd className="mt-1 text-sm text-gray-900">
+									{testCaseRun.executedBy}
+								</dd>
+							</div>
+						)}
 					</dl>
 				</section>
 

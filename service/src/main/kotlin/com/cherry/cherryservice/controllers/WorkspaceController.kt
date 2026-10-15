@@ -1,5 +1,6 @@
 package com.cherry.cherryservice.controllers
 
+import com.cherry.cherryservice.auth.AdminOnly
 import com.cherry.cherryservice.dto.*
 import com.cherry.cherryservice.dto.documents.TestRunExportType
 import com.cherry.cherryservice.dto.jira.CreateJiraIssueDTO
@@ -100,6 +101,7 @@ class WorkspaceController(
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
+    @AdminOnly
     @DeleteMapping("/test-cases/{testCaseID}")
     fun deleteTestCase(@PathVariable testCaseID: UUID): ResponseEntity<Any> {
         workspaceService.deleteTestCase(testCaseID)
@@ -112,18 +114,21 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = properties))
     }
 
+    @AdminOnly
     @PutMapping("/properties")
     fun updateProperties(@RequestBody request: UpdatePropertyConfigurationDTO): ResponseEntity<Any> {
         workspaceService.updateProperty(request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
+    @AdminOnly
     @PostMapping("/properties")
     fun createProperty(@RequestBody request: CreatePropertyConfigurationDTO): ResponseEntity<Any> {
         workspaceService.createProperty(request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
+    @AdminOnly
     @DeleteMapping("/properties/{propertyConfigurationID}")
     fun deleteProperty(@PathVariable propertyConfigurationID: UUID): ResponseEntity<Any> {
         workspaceService.deleteProperty(propertyConfigurationID)
@@ -148,6 +153,7 @@ class WorkspaceController(
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
+    @AdminOnly
     @DeleteMapping("/test-runs/{testRunID}")
     fun deleteTestRun(@PathVariable testRunID: UUID): ResponseEntity<Any> {
         workspaceService.deleteTestRun(testRunID)
@@ -216,6 +222,7 @@ class WorkspaceController(
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
+    @AdminOnly
     @DeleteMapping("/test-case-runs/{testCaseRunID}")
     fun deleteTestCaseRun(@PathVariable testCaseRunID: UUID): ResponseEntity<Any> {
         workspaceService.deleteTestCaseRun(testCaseRunID)

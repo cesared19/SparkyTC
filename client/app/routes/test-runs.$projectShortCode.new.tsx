@@ -20,7 +20,7 @@ import type {
 } from '~/models/types'
 import TestCaseSelector from '~/components/TestCaseSelector'
 import { Route } from '~/utility/Routes'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '../utility/Tools'
 import { ErrorMessage } from '../components/ErrorMessage'
 
@@ -30,17 +30,18 @@ interface CreateTestRun extends Record<string, any> {
 	testCaseIDs: string[]
 }
 
-export async function loader({ params }: ActionFunctionArgs) {
+export async function loader({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	const projectShortCode = params.projectShortCode
 	if (!projectShortCode) {
 		throw new Response('Project short code is required', { status: 400 })
 	}
 
 	const [properties, testCases] = await Promise.all([
-		APIClient.get<FetchResponse<PropertyConfiguration[]>>(
+		api.get<FetchResponse<PropertyConfiguration[]>>(
 			APIRoute.properties
 		),
-		APIClient.get<FetchResponse<TestCase[]>>(
+		api.get<FetchResponse<TestCase[]>>(
 			APIRoute.projectTestCases(projectShortCode)
 		),
 	])
@@ -49,13 +50,14 @@ export async function loader({ params }: ActionFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const projectShortCode = params.projectShortCode
 		if (!projectShortCode) {
 			throw new Error('Project short code is required')
 		}
 
-		await APIClient.post<void>(APIRoute.projectTestRuns(projectShortCode), {
+		await api.post<void>(APIRoute.projectTestRuns(projectShortCode), {
 			body: await request.json(),
 		})
 

@@ -5,10 +5,11 @@ import { APIRoute, Route } from '~/utility/Routes'
 import { Project } from '~/models/project'
 import { Column, Table } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
-import { APIClient } from '../utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const fetchResponse = await APIClient.get<FetchResponse<Project[]>>(
+	const api = await requireAPI(request)
+	const fetchResponse = await api.get<FetchResponse<Project[]>>(
 		APIRoute.projects
 	)
 	return fetchResponse

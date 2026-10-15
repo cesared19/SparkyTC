@@ -8,10 +8,11 @@ import type {
 } from '~/models/types'
 import ProjectSidebar from '../components/ProjectSidebar'
 import { Project } from '../models/project'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '../utility/Tools'
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
 	const projectShortCode = params.projectShortCode
 	if (!projectShortCode) {
 		throw new Response('Project ID is required', { status: 400 })
@@ -19,8 +20,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 	try {
 		const [projectData, testRunsData] = await Promise.all([
-			APIClient.get<FetchResponse<Project[]>>(APIRoute.projects),
-			APIClient.get<FetchResponse<TestRun[]>>(
+			api.get<FetchResponse<Project[]>>(APIRoute.projects),
+			api.get<FetchResponse<TestRun[]>>(
 				APIRoute.projectTestRuns(projectShortCode)
 			),
 		])

@@ -15,5 +15,8 @@ data class TestCaseDTO(
     val testInstructions: String?,
     val propertyValues: Map<UUID, String>,
     val attachments: List<TestCaseAttachmentDTO> = emptyList(),
-    val jiraLinks: List<JiraLinkDTO> = emptyList()
+    val jiraLinks: List<JiraLinkDTO> = emptyList(),
+    val createdBy: String? = null,
+    val updatedBy: String? = null,
+    val modifyDate: Date? = null
 )

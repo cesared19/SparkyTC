@@ -1,5 +1,6 @@
 package com.cherry.cherryservice.services
 
+import com.cherry.cherryservice.auth.CurrentUser
 import com.cherry.cherryservice.dto.attachments.AttachmentContentDTO
 import com.cherry.cherryservice.dto.attachments.TestCaseAttachmentDTO
 import com.cherry.cherryservice.dto.documents.*
@@ -91,6 +92,7 @@ class WorkspaceService(
         testCase.title = updateDTO.title
         testCase.description = Tools.sanitize(updateDTO.description)
         testCase.testInstructions = Tools.sanitize(updateDTO.testInstructions)
+        testCase.updatedBy = CurrentUser.get()
         testCaseRepository.save(testCase)
 
         // wipe property values and recreate from update request
@@ -138,6 +140,8 @@ class WorkspaceService(
             title = testCase.title,
             description = Tools.sanitize(testCase.description),
             testInstructions = Tools.sanitize(testCase.testInstructions),
+            createdBy = CurrentUser.get(),
+            updatedBy = CurrentUser.get(),
         )
         testCaseRepository.save(newTestCaseModel)
 
@@ -284,6 +288,7 @@ class WorkspaceService(
         propertyConfigurationRepository.delete(propertyModel)
     }
 
+    @Transactional
     fun retrieveTestRuns(projectShortCode: String): List<TestRunDTO> {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
@@ -305,7 +310,8 @@ class WorkspaceService(
             testRunNumber = largestTestRunNumber + 1,
             status = TestRunStatus.PENDING,
             title = testRun.title,
-            description = testRun.description
+            description = testRun.description,
+            createdBy = CurrentUser.get(),
         )
         testRunRepository.save(newTestRun)
 
@@ -396,6 +402,7 @@ class WorkspaceService(
 
         testCaseRun.status = updateDTO.status
         testCaseRun.notes = updateDTO.notes
+        testCaseRun.executedBy = CurrentUser.get()
         testCaseRunRepository.save(testCaseRun)
 
         val testRun = testCaseRun.testRun
@@ -429,6 +436,7 @@ class WorkspaceService(
             testCase.title = testCaseRun.title
             testCase.description = testCaseRun.description
             testCase.testInstructions = testCaseRun.testInstructions
+            testCase.updatedBy = CurrentUser.get()
             testCaseRepository.save(testCase)
         }
     }
@@ -455,7 +463,8 @@ class WorkspaceService(
                 testCase = testCase,
                 fileName = fileName,
                 contentType = contentType,
-                fileSize = file.size
+                fileSize = file.size,
+                uploadedBy = CurrentUser.get(),
             )
             testCaseAttachmentRepository.save(attachment)
             testCaseAttachmentContentRepository.save(TestCaseAttachmentContent(attachment = attachment, data = file.bytes))
@@ -516,6 +525,8 @@ class WorkspaceService(
                     "$cherryBaseURL/test-runs/${project.projectShortCode}/${testCaseRun.testRun.testRunNumber}/${testCase.testCaseNumber}",
             ))
         }
+
+        CurrentUser.get()?.let { description.paragraph("Reported from Cherry by ${it.displayName}") }
 
         val issueKey = jiraService.createIssue(request.summary.trim(), description.build())
         if (cherryBaseURL != null) {

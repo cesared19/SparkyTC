@@ -11,6 +11,9 @@ export interface TestCase {
 	propertyValues: Record<string, string>
 	attachments?: TestCaseAttachment[]
 	jiraLinks?: JiraLink[]
+	createdBy?: string
+	updatedBy?: string
+	modifyDate?: number
 }
 
 export interface JiraLink {
@@ -44,12 +47,27 @@ export interface CreateJiraIssue extends Record<string, any> {
 	buildNumber: string
 }
 
+export enum UserRole {
+	admin = 'ADMIN',
+	tester = 'TESTER',
+}
+
+export interface User {
+	userID: string
+	creationDate: number
+	username: string
+	displayName: string
+	role: UserRole
+	isActive: boolean
+}
+
 export interface TestCaseAttachment {
 	attachmentID: string
 	creationDate: number
 	fileName: string
 	contentType: string
 	fileSize: number
+	uploadedBy?: string
 }
 
 export interface CreateTestCase extends Record<string, any> {
@@ -118,6 +136,7 @@ export interface TestRun {
 	status: TestRunStatus
 	title: string
 	description?: string
+	createdBy?: string
 }
 
 export enum TestCaseRunStatus {
@@ -136,6 +155,7 @@ export interface TestCaseRun {
 	description?: string
 	testInstructions?: string
 	notes?: string
+	executedBy?: string
 }
 
 export interface UpdateTestCaseRunDetails extends Record<string, any> {

@@ -47,6 +47,7 @@ View the progress of your test run and see the results of each test case.
 -  Links inside test case descriptions, instructions and properties are clickable and open in a new tab
 -  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
 -  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status (see below)
+-  User accounts with Tester and Admin roles, and a record of who created, updated and executed each test case (see below)
 
 ### Importing test cases from CSV
 
@@ -65,7 +66,26 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.4`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.5`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+
+### User accounts
+
+Everyone signs in with their own account. There are two roles:
+
+-  **Tester**: create, edit and import test cases, run test runs, add images and videos, and create or link Jira issues.
+-  **Admin**: everything a tester can do, plus managing users (**Users** page), configuring properties, and deleting test cases and test runs.
+
+The first admin account is created when the backend starts and there are no users yet. Add these variables to the `.env` file before the first start, then sign in and create the rest of the accounts from the **Users** page:
+
+```
+ADMIN_USERNAME=<username>
+ADMIN_PASSWORD=<at least 8 characters>
+SESSION_SECRET=<long random string, e.g. the output of: openssl rand -hex 32>
+```
+
+`SESSION_SECRET` signs the session cookie of the client service. If it isn't set a random one is used and everyone is signed out whenever the client restarts. Sessions last 7 days. Set `COOKIE_SECURE=true` once the application is served over HTTPS.
+
+Users can change their password from their account page (click their name in the top bar). Admins can reset passwords and deactivate accounts, which signs the user out immediately.
 
 ### Jira integration
 

@@ -8,5 +8,6 @@ data class TestCaseAttachmentDTO(
     val creationDate: Date,
     val fileName: String,
     val contentType: String,
-    val fileSize: Long
+    val fileSize: Long,
+    val uploadedBy: String? = null
 )

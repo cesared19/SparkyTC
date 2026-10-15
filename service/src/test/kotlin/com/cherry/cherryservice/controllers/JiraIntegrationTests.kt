@@ -1,6 +1,8 @@
 package com.cherry.cherryservice.controllers
 
+import com.cherry.cherryservice.auth.AdminBootstrap
 import com.cherry.cherryservice.database.DatabaseMigrator
+import org.springframework.web.context.WebApplicationContext
 import com.cherry.cherryservice.dto.jira.CreateJiraIssueDTO
 import com.cherry.cherryservice.dto.jira.LinkJiraIssueDTO
 import com.cherry.cherryservice.dto.projects.CreateWorkspaceProjectDTO
@@ -105,6 +107,11 @@ class JiraIntegrationTests {
     private lateinit var databaseMigrator: DatabaseMigrator
 
     @Autowired
+    private lateinit var adminBootstrap: AdminBootstrap
+
+    @Autowired
+    private lateinit var webApplicationContext: WebApplicationContext
+
     private lateinit var mockMvc: MockMvc
 
     @Autowired
@@ -115,6 +122,8 @@ class JiraIntegrationTests {
     @BeforeEach
     fun beforeEach() {
         databaseMigrator.run()
+        adminBootstrap.run()
+        mockMvc = TestAuth.authenticatedMockMvc(webApplicationContext, TestAuth.login(webApplicationContext, objectMapper))
         requests.clear()
     }
 
@@ -165,7 +174,7 @@ class JiraIntegrationTests {
 
         val descriptionText = collectText(fields.get("description"))
         for (expected in listOf("Steps to reproduce", "1. Launch trainer", "2. Turn the wheel fully", "Expected result", "No warning sound",
-            "Actual result", "A chime plays", "Build number", "6494", "Evidence", "screenshot.png")) {
+            "Actual result", "A chime plays", "Build number", "6494", "Evidence", "screenshot.png", "Reported from Cherry by admin")) {
             assertTrue(descriptionText.contains(expected), "description is missing '$expected'")
         }
         val descriptionLinks = collectLinks(fields.get("description"))

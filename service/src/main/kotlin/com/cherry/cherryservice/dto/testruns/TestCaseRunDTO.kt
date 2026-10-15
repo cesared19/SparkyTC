@@ -13,5 +13,6 @@ data class TestCaseRunDTO(
     val title: String,
     val description: String?,
     val testInstructions: String?,
-    val notes: String?
+    val notes: String?,
+    val executedBy: String? = null
 )

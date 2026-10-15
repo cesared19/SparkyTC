@@ -35,8 +35,12 @@ class TestCaseAttachment(
 
     @Column(name = "file_size", nullable = false)
     val fileSize: Long,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_by_id")
+    val uploadedBy: User? = null,
 ) {
     fun toDTO(): TestCaseAttachmentDTO {
-        return TestCaseAttachmentDTO(externalID, creationDate, fileName, contentType, fileSize)
+        return TestCaseAttachmentDTO(externalID, creationDate, fileName, contentType, fileSize, uploadedBy?.displayName)
     }
 }

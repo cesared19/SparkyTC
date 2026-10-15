@@ -1,5 +1,7 @@
 import type { ErrorResponse } from '~/models/types'
 
+export class UnauthorizedError extends Error {}
+
 interface RequestOptions {
 	body?: unknown
 	headers?: Record<string, string>
@@ -34,6 +36,10 @@ export class APIClient {
 		response: Response,
 		method: string
 	): Promise<T> {
+		if (response.status === 401) {
+			throw new UnauthorizedError('Your session has expired, sign in again')
+		}
+
 		const data = await response.json()
 
 		if (!response.ok || data.status === 'ERROR') {
@@ -68,12 +74,16 @@ export class APIClient {
 	static async postMultipart<T>(
 		url: string,
 		body: ArrayBuffer,
-		contentType: string
+		contentType: string,
+		token: string
 	): Promise<T> {
 		// the original content type is forwarded as is, since it carries the multipart boundary
 		const response = await fetch(url, {
 			method: 'POST',
-			headers: { 'Content-Type': contentType },
+			headers: {
+				'Content-Type': contentType,
+				Authorization: `Bearer ${token}`,
+			},
 			body,
 		})
 		return this.parseJSONResponse<T>(response, 'POST')

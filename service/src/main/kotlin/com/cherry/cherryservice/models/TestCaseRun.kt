@@ -47,8 +47,13 @@ class TestCaseRun(
 
     @Column(name = "notes")
     var notes: String?,
+
+    // the user who last recorded a result for this test case run
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "executed_by_id")
+    var executedBy: User? = null,
 ) {
     fun toDTO(): TestCaseRunDTO {
-        return TestCaseRunDTO(externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes)
+        return TestCaseRunDTO(externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes, executedBy?.displayName)
     }
 }

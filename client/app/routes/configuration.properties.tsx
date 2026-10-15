@@ -5,10 +5,11 @@ import {
 	PropertyConfigurationResponse,
 } from '~/models/types'
 import { Outlet, useLoaderData } from '@remix-run/react'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
-export async function loader({}: LoaderFunctionArgs) {
-	return APIClient.get<PropertyConfigurationResponse>(APIRoute.properties)
+export async function loader({ request }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
+	return api.get<PropertyConfigurationResponse>(APIRoute.properties)
 }
 
 export default function ConfigurationProperties() {

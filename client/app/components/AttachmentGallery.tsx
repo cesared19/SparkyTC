@@ -145,7 +145,11 @@ export function AttachmentGallery({
 										target="_blank"
 										rel="noopener noreferrer"
 										className="truncate hover:text-sky-700 hover:underline"
-										title={attachment.fileName}
+										title={
+											attachment.uploadedBy
+												? `${attachment.fileName}, uploaded by ${attachment.uploadedBy}`
+												: attachment.fileName
+										}
 									>
 										{attachment.fileName}
 									</a>

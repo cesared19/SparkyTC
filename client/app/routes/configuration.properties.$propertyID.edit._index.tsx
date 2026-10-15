@@ -11,10 +11,11 @@ import {
 	ErrorResponse,
 	PropertyConfigurationDetailsOutletContext,
 } from '~/models/types'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	const propertyID = params.propertyID
 	if (!propertyID) {
 		throw new Response('Property ID is required', { status: 400 })
@@ -22,11 +23,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	try {
 		if (request.method === 'DELETE') {
-			await APIClient.delete(APIRoute.property(propertyID))
+			await api.delete(APIRoute.property(propertyID))
 			return redirect(Route.viewProperties)
 		} else if (request.method === 'PUT') {
 			const body = await request.json()
-			await APIClient.put(APIRoute.properties, { body })
+			await api.put(APIRoute.properties, { body })
 			return redirect(Route.viewProperty(propertyID))
 		} else {
 			throw new Error('Invalid request method')

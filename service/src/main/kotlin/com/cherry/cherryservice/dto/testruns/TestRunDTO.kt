@@ -9,5 +9,6 @@ data class TestRunDTO(
     val testRunNumber: Long,
     val status: TestRunStatus,
     val title: String,
-    val description: String?
+    val description: String?,
+    val createdBy: String? = null
 )

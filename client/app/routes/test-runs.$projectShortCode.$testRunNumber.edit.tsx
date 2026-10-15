@@ -11,9 +11,10 @@ import type {
 	UpdateTestRun,
 } from '~/models/types'
 import { useState } from 'react'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	const projectShortCode = params.projectShortCode
 	const testRunNumber = Number(params.testRunNumber)
 	if (!projectShortCode) {
@@ -24,7 +25,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	}
 
 	const { testRunID, testRunUpdate } = await request.json()
-	await APIClient.put<void>(APIRoute.testRun(testRunID), {
+	await api.put<void>(APIRoute.testRun(testRunID), {
 		body: testRunUpdate,
 	})
 

@@ -42,6 +42,17 @@ export default function TestCaseDetails() {
 							date={testCase.creationDate}
 							className="mt-1 text-sm text-gray-700"
 						/>
+						{testCase.createdBy && (
+							<div className="text-sm text-gray-500">
+								by {testCase.createdBy}
+							</div>
+						)}
+						{testCase.updatedBy && testCase.modifyDate && (
+							<div className="mt-1 text-xs text-gray-500">
+								Last updated by {testCase.updatedBy} on{' '}
+								{new Date(testCase.modifyDate).toLocaleString()}
+							</div>
+						)}
 					</div>
 
 					<div>

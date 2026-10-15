@@ -40,6 +40,14 @@ class TestCase(
     @Column(name = "test_instructions")
     var testInstructions: String?,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id")
+    var createdBy: User? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_id")
+    var updatedBy: User? = null,
+
     @OneToMany(mappedBy = "testCase")
     val propertyValues: List<TestCasePropertyValue> = emptyList(),
 
@@ -58,6 +66,6 @@ class TestCase(
             propertyValueMap[propertyValue.propertyConfiguration.externalID] = propertyValue.value
         }
 
-        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() })
+        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate)
     }
 }

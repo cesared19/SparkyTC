@@ -1,6 +1,8 @@
 package com.cherry.cherryservice.controllers
 
+import com.cherry.cherryservice.auth.AdminBootstrap
 import com.cherry.cherryservice.database.DatabaseMigrator
+import org.springframework.web.context.WebApplicationContext
 import com.cherry.cherryservice.dto.projects.CreateWorkspaceProjectDTO
 import com.cherry.cherryservice.dto.properties.CreatePropertyConfigurationDTO
 import com.cherry.cherryservice.dto.properties.PropertyConfigurationDTO
@@ -57,6 +59,11 @@ class WorkspaceControllerTests {
     private lateinit var databaseMigrator: DatabaseMigrator
 
     @Autowired
+    private lateinit var adminBootstrap: AdminBootstrap
+
+    @Autowired
+    private lateinit var webApplicationContext: WebApplicationContext
+
     private lateinit var mockMvc: MockMvc
 
     @Autowired
@@ -65,6 +72,8 @@ class WorkspaceControllerTests {
     @BeforeEach
     fun beforeEach() {
         databaseMigrator.run()
+        adminBootstrap.run()
+        mockMvc = TestAuth.authenticatedMockMvc(webApplicationContext, TestAuth.login(webApplicationContext, objectMapper))
     }
 
     @Test

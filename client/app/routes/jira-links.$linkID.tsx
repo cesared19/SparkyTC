@@ -1,9 +1,10 @@
 import { type ActionFunctionArgs } from '@remix-run/node'
 import { APIRoute } from '~/utility/Routes'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const linkID = params.linkID
 		if (!linkID) {
@@ -13,7 +14,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			throw 'Invalid request method'
 		}
 
-		await APIClient.delete(APIRoute.jiraLink(linkID))
+		await api.delete(APIRoute.jiraLink(linkID))
 		return { ok: true }
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), { status: 400 })

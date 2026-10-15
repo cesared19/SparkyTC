@@ -12,9 +12,11 @@ import org.springframework.jdbc.core.ConnectionCallback
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.StatementCallback
 import org.springframework.jdbc.core.queryForObject
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
+@Order(0)
 class DatabaseMigrator(
     @Value("\${cherry.database.migration-mode}")
     private val databaseMigrationMode: DatabaseMigrationMode,
@@ -246,6 +248,41 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.4")
                 }
                 SchemaVersion.VERSION_0_0_4 -> {
+                    // user accounts and sessions
+                    jdbcTemplate.execute("""
+                        CREATE TABLE users (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            username TEXT NOT NULL,
+                            display_name TEXT NOT NULL,
+                            password_hash TEXT NOT NULL,
+                            role TEXT NOT NULL,
+                            is_active BOOLEAN NOT NULL DEFAULT TRUE
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE UNIQUE INDEX users_username_key ON users (LOWER(username))")
+
+                    jdbcTemplate.execute("""
+                        CREATE TABLE user_sessions (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            token_hash TEXT NOT NULL UNIQUE,
+                            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            expires_at TIMESTAMP NOT NULL
+                        )
+                    """.trimIndent())
+
+                    // audit columns, null for records created before accounts existed
+                    jdbcTemplate.execute("ALTER TABLE test_cases ADD COLUMN created_by_id BIGINT REFERENCES users(id), ADD COLUMN updated_by_id BIGINT REFERENCES users(id)")
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN created_by_id BIGINT REFERENCES users(id)")
+                    jdbcTemplate.execute("ALTER TABLE test_case_runs ADD COLUMN executed_by_id BIGINT REFERENCES users(id)")
+                    jdbcTemplate.execute("ALTER TABLE test_case_attachments ADD COLUMN uploaded_by_id BIGINT REFERENCES users(id)")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.5")
+                }
+                SchemaVersion.VERSION_0_0_5 -> {
                     break
                 }
             }

@@ -57,6 +57,22 @@ export class Route {
 		return `/test-runs/${projectShortCode}/${testRunNumber}/${testCaseNumber}`
 	}
 
+	static get login() {
+		return '/login'
+	}
+
+	static get logout() {
+		return '/logout'
+	}
+
+	static get account() {
+		return '/account'
+	}
+
+	static get users() {
+		return '/admin/users'
+	}
+
 	static get viewProperties() {
 		return '/configuration/properties'
 	}
@@ -145,6 +161,30 @@ export class APIRoute {
 
 	static nextTestCaseRun(testCaseRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/next`
+	}
+
+	static get login() {
+		return `${this.baseAPIURL}/api/v1/auth/login`
+	}
+
+	static get logout() {
+		return `${this.baseAPIURL}/api/v1/auth/logout`
+	}
+
+	static get currentUser() {
+		return `${this.baseAPIURL}/api/v1/auth/me`
+	}
+
+	static get changePassword() {
+		return `${this.baseAPIURL}/api/v1/auth/password`
+	}
+
+	static get users() {
+		return `${this.baseAPIURL}/api/v1/admin/users`
+	}
+
+	static user(userID: string) {
+		return `${this.baseAPIURL}/api/v1/admin/users/${userID}`
 	}
 
 	static get properties() {

@@ -17,11 +17,13 @@ import type { TestCaseRun } from '~/models/types'
 import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '../components/DateDisplay'
-import { APIClient } from '../utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { useState } from 'react'
 import { ExportModal } from '~/components/ExportModal'
+import { useIsAdmin } from '~/utility/CurrentUser'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	const projectShortCode = params.projectShortCode
 	if (!projectShortCode) {
 		throw new Response('Project short code is required', { status: 400 })
@@ -31,14 +33,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	if (requestJSON.intent === 'update') {
 		const { testRunUpdate, testRunID } = requestJSON
-		await APIClient.put<void>(APIRoute.testRun(testRunID), {
+		await api.put<void>(APIRoute.testRun(testRunID), {
 			body: testRunUpdate,
 		})
 
 		return redirect(Route.viewProjectTestRuns(projectShortCode))
 	} else if (requestJSON.intent === 'delete') {
 		const { testRunID } = requestJSON
-		await APIClient.delete<void>(APIRoute.testRun(testRunID))
+		await api.delete<void>(APIRoute.testRun(testRunID))
 
 		return redirect(Route.viewProjectTestRuns(projectShortCode))
 	} else {
@@ -53,8 +55,9 @@ export default function TestRunDetails() {
 
 	const navigate = useNavigate()
 	const submit = useSubmit()
+	const isAdmin = useIsAdmin()
 
-	const menuItems: ActionMenuItem[] = (() => {
+	const allMenuItems: ActionMenuItem[] = (() => {
 		const deleteItem: ActionMenuItem = {
 			label: 'Delete test run',
 			action: () => {
@@ -151,6 +154,10 @@ export default function TestRunDetails() {
 				return [editItem, exportItem, deleteItem]
 		}
 	})()
+	// deleting test runs is restricted to admins
+	const menuItems = isAdmin
+		? allMenuItems
+		: allMenuItems.filter((item) => item.label !== 'Delete test run')
 
 	const columns: Column<TestCaseRun>[] = [
 		{
@@ -190,6 +197,11 @@ export default function TestRunDetails() {
 					<h1 className="text-2xl font-semibold text-gray-900">
 						{testRun.title}
 					</h1>
+					{testRun.createdBy && (
+						<p className="mt-1 text-sm text-gray-500">
+							Created by {testRun.createdBy}
+						</p>
+					)}
 					<div className="mt-4 grid grid-cols-2 gap-4">
 						<div>
 							<h3 className="text-lg font-medium text-gray-900 mb-1">

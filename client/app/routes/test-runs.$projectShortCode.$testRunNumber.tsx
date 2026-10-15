@@ -8,9 +8,10 @@ import type {
 	TestCaseRun,
 	PropertyConfiguration,
 } from '~/models/types'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
 	const projectShortCode = params.projectShortCode
 	const testRunNumber = Number(params.testRunNumber)
 	if (!projectShortCode) {
@@ -21,10 +22,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
 	}
 
 	const [response, propertiesResponse] = await Promise.all([
-		APIClient.get<FetchResponse<TestCaseRun[]>>(
+		api.get<FetchResponse<TestCaseRun[]>>(
 			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
 		),
-		APIClient.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
 	])
 	return {
 		testRunNumber,
