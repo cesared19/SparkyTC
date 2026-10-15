@@ -49,8 +49,14 @@ class User(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "default_project_id")
     var defaultProject: WorkspaceProject? = null,
+
+    @Column(name = "notify_test_run_assigned", nullable = false)
+    var notifyTestRunAssigned: Boolean = true,
+
+    @Column(name = "notify_test_run_completed", nullable = false)
+    var notifyTestRunCompleted: Boolean = true,
 ) {
     fun toDTO(projectIDs: List<UUID>? = null): UserDTO {
-        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs)
+        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted)
     }
 }

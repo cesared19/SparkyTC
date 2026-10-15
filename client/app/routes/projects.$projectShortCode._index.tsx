@@ -82,7 +82,7 @@ export default function ProjectDashboardPage() {
 								to={`${Route.viewProjectTestRuns(
 									project.projectShortCode
 								)}/new`}
-								className="text-sky-600 hover:underline"
+								className="text-brand-600 hover:underline"
 							>
 								Start a test run
 							</Link>
@@ -144,7 +144,7 @@ export default function ProjectDashboardPage() {
 														project.projectShortCode,
 														testRun.testRunNumber
 													)}
-													className="font-medium text-gray-900 hover:text-sky-600 hover:underline"
+													className="font-medium text-gray-900 hover:text-brand-600 hover:underline"
 												>
 													#{testRun.testRunNumber} {testRun.title}
 												</Link>
@@ -206,7 +206,7 @@ function StatTile({
 	)
 	const className = 'block rounded-lg border border-gray-200 bg-white p-4'
 	return to ? (
-		<Link to={to} className={`${className} hover:border-sky-500`}>
+		<Link to={to} className={`${className} hover:border-brand-500`}>
 			{content}
 		</Link>
 	) : (
@@ -229,7 +229,7 @@ function ActiveRunCard({
 	return (
 		<Link
 			to={Route.viewTestRun(projectShortCode, testRun.testRunNumber)}
-			className="block rounded-lg border border-gray-200 bg-white p-4 hover:border-sky-500"
+			className="block rounded-lg border border-gray-200 bg-white p-4 hover:border-brand-500"
 		>
 			<div className="mb-3 flex items-start justify-between gap-3">
 				<div className="min-w-0">
@@ -274,7 +274,7 @@ function BreakdownCard({
 						<dt className="truncate text-gray-700">{item.value}</dt>
 						<dd className="h-2 rounded-full bg-gray-100">
 							<div
-								className="h-2 rounded-full bg-sky-600"
+								className="h-2 rounded-full bg-gray-700"
 								style={{ width: `${(item.count / max) * 100}%` }}
 							/>
 						</dd>

@@ -7,6 +7,7 @@ import type {
 	ProjectTestRunsOutletContext,
 	TestCaseRun,
 	PropertyConfiguration,
+	UserSummary,
 } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 
@@ -21,21 +22,25 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Test run number is required', { status: 400 })
 	}
 
-	const [response, propertiesResponse] = await Promise.all([
+	const [response, propertiesResponse, usersResponse] = await Promise.all([
 		api.get<FetchResponse<TestCaseRun[]>>(
 			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
 		),
 		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+		api.get<FetchResponse<UserSummary[]>>(
+			APIRoute.projectUsers(projectShortCode)
+		),
 	])
 	return {
 		testRunNumber,
 		testCaseRuns: response.data,
 		properties: propertiesResponse.data,
+		projectUsers: usersResponse.data,
 	}
 }
 
 export default function TestRunsIndex() {
-	const { testRunNumber, testCaseRuns, properties } =
+	const { testRunNumber, testCaseRuns, properties, projectUsers } =
 		useLoaderData<typeof loader>()
 	const { project, testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
 	const testRun = testRuns.find(
@@ -50,6 +55,7 @@ export default function TestRunsIndex() {
 		testRun,
 		testCaseRuns,
 		properties,
+		projectUsers,
 	}
 
 	return <Outlet context={outletContext} />

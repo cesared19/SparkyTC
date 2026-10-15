@@ -23,6 +23,23 @@ export class Route {
 		return '/preferences'
 	}
 
+	static projectSettings(projectShortCode: string) {
+		return `/projects/${projectShortCode}/settings`
+	}
+
+	static get assignments() {
+		return '/assignments'
+	}
+
+	static get notifications() {
+		return '/notifications'
+	}
+
+	static similarJiraIssues(testCaseRunID: string, summary: string) {
+		const params = new URLSearchParams({ testCaseRunID, summary })
+		return `/jira-similar?${params.toString()}`
+	}
+
 	static importTestCases(projectShortCode: string) {
 		return `/test-cases/${projectShortCode}/import`
 	}
@@ -101,6 +118,45 @@ export class APIRoute {
 
 	static projectDashboard(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/dashboard`
+	}
+
+	static projectUsers(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/users`
+	}
+
+	static projectSettings(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/settings`
+	}
+
+	static testRunAssignees(testRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}/assignees`
+	}
+
+	static testCaseRunAssignee(testCaseRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/assignee`
+	}
+
+	static similarJiraIssues(testCaseRunID: string, summary: string) {
+		const params = new URLSearchParams({ summary })
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/test-case-runs/${testCaseRunID}/similar-jira-issues?${params.toString()}`
+	}
+
+	static get notifications() {
+		return `${this.baseAPIURL}/api/v1/notifications`
+	}
+
+	static notificationRead(notificationID: string) {
+		return `${this.baseAPIURL}/api/v1/notifications/${notificationID}/read`
+	}
+
+	static get notificationsReadAll() {
+		return `${this.baseAPIURL}/api/v1/notifications/read-all`
+	}
+
+	static get notificationPreferences() {
+		return `${this.baseAPIURL}/api/v1/auth/preferences/notifications`
 	}
 
 	static get themePreference() {

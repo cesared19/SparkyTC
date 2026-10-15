@@ -6,4 +6,5 @@ data class CreateTestRunDTO(
     val title: String,
     val description: String?,
     val testCaseIDs: List<UUID>,
+    val assigneeIDs: List<UUID> = emptyList(),
 )

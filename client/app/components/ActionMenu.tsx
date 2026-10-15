@@ -44,7 +44,7 @@ export function ActionMenu({ items, label = 'Actions' }: ActionMenuProps) {
 			<button
 				type="button"
 				onClick={() => setIsOpen(!isOpen)}
-				className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+				className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
 			>
 				{label}
 				<svg

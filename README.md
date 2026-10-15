@@ -53,6 +53,9 @@ View the progress of your test run and see the results of each test case.
 -  Home dashboard per project with test case and test run summaries, and a default project opened after signing in
 -  Per-project visibility: admins choose which projects each tester can see
 -  Light, dark or system theme, chosen by each user from their account page
+-  Test run responsibilities: assign test runs to users, testers take test cases so work isn't duplicated, and each result shows who completed it
+-  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page
+-  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and choose the Jira project; similar existing issues are suggested before creating a new one
 
 ### Importing test cases from CSV
 
@@ -71,7 +74,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.6`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.7`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
@@ -139,6 +142,13 @@ graph TD
 ```
 
 ## Deploying SparkyTC to production
+
+Each project has its own Jira settings in its **Settings** tab (admins only):
+
+-  **When a test case fails**: *Disabled* (no issues are created, existing ones can still be linked), *Manual* (the pre-filled form described above) or *Automatic* (saving a failed result creates the issue right away from the test case, its `Expected Result` and `Build Number` properties and the run notes; missing details are sent as "Not provided", and if Jira rejects the issue the result is still saved and the tester gets a notification).
+-  **Jira project**: the key of the Jira project issues are created in. Empty uses `JIRA_PROJECT_KEY`.
+
+Before creating an issue, SparkyTC searches the Jira project for issues whose summary shares words with the new one and suggests them, so the tester can link an existing issue instead of creating a duplicate. The search uses Jira's text search and ranks results by the words both summaries have in common; it doesn't use AI.
 
 ### Prerequisites
 

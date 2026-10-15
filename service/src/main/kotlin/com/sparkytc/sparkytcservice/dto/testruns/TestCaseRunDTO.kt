@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.dto.testruns
 
+import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.testcases.TestCaseDTO
 import com.sparkytc.sparkytcservice.models.TestCaseRun
 import java.util.Date
@@ -14,5 +15,6 @@ data class TestCaseRunDTO(
     val description: String?,
     val testInstructions: String?,
     val notes: String?,
-    val executedBy: String? = null
+    val executedBy: String? = null,
+    val assignedTo: UserSummaryDTO? = null
 )

@@ -15,5 +15,7 @@ data class UserDTO(
     val theme: UserTheme = UserTheme.SYSTEM,
     val defaultProjectShortCode: String? = null,
     // only included in the admin user list
-    val projectIDs: List<UUID>? = null
+    val projectIDs: List<UUID>? = null,
+    val notifyTestRunAssigned: Boolean = true,
+    val notifyTestRunCompleted: Boolean = true
 )

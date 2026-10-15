@@ -21,6 +21,8 @@ import { requireAPI } from '~/utility/API.server'
 import { useState } from 'react'
 import { ExportModal } from '~/components/ExportModal'
 import { useIsAdmin } from '~/utility/CurrentUser'
+import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
+import { TestCaseRunStatus } from '~/models/types'
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	const api = await requireAPI(request)
@@ -50,7 +52,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestRunDetails() {
 	const [showExportModal, setShowExportModal] = useState(false)
-	const { project, testRun, testCaseRuns } =
+	const { project, testRun, testCaseRuns, projectUsers } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 
 	const navigate = useNavigate()
@@ -179,11 +181,29 @@ export default function TestRunDetails() {
 			),
 		},
 		{
-			header: 'Created',
-			key: 'created',
+			header: 'Assigned to',
+			key: 'assignedTo',
 			render: (testCaseRun) => (
-				<DateDisplay date={testCaseRun.creationDate} />
+				<TestCaseAssignment
+					testRun={testRun}
+					testCaseRun={testCaseRun}
+					projectUsers={projectUsers}
+					compact
+				/>
 			),
+		},
+		{
+			header: 'Completed by',
+			key: 'completedBy',
+			render: (testCaseRun) =>
+				testCaseRun.status !== TestCaseRunStatus.pending &&
+				testCaseRun.executedBy ? (
+					<span className="text-sm text-gray-700">
+						{testCaseRun.executedBy}
+					</span>
+				) : (
+					<span className="text-sm text-gray-500">-</span>
+				),
 		},
 	]
 
@@ -202,11 +222,19 @@ export default function TestRunDetails() {
 							Created by {testRun.createdBy}
 						</p>
 					)}
+					<div className="mt-4">
+						<h3 className="text-lg font-medium text-gray-900 mb-1">
+							Assigned to
+						</h3>
+						<TestRunAssignees
+							key={testRun.assignees.map((user) => user.userID).join()}
+							testRun={testRun}
+							projectUsers={projectUsers}
+						/>
+					</div>
 					<div className="mt-4 grid grid-cols-2 gap-4">
 						<div>
-							<h3 className="text-lg font-medium text-gray-900 mb-1">
-								Status
-							</h3>
+							<h3 className="text-lg font-medium text-gray-900 mb-1">Status</h3>
 							<TestRunStatusBadge status={testRun.status} />
 						</div>
 						<div>

@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.models
 
+import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import jakarta.persistence.*
@@ -52,8 +53,13 @@ class TestCaseRun(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executed_by_id")
     var executedBy: User? = null,
+
+    // the user working on this test case, so testers don't duplicate work
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to_id")
+    var assignedTo: User? = null,
 ) {
     fun toDTO(): TestCaseRunDTO {
-        return TestCaseRunDTO(externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes, executedBy?.displayName)
+        return TestCaseRunDTO(externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes, executedBy?.displayName, assignedTo?.let { UserSummaryDTO(it.externalID, it.displayName) })
     }
 }

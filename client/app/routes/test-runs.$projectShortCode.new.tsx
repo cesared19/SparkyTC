@@ -17,8 +17,10 @@ import type {
 	PropertyConfiguration,
 	TestCase,
 	TestRun,
+	UserSummary,
 } from '~/models/types'
 import TestCaseSelector from '~/components/TestCaseSelector'
+import { AssigneePicker } from '~/components/Assignments'
 import { Route } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '../utility/Tools'
@@ -28,6 +30,7 @@ interface CreateTestRun extends Record<string, any> {
 	title: string
 	description?: string
 	testCaseIDs: string[]
+	assigneeIDs: string[]
 }
 
 export async function loader({ request, params }: ActionFunctionArgs) {
@@ -37,16 +40,21 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		throw new Response('Project short code is required', { status: 400 })
 	}
 
-	const [properties, testCases] = await Promise.all([
-		api.get<FetchResponse<PropertyConfiguration[]>>(
-			APIRoute.properties
-		),
+	const [properties, testCases, projectUsers] = await Promise.all([
+		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
 		api.get<FetchResponse<TestCase[]>>(
 			APIRoute.projectTestCases(projectShortCode)
 		),
+		api.get<FetchResponse<UserSummary[]>>(
+			APIRoute.projectUsers(projectShortCode)
+		),
 	])
 
-	return { properties: properties.data, testCases: testCases.data }
+	return {
+		properties: properties.data,
+		testCases: testCases.data,
+		projectUsers: projectUsers.data,
+	}
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -69,7 +77,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function NewTestRun() {
 	const navigate = useNavigate()
-	const { properties, testCases } = useLoaderData<typeof loader>()
+	const { properties, testCases, projectUsers } = useLoaderData<typeof loader>()
+	const [assigneeIDs, setAssigneeIDs] = useState<string[]>([])
 	const { project } = useOutletContext<ProjectTestRunsOutletContext>()
 	const actionData = useActionData<ErrorResponse>()
 
@@ -94,6 +103,7 @@ export default function NewTestRun() {
 			title: formData.get('title') as string,
 			description: formData.get('description') as string | undefined,
 			testCaseIDs: selectedTestCases.map((tc) => tc.testCaseID),
+			assigneeIDs,
 		}
 
 		submit(jsonData, {
@@ -106,9 +116,7 @@ export default function NewTestRun() {
 		<div className="space-y-6">
 			<div>
 				<h1 className="text-2xl font-semibold text-gray-900">
-					{showTestCaseSelector
-						? 'Select Test Cases'
-						: 'Create New Test Run'}
+					{showTestCaseSelector ? 'Select Test Cases' : 'Create New Test Run'}
 				</h1>
 			</div>
 
@@ -144,7 +152,7 @@ export default function NewTestRun() {
 									id="title"
 									required
 									defaultValue={defaultTitle}
-									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 								/>
 							</div>
 
@@ -159,16 +167,31 @@ export default function NewTestRun() {
 									name="description"
 									id="description"
 									rows={4}
-									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 								/>
 							</div>
 						</div>
 					</div>
 
 					<div className="space-y-3">
-						<label className="block text-sm font-medium text-gray-700">
+						<span className="block text-sm font-medium text-gray-700">
+							Assigned to
+						</span>
+						<AssigneePicker
+							users={projectUsers}
+							selectedIDs={assigneeIDs}
+							onChange={setAssigneeIDs}
+						/>
+						<p className="text-xs text-gray-500">
+							Assigned users are notified. Any user with access to the project
+							can still take test cases from the run.
+						</p>
+					</div>
+
+					<div className="space-y-3">
+						<span className="block text-sm font-medium text-gray-700">
 							Test Cases
-						</label>
+						</span>
 						<div className="flex items-center gap-3">
 							<div className="text-sm text-gray-500">
 								{selectedTestCases.length > 0
@@ -179,7 +202,7 @@ export default function NewTestRun() {
 						<button
 							type="button"
 							onClick={() => setShowTestCaseSelector(true)}
-							className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+							className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
 						>
 							Change Selection
 						</button>
@@ -189,13 +212,13 @@ export default function NewTestRun() {
 						<button
 							type="button"
 							onClick={() => navigate(-1)}
-							className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+							className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
 						>
 							Cancel
 						</button>
 						<button
 							type="submit"
-							className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-400"
+							className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:bg-brand-400"
 						>
 							Create Test Run
 						</button>

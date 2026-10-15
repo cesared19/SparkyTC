@@ -19,6 +19,8 @@ import {
 	CreateJiraIssue,
 	JiraLink,
 	PropertyConfiguration,
+	TestRun,
+	UserSummary,
 } from '~/models/types'
 import { Project } from '~/models/project'
 import { useEffect, useState } from 'react'
@@ -30,6 +32,8 @@ import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 import { publicBaseURL } from '~/utility/PublicURL.server'
+import { TestCaseAssignment } from '~/components/Assignments'
+import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 
 interface UpdateTestCaseRun extends Record<string, any> {
 	status: TestCaseRunStatus
@@ -68,8 +72,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			return { ok: true }
 		}
 
+		// the public URL lets automatically created Jira issues link back to SparkyTC
 		await api.put<void>(APIRoute.testCaseRun(testCaseRunID), {
-			body: testCaseRunUpdate,
+			body: { ...testCaseRunUpdate, appBaseURL: publicBaseURL(request) },
 		})
 
 		const nextTestCaseRun = await api.get<
@@ -95,7 +100,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestCaseRunDetails() {
 	const params = useParams()
-	const { project, testCaseRuns, properties } =
+	const { project, testRun, testCaseRuns, properties, projectUsers } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 	const testCaseNumber = Number(params.testCaseNumber)
 	if (!testCaseNumber) {
@@ -113,16 +118,20 @@ export default function TestCaseRunDetails() {
 		<TestCaseRunView
 			key={testCaseRun.testCaseRunID}
 			project={project}
+			testRun={testRun}
 			testCaseRun={testCaseRun}
 			properties={properties}
+			projectUsers={projectUsers}
 		/>
 	)
 }
 
 interface TestCaseRunViewProps {
 	project: Project
+	testRun: TestRun
 	testCaseRun: TestCaseRun
 	properties: PropertyConfiguration[]
+	projectUsers: UserSummary[]
 }
 
 function propertyValue(
@@ -140,10 +149,19 @@ function propertyValue(
 
 function TestCaseRunView({
 	project,
+	testRun,
 	testCaseRun,
 	properties,
+	projectUsers,
 }: TestCaseRunViewProps) {
 	const actionData = useActionData<ErrorResponse>()
+	const currentUser = useCurrentUser()
+	const isAdmin = useIsAdmin()
+	// a test case taken by someone else can only be recorded by them or an admin
+	const assignedToOther =
+		!!testCaseRun.assignedTo &&
+		testCaseRun.assignedTo.userID !== currentUser?.userID
+	const isLocked = assignedToOther && !isAdmin
 
 	const fetcher = useFetcher<ErrorResponse>()
 	const [isEditing, setIsEditing] = useState(false)
@@ -199,10 +217,30 @@ function TestCaseRunView({
 
 			<div className="space-y-8">
 				<section className="mt-6">
+					<h2 className="mb-2 text-xl font-semibold text-gray-900">
+						Assigned to
+					</h2>
+					<TestCaseAssignment
+						testRun={testRun}
+						testCaseRun={testCaseRun}
+						projectUsers={projectUsers}
+					/>
+					{isLocked && (
+						<p className="mt-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+							{testCaseRun.assignedTo?.displayName} is working on this test
+							case, so you can't record its result.
+						</p>
+					)}
+				</section>
+
+				<section>
 					<div className="flex justify-between items-center mb-4">
 						<h2 className="text-xl font-semibold text-gray-900">Status</h2>
 					</div>
-					<div className="flex gap-3">
+					<fieldset
+						disabled={isLocked}
+						className="flex gap-3 disabled:opacity-50"
+					>
 						<button
 							type="button"
 							onClick={() => setSelectedStatus(TestCaseRunStatus.pass)}
@@ -236,7 +274,7 @@ function TestCaseRunView({
 						>
 							Skip
 						</button>
-					</div>
+					</fieldset>
 				</section>
 
 				<section>
@@ -331,6 +369,8 @@ function TestCaseRunView({
 						testCaseID={testCaseRun.testCase.testCaseID}
 						links={testCaseRun.testCase.jiraLinks ?? []}
 						editable
+						jiraFailureMode={project.jiraFailureMode}
+						jiraProjectKey={project.jiraProjectKey}
 						createIssue={{
 							testCaseRunID: testCaseRun.testCaseRunID,
 							isFailed: selectedStatus === TestCaseRunStatus.fail,
@@ -363,7 +403,7 @@ function TestCaseRunView({
 						<textarea
 							name="notes"
 							defaultValue={testCaseRun.notes}
-							className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+							className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
 							placeholder="Enter any notes or observations about this test case run"
 						/>
 					</section>
@@ -373,7 +413,8 @@ function TestCaseRunView({
 					<button
 						type="button"
 						onClick={handleSave}
-						className="px-4 py-2 text-sm font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700"
+						disabled={isLocked}
+						className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						Save Changes
 					</button>
@@ -425,7 +466,7 @@ function TestCaseRunDetailsEditor({
 	}
 
 	const inputClassName =
-		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 	return (
 		<form
@@ -494,7 +535,7 @@ function TestCaseRunDetailsEditor({
 				<input
 					type="checkbox"
 					name="applyToTestCase"
-					className="mt-0.5 h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+					className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
 				/>
 				<span>
 					Also update the original test case
@@ -515,7 +556,7 @@ function TestCaseRunDetailsEditor({
 				<button
 					type="submit"
 					disabled={isSaving}
-					className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
 				>
 					{isSaving ? 'Saving...' : 'Save Details'}
 				</button>

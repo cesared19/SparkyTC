@@ -39,7 +39,7 @@ export default function Home() {
 							Create the first project to start adding test cases.{' '}
 							<Link
 								to={Route.newProject}
-								className="text-sky-600 hover:underline"
+								className="text-brand-600 hover:underline"
 							>
 								New project
 							</Link>

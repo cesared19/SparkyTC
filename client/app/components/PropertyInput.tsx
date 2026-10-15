@@ -54,7 +54,7 @@ export const PropertyInput = ({
 					type="text"
 					value={internalValue}
 					onChange={(e) => handleChange(e.target.value)}
-					className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+					className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					placeholder={placeholder}
 				/>
 			)
@@ -64,7 +64,7 @@ export const PropertyInput = ({
 					type="number"
 					value={internalValue}
 					onChange={(e) => handleChange(e.target.value)}
-					className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+					className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					placeholder={placeholder}
 				/>
 			)

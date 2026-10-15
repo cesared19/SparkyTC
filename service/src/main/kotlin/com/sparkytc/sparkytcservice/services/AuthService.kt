@@ -93,6 +93,14 @@ class AuthService(
     }
 
     @Transactional
+    fun updateNotificationPreferences(user: User, request: UpdateNotificationPreferencesDTO) {
+        val reloaded = userRepository.findById(user.id).orElseThrow()
+        reloaded.notifyTestRunAssigned = request.testRunAssigned
+        reloaded.notifyTestRunCompleted = request.testRunCompleted
+        userRepository.save(reloaded)
+    }
+
+    @Transactional
     fun updateDefaultProject(user: User, request: UpdateDefaultProjectDTO) {
         val reloaded = userRepository.findById(user.id).orElseThrow()
         val shortCode = request.projectShortCode

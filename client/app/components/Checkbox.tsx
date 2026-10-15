@@ -8,7 +8,7 @@ interface CheckboxProps {
 export function Checkbox({ isSelected }: CheckboxProps) {
 	return (
 		isSelected 
-			? <Checkmark className="h-5 w-5 fill-sky-600" /> 
+			? <Checkmark className="h-5 w-5 fill-brand-600" /> 
 			: <UnfilledCircle className="h-5 w-5 fill-gray-400" />
 	)
 }

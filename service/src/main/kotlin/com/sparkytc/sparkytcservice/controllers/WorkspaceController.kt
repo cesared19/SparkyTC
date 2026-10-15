@@ -5,6 +5,9 @@ import com.sparkytc.sparkytcservice.dto.*
 import com.sparkytc.sparkytcservice.dto.documents.TestRunExportType
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.projects.UpdateProjectSettingsDTO
+import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunAssigneeDTO
+import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunAssigneesDTO
 import com.sparkytc.sparkytcservice.dto.projects.CreateWorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.properties.CreatePropertyConfigurationDTO
 import com.sparkytc.sparkytcservice.dto.properties.UpdatePropertyConfigurationDTO
@@ -53,6 +56,33 @@ class WorkspaceController(
     fun createProject(@RequestBody request: CreateWorkspaceProjectDTO): ResponseEntity<Any> {
         workspaceService.createProject(request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/users")
+    fun retrieveProjectUsers(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveProjectUsers(projectShortCode)))
+    }
+
+    @AdminOnly
+    @PutMapping("/projects/{projectShortCode}/settings")
+    fun updateProjectSettings(@PathVariable projectShortCode: String, @RequestBody request: UpdateProjectSettingsDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.updateProjectSettings(projectShortCode, request)))
+    }
+
+    @AdminOnly
+    @PutMapping("/test-runs/{testRunID}/assignees")
+    fun updateTestRunAssignees(@PathVariable testRunID: UUID, @RequestBody request: UpdateTestRunAssigneesDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.updateTestRunAssignees(testRunID, request)))
+    }
+
+    @PutMapping("/test-case-runs/{testCaseRunID}/assignee")
+    fun updateTestCaseRunAssignee(@PathVariable testCaseRunID: UUID, @RequestBody request: UpdateTestCaseRunAssigneeDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.updateTestCaseRunAssignee(testCaseRunID, request)))
+    }
+
+    @GetMapping("/test-case-runs/{testCaseRunID}/similar-jira-issues")
+    fun retrieveSimilarJiraIssues(@PathVariable testCaseRunID: UUID, @RequestParam("summary") summary: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.searchSimilarJiraIssues(testCaseRunID, summary)))
     }
 
     @GetMapping("/projects/{projectShortCode}/dashboard")
@@ -190,8 +220,7 @@ class WorkspaceController(
 
     @PutMapping("/test-case-runs/{testCaseRunID}")
     fun updateTestCaseRun(@PathVariable testCaseRunID: UUID, @RequestBody request: UpdateTestCaseRunDTO): ResponseEntity<Any> {
-        workspaceService.updateTestCaseRun(testCaseRunID, request)
-        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+        return ResponseEntity.ok(DataResponse(data = workspaceService.updateTestCaseRun(testCaseRunID, request)))
     }
 
     @GetMapping("/jira/configuration")

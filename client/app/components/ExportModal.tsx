@@ -39,7 +39,7 @@ export function ExportModal({
 							className={`w-full p-4 rounded-lg border-2 text-left
 								${
 									selectedOption === index
-										? 'border-sky-500 bg-sky-50'
+										? 'border-brand-500 bg-brand-50'
 										: 'border-gray-200 hover:border-gray-300'
 								}`}
 						>
@@ -59,7 +59,7 @@ export function ExportModal({
 						to={exportOptions[selectedOption].exportPath}
 						reloadDocument
 						onClick={onClose}
-						className="flex-1 px-4 py-2 text-center bg-sky-600 text-white rounded-md hover:bg-sky-700"
+						className="flex-1 px-4 py-2 text-center bg-brand-600 text-white rounded-md hover:bg-brand-700"
 					>
 						Export
 					</Link>

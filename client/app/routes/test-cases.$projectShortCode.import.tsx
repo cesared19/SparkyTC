@@ -131,7 +131,7 @@ export default function ImportTestCases() {
 				<button
 					type="button"
 					onClick={handleDownloadTemplate}
-					className="text-sm text-sky-600 hover:text-sky-800 hover:underline"
+					className="text-sm text-brand-600 hover:text-brand-800 hover:underline"
 				>
 					Download template
 				</button>
@@ -242,7 +242,7 @@ export default function ImportTestCases() {
 					type="button"
 					onClick={handleImport}
 					disabled={!canImport || isSubmitting}
-					className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{isSubmitting
 						? 'Importing...'
