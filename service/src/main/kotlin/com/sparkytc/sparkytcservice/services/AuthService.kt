@@ -1,10 +1,13 @@
 package com.sparkytc.sparkytcservice.services
 
 import com.sparkytc.sparkytcservice.dto.auth.*
+import com.sparkytc.sparkytcservice.models.ProjectMember
 import com.sparkytc.sparkytcservice.models.User
 import com.sparkytc.sparkytcservice.models.UserSession
+import com.sparkytc.sparkytcservice.repositories.ProjectMemberRepository
 import com.sparkytc.sparkytcservice.repositories.UserRepository
 import com.sparkytc.sparkytcservice.repositories.UserSessionRepository
+import com.sparkytc.sparkytcservice.repositories.WorkspaceProjectRepository
 import jakarta.transaction.Transactional
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
@@ -18,6 +21,9 @@ class AuthenticationException(message: String) : RuntimeException(message)
 class AuthService(
     private val userRepository: UserRepository,
     private val userSessionRepository: UserSessionRepository,
+    private val projectRepository: WorkspaceProjectRepository,
+    private val projectMemberRepository: ProjectMemberRepository,
+    private val projectAccessService: ProjectAccessService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val secureRandom = SecureRandom()
@@ -70,8 +76,62 @@ class AuthService(
         userRepository.save(user)
     }
 
+    /** The user's profile and preferences, reloaded so lazy relations can be read. */
+    @Transactional
+    fun describe(user: User): UserDTO {
+        val reloaded = userRepository.findById(user.id).orElseThrow()
+        // a default project the user lost access to is ignored
+        val defaultProject = reloaded.defaultProject?.takeIf { projectAccessService.canAccess(reloaded, it) }
+        return reloaded.toDTO().copy(defaultProjectShortCode = defaultProject?.projectShortCode)
+    }
+
+    @Transactional
+    fun updateTheme(user: User, request: UpdateThemeDTO) {
+        val reloaded = userRepository.findById(user.id).orElseThrow()
+        reloaded.theme = request.theme
+        userRepository.save(reloaded)
+    }
+
+    @Transactional
+    fun updateDefaultProject(user: User, request: UpdateDefaultProjectDTO) {
+        val reloaded = userRepository.findById(user.id).orElseThrow()
+        val shortCode = request.projectShortCode
+        if (shortCode == null) {
+            reloaded.defaultProject = null
+        } else {
+            val project = projectRepository.findByProjectShortCode(shortCode)
+            require(project != null && projectAccessService.canAccess(reloaded, project)) { "No project found" }
+            reloaded.defaultProject = project
+        }
+        userRepository.save(reloaded)
+    }
+
+    @Transactional
     fun retrieveUsers(): List<UserDTO> {
-        return userRepository.findAllByOrderByUsernameAsc().map { it.toDTO() }
+        return userRepository.findAllByOrderByUsernameAsc().map { user ->
+            val projectIDs = if (user.role == UserRole.TESTER) {
+                projectMemberRepository.findAllByUser(user).map { it.project.externalID }
+            } else {
+                null
+            }
+            user.toDTO(projectIDs)
+        }
+    }
+
+    @Transactional
+    fun updateUserProjects(userID: UUID, request: UpdateUserProjectsDTO): UserDTO {
+        val user = userRepository.findByExternalID(userID)
+        requireNotNull(user) { "No user found with id $userID" }
+
+        val projects = request.projectIDs.distinct().map { projectID ->
+            requireNotNull(projectRepository.findByExternalID(projectID)) { "No project found with id $projectID" }
+        }
+
+        projectMemberRepository.deleteAllByUser(user)
+        projectMemberRepository.flush()
+        projects.forEach { projectMemberRepository.save(ProjectMember(project = it, user = user)) }
+
+        return user.toDTO(projects.map { it.externalID })
     }
 
     @Transactional

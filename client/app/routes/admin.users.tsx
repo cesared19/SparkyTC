@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 import { DateDisplay } from '~/components/DateDisplay'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { ErrorResponse, FetchResponse, User, UserRole } from '~/models/types'
+import { Project } from '~/models/project'
 import { requireAdmin } from '~/utility/Authorization.server'
 import { useCurrentUser } from '~/utility/CurrentUser'
 import { APIRoute } from '~/utility/Routes'
@@ -20,8 +21,11 @@ import { Tools } from '~/utility/Tools'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const { api } = await requireAdmin(request)
-	const response = await api.get<FetchResponse<User[]>>(APIRoute.users)
-	return { users: response.data }
+	const [users, projects] = await Promise.all([
+		api.get<FetchResponse<User[]>>(APIRoute.users),
+		api.get<FetchResponse<Project[]>>(APIRoute.projects),
+	])
+	return { users: users.data, projects: projects.data }
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -39,6 +43,10 @@ export async function action({ request }: ActionFunctionArgs) {
 					role: field('role'),
 					password: String(formData.get('password') ?? ''),
 				},
+			})
+		} else if (intent === 'projects') {
+			await api.put(APIRoute.userProjects(field('userID')), {
+				body: { projectIDs: formData.getAll('projectIDs').map(String) },
 			})
 		} else if (intent === 'update') {
 			await api.put(APIRoute.user(field('userID')), {
@@ -82,7 +90,7 @@ function RoleSelect({
 }
 
 export default function Users() {
-	const { users } = useLoaderData<typeof loader>()
+	const { users, projects } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const createFormRef = useRef<HTMLFormElement>(null)
@@ -100,8 +108,9 @@ export default function Users() {
 					<h2 className="text-2xl font-semibold text-gray-900">Users</h2>
 					<p className="mt-1 text-sm text-gray-600">
 						Testers can create, import and run test cases and report bugs to
-						Jira. Admins can also manage users and properties, and delete test
-						cases and test runs.
+						Jira in the projects assigned to them. Admins see every project and
+						can also create projects, manage users and properties, and delete
+						test cases and test runs.
 					</p>
 				</div>
 
@@ -113,6 +122,7 @@ export default function Users() {
 									'Username',
 									'Display name',
 									'Role',
+									'Projects',
 									'Active',
 									'Reset password',
 									'Created',
@@ -129,7 +139,7 @@ export default function Users() {
 						</thead>
 						<tbody className="divide-y divide-gray-200 bg-white">
 							{users.map((user) => (
-								<UserRow key={user.userID} user={user} />
+								<UserRow key={user.userID} user={user} projects={projects} />
 							))}
 						</tbody>
 					</table>
@@ -219,7 +229,78 @@ export default function Users() {
 	)
 }
 
-function UserRow({ user }: { user: User }) {
+function UserProjects({ user, projects }: { user: User; projects: Project[] }) {
+	const fetcher = useFetcher<ErrorResponse | { ok: true }>()
+	const detailsRef = useRef<HTMLDetailsElement>(null)
+	const assigned = new Set(user.projectIDs ?? [])
+
+	useEffect(() => {
+		if (fetcher.state === 'idle' && fetcher.data && 'ok' in fetcher.data) {
+			detailsRef.current?.removeAttribute('open')
+		}
+	}, [fetcher.state, fetcher.data])
+
+	if (user.role === UserRole.admin) {
+		return <span className="text-xs text-gray-500">All projects</span>
+	}
+
+	return (
+		<details ref={detailsRef}>
+			<summary className="cursor-pointer whitespace-nowrap text-xs font-medium text-sky-600 hover:text-sky-800">
+				{assigned.size === 0
+					? 'No projects'
+					: `${assigned.size} project${assigned.size === 1 ? '' : 's'}`}
+			</summary>
+			<fetcher.Form
+				method="post"
+				className="mt-2 w-60 space-y-2 rounded-md border border-gray-200 bg-white p-3"
+			>
+				<input type="hidden" name="intent" value="projects" />
+				<input type="hidden" name="userID" value={user.userID} />
+				<p className="text-xs text-gray-500">
+					Projects {user.displayName} can see
+				</p>
+				<div className="max-h-56 space-y-1 overflow-auto">
+					{projects.map((project) => (
+						<label
+							key={project.projectID}
+							className="flex items-center gap-2 text-sm text-gray-700"
+						>
+							<input
+								type="checkbox"
+								name="projectIDs"
+								value={project.projectID}
+								defaultChecked={assigned.has(project.projectID)}
+								className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+							/>
+							<span className="truncate">
+								{project.title}{' '}
+								<span className="text-gray-500">
+									({project.projectShortCode})
+								</span>
+							</span>
+						</label>
+					))}
+					{projects.length === 0 && (
+						<p className="text-sm text-gray-500">No projects yet</p>
+					)}
+				</div>
+				{fetcher.data && 'message' in fetcher.data && (
+					<p className="text-xs text-red-600">{fetcher.data.message}</p>
+				)}
+				<button
+					type="submit"
+					disabled={fetcher.state !== 'idle'}
+					className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+				>
+					{fetcher.state !== 'idle' ? 'Saving...' : 'Save'}
+				</button>
+			</fetcher.Form>
+		</details>
+	)
+}
+
+function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 	const fetcher = useFetcher<ErrorResponse | { ok: true }>()
 	const currentUser = useCurrentUser()
 	const [isDirty, setIsDirty] = useState(false)
@@ -272,6 +353,9 @@ function UserRow({ user }: { user: User }) {
 					<option value={UserRole.tester}>Tester</option>
 					<option value={UserRole.admin}>Admin</option>
 				</select>
+			</td>
+			<td className="px-3 py-2 align-top">
+				<UserProjects user={user} projects={projects} />
 			</td>
 			<td className="px-3 py-2">
 				<input

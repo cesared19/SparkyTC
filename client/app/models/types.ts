@@ -52,6 +52,12 @@ export enum UserRole {
 	tester = 'TESTER',
 }
 
+export enum UserTheme {
+	light = 'LIGHT',
+	dark = 'DARK',
+	system = 'SYSTEM',
+}
+
 export interface User {
 	userID: string
 	creationDate: number
@@ -59,6 +65,33 @@ export interface User {
 	displayName: string
 	role: UserRole
 	isActive: boolean
+	theme: UserTheme
+	defaultProjectShortCode?: string
+	projectIDs?: string[]
+}
+
+export interface TestRunSummary {
+	testRunID: string
+	testRunNumber: number
+	title: string
+	status: TestRunStatus
+	creationDate: number
+	createdBy?: string
+	totalCount: number
+	resultCounts: Record<TestCaseRunStatus, number>
+}
+
+export interface ProjectDashboard {
+	project: Project
+	testCaseCount: number
+	propertyBreakdowns: {
+		title: string
+		counts: { value: string; count: number }[]
+	}[]
+	testRunCounts: Record<TestRunStatus, number>
+	activeTestRuns: TestRunSummary[]
+	recentTestRuns: TestRunSummary[]
+	linkedJiraIssueCount: number
 }
 
 export interface TestCaseAttachment {

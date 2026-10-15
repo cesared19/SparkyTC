@@ -1,6 +1,6 @@
 import { type LoaderFunctionArgs } from '@remix-run/node'
 import { useLoaderData, Outlet } from '@remix-run/react'
-import ProjectSidebar from '~/components/ProjectSidebar'
+import { ProjectShell } from '~/components/ProjectShell'
 import {
 	FetchResponse,
 	ProjectTestCasesOutletContext,
@@ -18,14 +18,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Project short code is required', { status: 400 })
 	}
 
-	const [projectData, testCasesData, propertiesData] = await Promise.all([
-		api.get<FetchResponse<Project[]>>(APIRoute.projects),
-		api.get<FetchResponse<TestCase[]>>(
-			APIRoute.projectTestCases(projectShortCode)
-		),
-		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
-	])
-
+	// only lists the projects the user can access, so unknown and hidden projects both 404
+	const projectData = await api.get<FetchResponse<Project[]>>(APIRoute.projects)
 	const project = projectData.data.find(
 		(project) => project.projectShortCode === projectShortCode
 	)
@@ -33,15 +27,24 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Project not found', { status: 404 })
 	}
 
+	const [testCasesData, propertiesData] = await Promise.all([
+		api.get<FetchResponse<TestCase[]>>(
+			APIRoute.projectTestCases(projectShortCode)
+		),
+		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+	])
+
 	return {
 		project,
+		projects: projectData.data,
 		testCases: testCasesData.data,
 		properties: propertiesData.data,
 	}
 }
 
 export default function ProjectLayout() {
-	const { project, testCases, properties } = useLoaderData<typeof loader>()
+	const { project, projects, testCases, properties } =
+		useLoaderData<typeof loader>()
 
 	const outletContext: ProjectTestCasesOutletContext = {
 		project,
@@ -50,15 +53,8 @@ export default function ProjectLayout() {
 	}
 
 	return (
-		<div className="flex h-full">
-			<ProjectSidebar
-				projectShortCode={project.projectShortCode}
-				title={project.title}
-				description={project.description}
-			/>
-			<div className="flex-1 overflow-auto p-6">
-				<Outlet context={outletContext} />
-			</div>
-		</div>
+		<ProjectShell projects={projects} currentProject={project}>
+			<Outlet context={outletContext} />
+		</ProjectShell>
 	)
 }

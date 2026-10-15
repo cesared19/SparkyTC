@@ -2,6 +2,7 @@ package com.sparkytc.sparkytcservice.models
 
 import com.sparkytc.sparkytcservice.dto.auth.UserDTO
 import com.sparkytc.sparkytcservice.dto.auth.UserRole
+import com.sparkytc.sparkytcservice.dto.auth.UserTheme
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
@@ -39,8 +40,17 @@ class User(
 
     @Column(name = "is_active", nullable = false)
     var isActive: Boolean = true,
+
+    @Column(name = "theme", nullable = false)
+    @Enumerated(EnumType.STRING)
+    var theme: UserTheme = UserTheme.SYSTEM,
+
+    // the project shown after signing in
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_project_id")
+    var defaultProject: WorkspaceProject? = null,
 ) {
-    fun toDTO(): UserDTO {
-        return UserDTO(externalID, creationDate, username, displayName, role, isActive)
+    fun toDTO(projectIDs: List<UUID>? = null): UserDTO {
+        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs)
     }
 }
