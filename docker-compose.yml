@@ -14,8 +14,9 @@ services:
          JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
          JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-SCRUM}
          JIRA_ISSUE_TYPE: ${JIRA_ISSUE_TYPE:-Error}
+      # only reachable from the host itself, the client talks to the backend over app-network
       ports:
-         - '8080:8080'
+         - '127.0.0.1:8080:8080'
       networks:
          - app-network
 
