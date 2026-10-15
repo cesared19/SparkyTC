@@ -14,7 +14,9 @@ export default function TopNavigation({ user }: TopNavigationProps) {
 		<div className="border-b border-gray-200 bg-white">
 			<div className="flex h-14 items-center justify-between px-4">
 				<div className="flex items-center">
-					<h1 className="text-xl font-semibold text-gray-900">Cherry</h1>
+					<h1 className="text-xl font-semibold text-gray-900">
+						Sparky<span className="text-sky-600">TC</span>
+					</h1>
 					<nav className="ml-8 flex space-x-4">
 						<Link to="/" className={linkClassName}>
 							Projects

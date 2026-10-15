@@ -20,7 +20,7 @@ import {
 	safeRedirect,
 } from '~/utility/Session.server'
 
-export const meta: MetaFunction = () => [{ title: 'Sign in - Cherry' }]
+export const meta: MetaFunction = () => [{ title: 'Sign in - SparkyTC' }]
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	if (await getSessionToken(request)) {
@@ -69,7 +69,9 @@ export default function Login() {
 		<div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
 			<div className="w-full max-w-sm space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
 				<div className="text-center">
-					<h1 className="text-2xl font-semibold text-gray-900">Cherry</h1>
+					<h1 className="text-2xl font-semibold text-gray-900">
+						Sparky<span className="text-sky-600">TC</span>
+					</h1>
 					<p className="mt-1 text-sm text-gray-500">Sign in to continue</p>
 				</div>
 

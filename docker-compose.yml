@@ -29,7 +29,7 @@ services:
       environment:
          NODE_ENV: production
          VITE_API_URL: http://backend-service:8080
-         CHERRY_PUBLIC_URL: ${CHERRY_PUBLIC_URL:-}
+         SPARKYTC_PUBLIC_URL: ${SPARKYTC_PUBLIC_URL:-}
          SESSION_SECRET: ${SESSION_SECRET:-}
          COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ports:

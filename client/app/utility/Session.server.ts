@@ -21,7 +21,7 @@ export const sessionStorage = createCookieSessionStorage({
 		sameSite: 'lax',
 		path: '/',
 		maxAge: SESSION_DURATION_SECONDS,
-		// cherry is served over plain http on the local network by default, enable once https is set up
+		// SparkyTC is served over plain http on the local network by default, enable once https is set up
 		secure: process.env.COOKIE_SECURE === 'true',
 		secrets: [sessionSecret()],
 	},
@@ -56,7 +56,7 @@ export async function redirectToLogin(request: Request) {
 	})
 }
 
-/** Only allows redirects to paths within cherry after signing in. */
+/** Only allows redirects to paths within SparkyTC after signing in. */
 export function safeRedirect(
 	to: FormDataEntryValue | string | null | undefined
 ) {

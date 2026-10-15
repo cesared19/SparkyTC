@@ -56,7 +56,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		if (intent === 'createJiraIssue') {
 			const response = await api.post<FetchResponse<JiraLink>>(
 				APIRoute.createJiraIssue(testCaseRunID),
-				{ body: { ...jiraIssue, cherryBaseURL: publicBaseURL(request) } }
+				{ body: { ...jiraIssue, appBaseURL: publicBaseURL(request) } }
 			)
 			return { ok: true, issueKey: response.data.issueKey }
 		}

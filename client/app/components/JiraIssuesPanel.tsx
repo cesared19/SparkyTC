@@ -318,7 +318,7 @@ function CreateJiraIssueForm({
 				</h3>
 				<p className="mt-1 text-xs text-gray-500">
 					Images and videos are not uploaded to Jira, the issue links to them in
-					Cherry instead
+					SparkyTC instead
 				</p>
 			</div>
 

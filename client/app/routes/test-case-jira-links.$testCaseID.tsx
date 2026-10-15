@@ -14,7 +14,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 		const { issue } = (await request.json()) as { issue: string }
 		await api.post(APIRoute.testCaseJiraLinks(testCaseID), {
-			body: { issue, cherryBaseURL: publicBaseURL(request) },
+			body: { issue, appBaseURL: publicBaseURL(request) },
 		})
 		return { ok: true }
 	} catch (error) {
