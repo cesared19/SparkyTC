@@ -46,6 +46,7 @@ View the progress of your test run and see the results of each test case.
 -  Images and videos attached to test cases, visible while executing a test run
 -  Links inside test case descriptions, instructions and properties are clickable and open in a new tab
 -  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
+-  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status (see below)
 
 ### Importing test cases from CSV
 
@@ -64,7 +65,25 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.3`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.4`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+
+### Jira integration
+
+Cherry can create a bug in Jira Cloud from a failed test case run, link existing issues to a test case, and show the current status of the linked issues. Add these variables to the `.env` file of the backend service:
+
+```
+JIRA_BASE_URL=https://your-site.atlassian.net
+JIRA_EMAIL=user@example.com
+JIRA_API_TOKEN=<api token>
+JIRA_PROJECT_KEY=SCRUM   # project where bugs are created
+JIRA_ISSUE_TYPE=Error    # issue type name used for bugs
+```
+
+API tokens are created at https://id.atlassian.com/manage-profile/security/api-tokens and act with the permissions of the account that created them (it needs Browse projects, Create issues and Link issues). Tokens expire, so renew them when Cherry reports that Jira rejected the credentials. The integration is disabled while any of the first three variables is empty.
+
+-  To report a bug, mark a test case as **Fail** during a test run and click **Create bug in Jira**. The form is pre-filled from the test case: the summary from the title, the steps from the test instructions, the expected result and build number from the `Expected Result` and `Build Number` properties, and the actual result from the run notes.
+-  Images and videos are **never uploaded to Jira**, so they don't use its storage quota. The issue description links to them in Cherry instead, and a link back to the test case is added to the issue.
+-  The links use the address you open Cherry with (e.g. `http://192.168.1.20:3000`). Set `CHERRY_PUBLIC_URL` in the client service to override it, for example when a domain is added.
 
 ## Architecture Overview
 

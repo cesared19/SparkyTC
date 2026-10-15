@@ -16,6 +16,9 @@ import {
 	FetchResponse,
 	TestCaseRun,
 	UpdateTestCaseRunDetails,
+	CreateJiraIssue,
+	JiraLink,
+	PropertyConfiguration,
 } from '~/models/types'
 import { Project } from '~/models/project'
 import { useEffect, useState } from 'react'
@@ -25,6 +28,8 @@ import { APIClient } from '../utility/APIClient'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
+import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
+import { publicBaseURL } from '~/utility/PublicURL.server'
 
 interface UpdateTestCaseRun extends Record<string, any> {
 	status: TestCaseRunStatus
@@ -39,8 +44,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			throw new Error('Invalid project short code or test run number')
 		}
 
-		const { intent, testCaseRunID, testCaseRunUpdate, detailsUpdate } =
-			await request.json()
+		const {
+			intent,
+			testCaseRunID,
+			testCaseRunUpdate,
+			detailsUpdate,
+			jiraIssue,
+		} = await request.json()
+
+		if (intent === 'createJiraIssue') {
+			const response = await APIClient.post<FetchResponse<JiraLink>>(
+				APIRoute.createJiraIssue(testCaseRunID),
+				{ body: { ...jiraIssue, cherryBaseURL: publicBaseURL(request) } }
+			)
+			return { ok: true, issueKey: response.data.issueKey }
+		}
 
 		if (intent === 'updateDetails') {
 			await APIClient.put<void>(APIRoute.testCaseRunDetails(testCaseRunID), {
@@ -76,7 +94,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestCaseRunDetails() {
 	const params = useParams()
-	const { project, testCaseRuns } =
+	const { project, testCaseRuns, properties } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 	const testCaseNumber = Number(params.testCaseNumber)
 	if (!testCaseNumber) {
@@ -95,6 +113,7 @@ export default function TestCaseRunDetails() {
 			key={testCaseRun.testCaseRunID}
 			project={project}
 			testCaseRun={testCaseRun}
+			properties={properties}
 		/>
 	)
 }
@@ -102,9 +121,27 @@ export default function TestCaseRunDetails() {
 interface TestCaseRunViewProps {
 	project: Project
 	testCaseRun: TestCaseRun
+	properties: PropertyConfiguration[]
 }
 
-function TestCaseRunView({ project, testCaseRun }: TestCaseRunViewProps) {
+function propertyValue(
+	testCaseRun: TestCaseRun,
+	properties: PropertyConfiguration[],
+	title: string
+) {
+	const property = properties.find(
+		(property) => property.title.trim().toLowerCase() === title
+	)
+	return property
+		? testCaseRun.testCase.propertyValues[property.propertyConfigurationID]
+		: undefined
+}
+
+function TestCaseRunView({
+	project,
+	testCaseRun,
+	properties,
+}: TestCaseRunViewProps) {
 	const actionData = useActionData<ErrorResponse>()
 
 	const fetcher = useFetcher<ErrorResponse>()
@@ -272,6 +309,40 @@ function TestCaseRunView({ project, testCaseRun }: TestCaseRunViewProps) {
 						testCaseID={testCaseRun.testCase.testCaseID}
 						attachments={testCaseRun.testCase.attachments ?? []}
 						editable
+					/>
+				</section>
+
+				<section>
+					<h2 className="text-xl font-semibold text-gray-900 mb-4">
+						Jira Issues
+					</h2>
+					<JiraIssuesPanel
+						testCaseID={testCaseRun.testCase.testCaseID}
+						links={testCaseRun.testCase.jiraLinks ?? []}
+						editable
+						createIssue={{
+							testCaseRunID: testCaseRun.testCaseRunID,
+							isFailed: selectedStatus === TestCaseRunStatus.fail,
+							defaults: (): CreateJiraIssue => {
+								const form = document.getElementById(
+									'testCaseForm'
+								) as HTMLFormElement | null
+								const notes = form
+									? (new FormData(form).get('notes') as string)
+									: testCaseRun.notes
+								return {
+									summary: testCaseRun.title,
+									stepsToReproduce: testCaseRun.testInstructions ?? '',
+									expectedResult:
+										propertyValue(testCaseRun, properties, 'expected result') ??
+										'',
+									actualResult: notes ?? '',
+									buildNumber:
+										propertyValue(testCaseRun, properties, 'build number') ??
+										'',
+								}
+							},
+						}}
 					/>
 				</section>
 

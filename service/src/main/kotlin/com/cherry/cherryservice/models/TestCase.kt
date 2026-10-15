@@ -46,6 +46,10 @@ class TestCase(
     @OneToMany(mappedBy = "testCase")
     @OrderBy("creationDate ASC")
     val attachments: List<TestCaseAttachment> = emptyList(),
+
+    @OneToMany(mappedBy = "testCase")
+    @OrderBy("creationDate ASC")
+    val jiraLinks: List<TestCaseJiraLink> = emptyList(),
 ) {
 
     fun toDTO(): TestCaseDTO {
@@ -54,6 +58,6 @@ class TestCase(
             propertyValueMap[propertyValue.propertyConfiguration.externalID] = propertyValue.value
         }
 
-        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() })
+        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() })
     }
 }

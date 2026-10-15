@@ -27,6 +27,20 @@ export class Route {
 		return `/test-case-attachments/${testCaseID}`
 	}
 
+	static jiraIssues(issueKeys: string[]) {
+		const params = new URLSearchParams()
+		issueKeys.forEach((key) => params.append('keys', key))
+		return `/jira-issues?${params.toString()}`
+	}
+
+	static testCaseJiraLinks(testCaseID: string) {
+		return `/test-case-jira-links/${testCaseID}`
+	}
+
+	static jiraLink(linkID: string) {
+		return `/jira-links/${linkID}`
+	}
+
 	static viewProjectTestRuns(projectShortCode: string) {
 		return `/test-runs/${projectShortCode}`
 	}
@@ -79,6 +93,30 @@ export class APIRoute {
 
 	static attachment(attachmentID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/attachments/${attachmentID}`
+	}
+
+	static get jiraConfiguration() {
+		return `${this.baseAPIURL}/api/v1/workspace/jira/configuration`
+	}
+
+	static jiraIssues(issueKeys: string[]) {
+		const params = new URLSearchParams()
+		issueKeys.forEach((key) => params.append('keys', key))
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/jira/issues?${params.toString()}`
+	}
+
+	static testCaseJiraLinks(testCaseID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}/jira-links`
+	}
+
+	static jiraLink(linkID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/jira-links/${linkID}`
+	}
+
+	static createJiraIssue(testCaseRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issue`
 	}
 
 	static projectTestRuns(projectShortCode: string) {

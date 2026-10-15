@@ -9,6 +9,11 @@ services:
          DATABASE_URL: ${DATABASE_URL}
          DATABASE_USERNAME: ${DATABASE_USERNAME}
          DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+         JIRA_BASE_URL: ${JIRA_BASE_URL:-}
+         JIRA_EMAIL: ${JIRA_EMAIL:-}
+         JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+         JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-SCRUM}
+         JIRA_ISSUE_TYPE: ${JIRA_ISSUE_TYPE:-Error}
       ports:
          - '8080:8080'
       networks:
@@ -21,6 +26,7 @@ services:
       environment:
          NODE_ENV: production
          VITE_API_URL: http://backend-service:8080
+         CHERRY_PUBLIC_URL: ${CHERRY_PUBLIC_URL:-}
       ports:
          - '3000:3000'
       depends_on:

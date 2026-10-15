@@ -1,6 +1,7 @@
 package com.cherry.cherryservice.dto.testcases
 
 import com.cherry.cherryservice.dto.attachments.TestCaseAttachmentDTO
+import com.cherry.cherryservice.dto.jira.JiraLinkDTO
 import java.util.Date
 import java.util.UUID
 
@@ -13,5 +14,6 @@ data class TestCaseDTO(
     val description: String?,
     val testInstructions: String?,
     val propertyValues: Map<UUID, String>,
-    val attachments: List<TestCaseAttachmentDTO> = emptyList()
+    val attachments: List<TestCaseAttachmentDTO> = emptyList(),
+    val jiraLinks: List<JiraLinkDTO> = emptyList()
 )

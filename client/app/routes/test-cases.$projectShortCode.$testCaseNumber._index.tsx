@@ -4,6 +4,7 @@ import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '~/components/DateDisplay'
 import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
+import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 
 export default function TestCaseDetails() {
 	const { project, testCase, propertyValues } =
@@ -94,6 +95,17 @@ export default function TestCaseDetails() {
 							'No test instructions provided'
 						)}
 					</div>
+				</div>
+
+				<div>
+					<h3 className="text-xl font-semibold text-gray-900 mb-2">
+						Jira Issues
+					</h3>
+					<JiraIssuesPanel
+						testCaseID={testCase.testCaseID}
+						links={testCase.jiraLinks ?? []}
+						editable
+					/>
 				</div>
 
 				<div>

@@ -229,6 +229,23 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.3")
                 }
                 SchemaVersion.VERSION_0_0_3 -> {
+                    // jira issues linked to test cases
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_jira_links (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            test_case_id BIGINT NOT NULL REFERENCES test_cases(id) ON DELETE CASCADE,
+                            issue_key TEXT NOT NULL,
+                            issue_url TEXT NOT NULL,
+                            UNIQUE (test_case_id, issue_key)
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.4")
+                }
+                SchemaVersion.VERSION_0_0_4 -> {
                     break
                 }
             }

@@ -3,6 +3,9 @@ package com.cherry.cherryservice.services
 import com.cherry.cherryservice.dto.attachments.AttachmentContentDTO
 import com.cherry.cherryservice.dto.attachments.TestCaseAttachmentDTO
 import com.cherry.cherryservice.dto.documents.*
+import com.cherry.cherryservice.dto.jira.CreateJiraIssueDTO
+import com.cherry.cherryservice.dto.jira.JiraLinkDTO
+import com.cherry.cherryservice.dto.jira.LinkJiraIssueDTO
 import com.cherry.cherryservice.dto.projects.CreateWorkspaceProjectDTO
 import com.cherry.cherryservice.dto.projects.WorkspaceProjectDTO
 import com.cherry.cherryservice.dto.properties.*
@@ -36,6 +39,8 @@ class WorkspaceService(
     private val testCaseRunRepository: TestCaseRunRepository,
     private val testCaseAttachmentRepository: TestCaseAttachmentRepository,
     private val testCaseAttachmentContentRepository: TestCaseAttachmentContentRepository,
+    private val testCaseJiraLinkRepository: TestCaseJiraLinkRepository,
+    private val jiraService: JiraService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -476,6 +481,97 @@ class WorkspaceService(
 
         testCaseAttachmentContentRepository.deleteAllByAttachment(attachment)
         testCaseAttachmentRepository.delete(attachment)
+    }
+
+    @Transactional
+    fun createJiraIssue(testCaseRunID: UUID, request: CreateJiraIssueDTO): JiraLinkDTO {
+        val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
+        requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+
+        require(request.summary.isNotBlank()) { "Summary is required" }
+        require(request.stepsToReproduce.isNotBlank()) { "Steps to reproduce are required" }
+        require(request.expectedResult.isNotBlank()) { "Expected result is required" }
+        require(request.actualResult.isNotBlank()) { "Actual result is required" }
+        require(request.buildNumber.isNotBlank()) { "Build number is required" }
+
+        val testCase = testCaseRun.testCase
+        val project = testCase.project
+        val cherryBaseURL = sanitizeBaseURL(request.cherryBaseURL)
+
+        val description = JiraDocument()
+            .heading("Steps to reproduce").paragraph(request.stepsToReproduce)
+            .heading("Expected result").paragraph(request.expectedResult)
+            .heading("Actual result").paragraph(request.actualResult)
+            .heading("Build number").paragraph(request.buildNumber)
+
+        if (cherryBaseURL != null) {
+            // media stays in cherry and is only linked, so the issue doesn't use jira storage
+            if (testCase.attachments.isNotEmpty()) {
+                description.heading("Evidence")
+                    .links(testCase.attachments.map { it.fileName to "$cherryBaseURL/attachments/${it.externalID}" })
+            }
+            description.heading("Cherry").links(listOf(
+                "Test case ${project.projectShortCode}-${testCase.testCaseNumber}" to testCaseURL(cherryBaseURL, testCase),
+                "Test run #${testCaseRun.testRun.testRunNumber}: ${testCaseRun.testRun.title}" to
+                    "$cherryBaseURL/test-runs/${project.projectShortCode}/${testCaseRun.testRun.testRunNumber}/${testCase.testCaseNumber}",
+            ))
+        }
+
+        val issueKey = jiraService.createIssue(request.summary.trim(), description.build())
+        if (cherryBaseURL != null) {
+            jiraService.addRemoteLink(issueKey, testCaseURL(cherryBaseURL, testCase), testCaseLinkTitle(testCase))
+        }
+
+        val link = TestCaseJiraLink(testCase = testCase, issueKey = issueKey, issueURL = jiraService.issueURL(issueKey))
+        testCaseJiraLinkRepository.save(link)
+        return link.toDTO()
+    }
+
+    @Transactional
+    fun linkJiraIssue(testCaseID: UUID, request: LinkJiraIssueDTO): JiraLinkDTO {
+        val testCase = testCaseRepository.findByExternalID(testCaseID)
+        requireNotNull(testCase) { "No test case found with id $testCaseID" }
+
+        val issueKey = JiraService.parseIssueKey(request.issue)
+        requireNotNull(issueKey) { "'${request.issue}' is not a valid Jira issue key, e.g. SCRUM-123" }
+
+        val existingLink = testCaseJiraLinkRepository.findByTestCaseAndIssueKey(testCase, issueKey)
+        require(existingLink == null) { "$issueKey is already linked to this test case" }
+
+        // verifies the issue exists and resolves its canonical key
+        val issue = jiraService.retrieveIssue(issueKey)
+
+        val cherryBaseURL = sanitizeBaseURL(request.cherryBaseURL)
+        if (cherryBaseURL != null) {
+            jiraService.addRemoteLink(issue.issueKey, testCaseURL(cherryBaseURL, testCase), testCaseLinkTitle(testCase))
+        }
+
+        val link = TestCaseJiraLink(testCase = testCase, issueKey = issue.issueKey, issueURL = issue.issueURL)
+        testCaseJiraLinkRepository.save(link)
+        return link.toDTO()
+    }
+
+    @Transactional
+    fun deleteJiraLink(linkID: UUID) {
+        val link = testCaseJiraLinkRepository.findByExternalID(linkID)
+        requireNotNull(link) { "No Jira link found with id $linkID" }
+
+        // only the link in cherry is removed, the jira issue is left untouched
+        testCaseJiraLinkRepository.delete(link)
+    }
+
+    private fun sanitizeBaseURL(url: String?): String? {
+        val trimmed = url?.trim()?.trimEnd('/')
+        if (trimmed.isNullOrBlank()) return null
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else null
+    }
+
+    private fun testCaseURL(cherryBaseURL: String, testCase: TestCase): String {
+        return "$cherryBaseURL/test-cases/${testCase.project.projectShortCode}/${testCase.testCaseNumber}"
+    }
+
+    private fun testCaseLinkTitle(testCase: TestCase): String {
+        return "Cherry ${testCase.project.projectShortCode}-${testCase.testCaseNumber}: ${testCase.title}"
     }
 
     private fun isSupportedMediaType(contentType: String): Boolean {

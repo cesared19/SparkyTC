@@ -2,6 +2,8 @@ package com.cherry.cherryservice.controllers
 
 import com.cherry.cherryservice.dto.*
 import com.cherry.cherryservice.dto.documents.TestRunExportType
+import com.cherry.cherryservice.dto.jira.CreateJiraIssueDTO
+import com.cherry.cherryservice.dto.jira.LinkJiraIssueDTO
 import com.cherry.cherryservice.dto.projects.CreateWorkspaceProjectDTO
 import com.cherry.cherryservice.dto.properties.CreatePropertyConfigurationDTO
 import com.cherry.cherryservice.dto.properties.UpdatePropertyConfigurationDTO
@@ -11,6 +13,7 @@ import com.cherry.cherryservice.dto.testruns.CreateTestRunDTO
 import com.cherry.cherryservice.dto.testruns.UpdateTestCaseRunDTO
 import com.cherry.cherryservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.cherry.cherryservice.dto.testruns.UpdateTestRunDTO
+import com.cherry.cherryservice.services.JiraService
 import com.cherry.cherryservice.services.WorkspaceService
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.Resource
@@ -34,7 +37,8 @@ import java.util.UUID
 @RestController
 @RequestMapping("/api/v1/workspace")
 class WorkspaceController(
-    private val workspaceService: WorkspaceService
+    private val workspaceService: WorkspaceService,
+    private val jiraService: JiraService,
 ) {
 
     @GetMapping("/projects")
@@ -175,6 +179,34 @@ class WorkspaceController(
     @PutMapping("/test-case-runs/{testCaseRunID}")
     fun updateTestCaseRun(@PathVariable testCaseRunID: UUID, @RequestBody request: UpdateTestCaseRunDTO): ResponseEntity<Any> {
         workspaceService.updateTestCaseRun(testCaseRunID, request)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @GetMapping("/jira/configuration")
+    fun retrieveJiraConfiguration(): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = jiraService.configuration()))
+    }
+
+    @GetMapping("/jira/issues")
+    fun retrieveJiraIssues(@RequestParam("keys") issueKeys: List<String>): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = jiraService.retrieveIssues(issueKeys)))
+    }
+
+    @PostMapping("/test-case-runs/{testCaseRunID}/jira-issue")
+    fun createJiraIssue(@PathVariable testCaseRunID: UUID, @RequestBody request: CreateJiraIssueDTO): ResponseEntity<Any> {
+        val link = workspaceService.createJiraIssue(testCaseRunID, request)
+        return ResponseEntity.ok(DataResponse(data = link))
+    }
+
+    @PostMapping("/test-cases/{testCaseID}/jira-links")
+    fun linkJiraIssue(@PathVariable testCaseID: UUID, @RequestBody request: LinkJiraIssueDTO): ResponseEntity<Any> {
+        val link = workspaceService.linkJiraIssue(testCaseID, request)
+        return ResponseEntity.ok(DataResponse(data = link))
+    }
+
+    @DeleteMapping("/jira-links/{linkID}")
+    fun deleteJiraLink(@PathVariable linkID: UUID): ResponseEntity<Any> {
+        workspaceService.deleteJiraLink(linkID)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
