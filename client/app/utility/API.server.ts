@@ -1,4 +1,4 @@
-import { APIClient, UnauthorizedError } from './APIClient'
+import { APIClient, fetchBackend, UnauthorizedError } from './APIClient'
 import { getSessionToken, redirectToLogin } from './Session.server'
 
 interface RequestOptions {
@@ -55,7 +55,7 @@ export class AuthenticatedAPI {
 
 	/** Performs a request and returns the raw response, for binary downloads. */
 	async fetch(url: string, init?: RequestInit) {
-		const response = await fetch(url, {
+		const response = await fetchBackend(url, {
 			...init,
 			headers: {
 				...(init?.headers as Record<string, string>),
