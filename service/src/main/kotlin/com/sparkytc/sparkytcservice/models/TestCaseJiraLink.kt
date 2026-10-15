@@ -32,6 +32,11 @@ class TestCaseJiraLink(
 
     @Column(name = "issue_url", nullable = false)
     val issueURL: String,
+
+    // set when the issue was created from a failed test case run
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_case_run_id")
+    val testCaseRun: TestCaseRun? = null,
 ) {
     fun toDTO(): JiraLinkDTO {
         return JiraLinkDTO(externalID, creationDate, issueKey, issueURL)

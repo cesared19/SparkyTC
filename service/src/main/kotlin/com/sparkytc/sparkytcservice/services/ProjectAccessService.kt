@@ -5,6 +5,7 @@ import com.sparkytc.sparkytcservice.dto.auth.UserRole
 import com.sparkytc.sparkytcservice.models.User
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import com.sparkytc.sparkytcservice.repositories.ProjectMemberRepository
+import com.sparkytc.sparkytcservice.repositories.UserRepository
 import org.springframework.stereotype.Service
 
 /**
@@ -14,7 +15,13 @@ import org.springframework.stereotype.Service
 @Service
 class ProjectAccessService(
     private val projectMemberRepository: ProjectMemberRepository,
+    private val userRepository: UserRepository,
 ) {
+    /** Active users that can see the project: every admin plus the testers assigned to it. */
+    fun projectUsers(project: WorkspaceProject): List<User> {
+        return userRepository.findAllByOrderByUsernameAsc().filter { it.isActive && canAccess(it, project) }
+    }
+
     fun canAccess(user: User?, project: WorkspaceProject): Boolean {
         if (user == null) return false
         if (user.role == UserRole.ADMIN) return true

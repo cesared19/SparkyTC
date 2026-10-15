@@ -63,14 +63,14 @@ export default function Login() {
 	const isSubmitting = navigation.state !== 'idle'
 
 	const inputClassName =
-		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
 			<div className="w-full max-w-sm space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
 				<div className="text-center">
 					<h1 className="text-2xl font-semibold text-gray-900">
-						Sparky<span className="text-sky-600">TC</span>
+						Sparky<span className="text-brand-600">TC</span>
 					</h1>
 					<p className="mt-1 text-sm text-gray-500">Sign in to continue</p>
 				</div>
@@ -120,7 +120,7 @@ export default function Login() {
 					<button
 						type="submit"
 						disabled={isSubmitting}
-						className="w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+						className="w-full rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
 					>
 						{isSubmitting ? 'Signing in...' : 'Sign in'}
 					</button>

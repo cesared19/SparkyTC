@@ -18,10 +18,12 @@ export function ProjectShell({
 	currentProject,
 	children,
 }: ProjectShellProps) {
+	const isAdmin = useIsAdmin()
 	const tabs = [
 		{
 			to: Route.viewProjectDashboard(currentProject.projectShortCode),
 			label: 'Dashboard',
+			end: true,
 		},
 		{
 			to: Route.viewProjectTestCases(currentProject.projectShortCode),
@@ -31,6 +33,14 @@ export function ProjectShell({
 			to: Route.viewProjectTestRuns(currentProject.projectShortCode),
 			label: 'Test Runs',
 		},
+		...(isAdmin
+			? [
+					{
+						to: Route.projectSettings(currentProject.projectShortCode),
+						label: 'Settings',
+					},
+			  ]
+			: []),
 	]
 
 	return (
@@ -56,10 +66,11 @@ export function ProjectShell({
 							<NavLink
 								key={tab.to}
 								to={tab.to}
+								end={'end' in tab && tab.end}
 								className={({ isActive }) =>
 									`border-b-2 px-1 pb-3 text-sm font-medium ${
 										isActive
-											? 'border-sky-500 text-sky-600'
+											? 'border-brand-500 text-brand-600'
 											: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
 									}`
 								}
@@ -114,7 +125,7 @@ export function ProjectList({ projects, currentProject }: ProjectListProps) {
 				{isAdmin && (
 					<Link
 						to={Route.newProject}
-						className="text-xs font-medium text-sky-600 hover:text-sky-800"
+						className="text-xs font-medium text-brand-600 hover:text-brand-800"
 					>
 						+ New
 					</Link>
@@ -129,7 +140,7 @@ export function ProjectList({ projects, currentProject }: ProjectListProps) {
 						<div
 							key={project.projectID}
 							className={`group flex items-center rounded-md ${
-								isCurrent ? 'bg-sky-50' : 'hover:bg-gray-50'
+								isCurrent ? 'bg-brand-50' : 'hover:bg-gray-50'
 							}`}
 						>
 							<Link
@@ -139,7 +150,7 @@ export function ProjectList({ projects, currentProject }: ProjectListProps) {
 							>
 								<span
 									className={`block truncate text-sm font-medium ${
-										isCurrent ? 'text-sky-600' : 'text-gray-700'
+										isCurrent ? 'text-brand-600' : 'text-gray-700'
 									}`}
 								>
 									{project.title}

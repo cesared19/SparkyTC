@@ -1,6 +1,7 @@
 import { Form, Link } from '@remix-run/react'
 import { User, UserRole } from '~/models/types'
 import { Route } from '~/utility/Routes'
+import { NotificationBell } from './NotificationBell'
 
 interface TopNavigationProps {
 	user: User
@@ -8,14 +9,14 @@ interface TopNavigationProps {
 
 export default function TopNavigation({ user }: TopNavigationProps) {
 	const isAdmin = user.role === UserRole.admin
-	const linkClassName = 'text-sm font-medium text-gray-700 hover:text-sky-600'
+	const linkClassName = 'text-sm font-medium text-gray-700 hover:text-brand-600'
 
 	return (
 		<div className="border-b border-gray-200 bg-white">
 			<div className="flex h-14 items-center justify-between px-4">
 				<div className="flex items-center">
 					<h1 className="text-xl font-semibold text-gray-900">
-						Sparky<span className="text-sky-600">TC</span>
+						Sparky<span className="text-brand-600">TC</span>
 					</h1>
 					<nav className="ml-8 flex space-x-4">
 						<Link to="/" className={linkClassName}>
@@ -34,9 +35,10 @@ export default function TopNavigation({ user }: TopNavigationProps) {
 					</nav>
 				</div>
 				<div className="flex items-center gap-4 text-sm">
+					<NotificationBell />
 					<Link
 						to={Route.account}
-						className="text-gray-700 hover:text-sky-600"
+						className="text-gray-700 hover:text-brand-600"
 						title="Account settings"
 					>
 						{user.displayName}

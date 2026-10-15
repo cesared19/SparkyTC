@@ -5,7 +5,12 @@ import com.sparkytc.sparkytcservice.dto.attachments.AttachmentContentDTO
 import com.sparkytc.sparkytcservice.dto.attachments.TestCaseAttachmentDTO
 import com.sparkytc.sparkytcservice.dto.dashboard.*
 import com.sparkytc.sparkytcservice.dto.documents.*
+import com.sparkytc.sparkytcservice.dto.auth.UserRole
+import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.jira.SimilarJiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.projects.JiraFailureMode
+import com.sparkytc.sparkytcservice.dto.projects.UpdateProjectSettingsDTO
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraLinkDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
@@ -45,6 +50,8 @@ class WorkspaceService(
     private val testCaseJiraLinkRepository: TestCaseJiraLinkRepository,
     private val jiraService: JiraService,
     private val projectAccessService: ProjectAccessService,
+    private val notificationService: NotificationService,
+    private val userRepository: UserRepository,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -380,7 +387,9 @@ class WorkspaceService(
             description = testRun.description,
             createdBy = CurrentUser.get(),
         )
+        newTestRun.assignees.addAll(projectUsersByID(project, testRun.assigneeIDs))
         testRunRepository.save(newTestRun)
+        notificationService.notifyTestRunAssigned(newTestRun, newTestRun.assignees, CurrentUser.get())
 
         for (testCaseID in testRun.testCaseIDs) {
             val testCaseModel = testCaseRepository.findByExternalID(testCaseID)
@@ -405,11 +414,15 @@ class WorkspaceService(
         requireNotNull(testRun) { "No test run found for id $testRunID" }
         projectAccessService.requireAccess(testRun.project)
 
+        val wasComplete = testRun.status == TestRunStatus.COMPLETE
         testRun.title = updateDTO.title
         testRun.description = updateDTO.description
         testRun.status = updateDTO.status
 
         testRunRepository.save(testRun)
+        if (!wasComplete && testRun.status == TestRunStatus.COMPLETE) {
+            notificationService.notifyTestRunCompleted(testRun)
+        }
     }
 
     @Transactional
@@ -467,27 +480,168 @@ class WorkspaceService(
     }
 
     @Transactional
-    fun updateTestCaseRun(testCaseRunID: UUID, updateDTO: UpdateTestCaseRunDTO) {
+    fun updateTestCaseRun(testCaseRunID: UUID, updateDTO: UpdateTestCaseRunDTO): UpdateTestCaseRunResultDTO {
         val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
         requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
         projectAccessService.requireAccess(testCaseRun.testRun.project)
 
+        // a test case taken by another tester can only be recorded by them or an admin
+        val actor = CurrentUser.get()
+        val assignee = testCaseRun.assignedTo
+        if (assignee != null && actor != null && assignee.id != actor.id && actor.role != UserRole.ADMIN) {
+            throw IllegalArgumentException("This test case is assigned to ${assignee.displayName}")
+        }
+
+        val previousStatus = testCaseRun.status
         testCaseRun.status = updateDTO.status
         testCaseRun.notes = updateDTO.notes
-        testCaseRun.executedBy = CurrentUser.get()
+        testCaseRun.executedBy = actor
+        if (testCaseRun.assignedTo == null) {
+            testCaseRun.assignedTo = actor
+        }
         testCaseRunRepository.save(testCaseRun)
 
         val testRun = testCaseRun.testRun
         val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
 
         val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING }
-        if (isTestRunComplete) {
+        if (isTestRunComplete && testRun.status != TestRunStatus.COMPLETE) {
             testRun.status = TestRunStatus.COMPLETE
             testRunRepository.save(testRun)
+            notificationService.notifyTestRunCompleted(testRun)
         }
-        else if (testRun.status == TestRunStatus.PENDING) {
+        else if (!isTestRunComplete && testRun.status == TestRunStatus.PENDING) {
             testRun.status = TestRunStatus.IN_PROGRESS
             testRunRepository.save(testRun)
+        }
+
+        val failedNow = updateDTO.status == TestCaseRunStatus.FAIL && previousStatus != TestCaseRunStatus.FAIL
+        if (failedNow && testRun.project.jiraFailureMode == JiraFailureMode.AUTOMATIC && jiraService.isEnabled) {
+            return createAutomaticJiraIssue(testCaseRun, updateDTO.appBaseURL, actor)
+        }
+        return UpdateTestCaseRunResultDTO()
+    }
+
+    /** Creates the Jira issue for a failure without asking for details, filling them from the test case. */
+    private fun createAutomaticJiraIssue(testCaseRun: TestCaseRun, appBaseURL: String?, actor: User?): UpdateTestCaseRunResultDTO {
+        // one automatic issue per test case run, even if the result is changed back and forth
+        if (testCaseJiraLinkRepository.existsByTestCaseRun(testCaseRun)) return UpdateTestCaseRunResultDTO()
+
+        val notProvided = "Not provided"
+        val request = CreateJiraIssueDTO(
+            summary = testCaseRun.title,
+            stepsToReproduce = testCaseRun.testInstructions ?: notProvided,
+            expectedResult = propertyValue(testCaseRun.testCase, "expected result") ?: notProvided,
+            actualResult = testCaseRun.notes?.takeIf { it.isNotBlank() } ?: notProvided,
+            buildNumber = propertyValue(testCaseRun.testCase, "build number") ?: notProvided,
+            appBaseURL = appBaseURL,
+        )
+
+        return try {
+            UpdateTestCaseRunResultDTO(jiraIssueKey = createJiraIssueFor(testCaseRun, request).issueKey)
+        } catch (e: IllegalArgumentException) {
+            // the result is still saved, the user is told the issue is missing
+            val message = e.message ?: "unknown error"
+            actor?.let { notificationService.notifyJiraIssueFailed(it, testCaseRun.testRun, testCaseRun.title, message) }
+            UpdateTestCaseRunResultDTO(jiraError = message)
+        }
+    }
+
+    private fun propertyValue(testCase: TestCase, title: String): String? {
+        return testCase.propertyValues
+            .firstOrNull { it.propertyConfiguration.title.trim().lowercase() == title }
+            ?.value?.takeIf { it.isNotBlank() }
+    }
+
+    @Transactional
+    fun updateTestRunAssignees(testRunID: UUID, request: UpdateTestRunAssigneesDTO): TestRunDTO {
+        val testRun = testRunRepository.findByExternalID(testRunID)
+        requireNotNull(testRun) { "No test run found for id $testRunID" }
+        projectAccessService.requireAccess(testRun.project)
+        require(!testRun.isClosed) { "Assignments can't be changed once the test run is closed" }
+
+        val assignees = projectUsersByID(testRun.project, request.userIDs)
+        val added = assignees.filter { user -> testRun.assignees.none { it.id == user.id } }
+        val removedIDs = testRun.assignees.map { it.id }.toSet() - assignees.map { it.id }.toSet()
+
+        testRun.assignees.clear()
+        testRun.assignees.addAll(assignees)
+        testRunRepository.save(testRun)
+
+        // pending test cases taken by people no longer on the test run become available again
+        if (removedIDs.isNotEmpty()) {
+            testCaseRunRepository.findAllByTestRun(testRun)
+                .filter { it.status == TestCaseRunStatus.PENDING && it.assignedTo?.id in removedIDs }
+                .forEach { it.assignedTo = null; testCaseRunRepository.save(it) }
+        }
+
+        notificationService.notifyTestRunAssigned(testRun, added, CurrentUser.get())
+        return testRun.toDTO()
+    }
+
+    @Transactional
+    fun updateTestCaseRunAssignee(testCaseRunID: UUID, request: UpdateTestCaseRunAssigneeDTO): TestCaseRunDTO {
+        val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
+        requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        val testRun = testCaseRun.testRun
+        projectAccessService.requireAccess(testRun.project)
+        require(!testRun.isClosed) { "Assignments can't be changed once the test run is closed" }
+
+        val actor = requireNotNull(CurrentUser.get()) { "Not signed in" }
+        val newAssignee = request.userID?.let { projectUsersByID(testRun.project, listOf(it)).single() }
+
+        if (actor.role != UserRole.ADMIN) {
+            // testers can take an available test case or give back their own, admins can reassign anything
+            val current = testCaseRun.assignedTo
+            val takesAvailable = newAssignee?.id == actor.id && current == null
+            val releasesOwn = newAssignee == null && current?.id == actor.id
+            require(takesAvailable || releasesOwn) {
+                if (current != null && current.id != actor.id) "This test case is assigned to ${current.displayName}"
+                else "Only admins can assign test cases to other users"
+            }
+        }
+
+        testCaseRun.assignedTo = newAssignee
+        testCaseRunRepository.save(testCaseRun)
+        return testCaseRun.toDTO()
+    }
+
+    @Transactional
+    fun retrieveProjectUsers(projectShortCode: String): List<UserSummaryDTO> {
+        val project = projectRepository.findByProjectShortCode(projectShortCode)
+        requireNotNull(project) { "No project found" }
+        projectAccessService.requireAccess(project)
+        return projectAccessService.projectUsers(project).map { UserSummaryDTO(it.externalID, it.displayName) }
+    }
+
+    @Transactional
+    fun updateProjectSettings(projectShortCode: String, request: UpdateProjectSettingsDTO): WorkspaceProjectDTO {
+        val project = projectRepository.findByProjectShortCode(projectShortCode)
+        requireNotNull(project) { "No project found" }
+        projectAccessService.requireAccess(project)
+
+        val jiraProjectKey = request.jiraProjectKey?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
+        if (jiraProjectKey != null) {
+            require(jiraProjectKey.matches(Regex("^[A-Z][A-Z0-9_]+$"))) { "'$jiraProjectKey' is not a valid Jira project key, e.g. SCRUM" }
+            if (jiraService.isEnabled) {
+                jiraService.requireProject(jiraProjectKey)
+            }
+        }
+
+        project.jiraFailureMode = request.jiraFailureMode
+        project.jiraProjectKey = jiraProjectKey
+        projectRepository.save(project)
+        return project.toDTO()
+    }
+
+    /** Resolves user IDs, accepting only active users that can see the project. */
+    private fun projectUsersByID(project: WorkspaceProject, userIDs: List<UUID>): List<User> {
+        return userIDs.distinct().map { userID ->
+            val user = userRepository.findByExternalID(userID)
+            require(user != null && user.isActive && projectAccessService.canAccess(user, project)) {
+                "No user with access to ${project.title} found with id $userID"
+            }
+            user
         }
     }
 
@@ -576,7 +730,20 @@ class WorkspaceService(
         val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
         requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
         projectAccessService.requireAccess(testCaseRun.testRun.project)
+        require(testCaseRun.testRun.project.jiraFailureMode != JiraFailureMode.DISABLED) { "Creating Jira issues is disabled for this project" }
 
+        return createJiraIssueFor(testCaseRun, request)
+    }
+
+    @Transactional
+    fun searchSimilarJiraIssues(testCaseRunID: UUID, summary: String): List<SimilarJiraIssueDTO> {
+        val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
+        requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        projectAccessService.requireAccess(testCaseRun.testRun.project)
+        return jiraService.searchSimilar(summary, testCaseRun.testRun.project.jiraProjectKey)
+    }
+
+    private fun createJiraIssueFor(testCaseRun: TestCaseRun, request: CreateJiraIssueDTO): JiraLinkDTO {
         require(request.summary.isNotBlank()) { "Summary is required" }
         require(request.stepsToReproduce.isNotBlank()) { "Steps to reproduce are required" }
         require(request.expectedResult.isNotBlank()) { "Expected result is required" }
@@ -608,12 +775,12 @@ class WorkspaceService(
 
         CurrentUser.get()?.let { description.paragraph("Reported from SparkyTC by ${it.displayName}") }
 
-        val issueKey = jiraService.createIssue(request.summary.trim(), description.build())
+        val issueKey = jiraService.createIssue(request.summary.trim(), description.build(), project.jiraProjectKey)
         if (appBaseURL != null) {
             jiraService.addRemoteLink(issueKey, testCaseURL(appBaseURL, testCase), testCaseLinkTitle(testCase))
         }
 
-        val link = TestCaseJiraLink(testCase = testCase, issueKey = issueKey, issueURL = jiraService.issueURL(issueKey))
+        val link = TestCaseJiraLink(testCase = testCase, issueKey = issueKey, issueURL = jiraService.issueURL(issueKey), testCaseRun = testCaseRun)
         testCaseJiraLinkRepository.save(link)
         return link.toDTO()
     }

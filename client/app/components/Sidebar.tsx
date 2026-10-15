@@ -29,7 +29,7 @@ export default function ProjectSidebar({
 						className={({ isActive }) =>
 							`block rounded-md px-3 py-2 text-sm font-medium ${
 								isActive
-									? 'bg-sky-50 text-sky-600'
+									? 'bg-brand-50 text-brand-600'
 									: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
 							}`
 						}

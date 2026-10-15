@@ -306,6 +306,40 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.6")
                 }
                 SchemaVersion.VERSION_0_0_6 -> {
+                    // test run responsibilities
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_run_assignees (
+                            test_run_id BIGINT NOT NULL REFERENCES test_runs(id) ON DELETE CASCADE,
+                            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            PRIMARY KEY (test_run_id, user_id)
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("ALTER TABLE test_case_runs ADD COLUMN assigned_to_id BIGINT REFERENCES users(id)")
+
+                    // in-app notifications and their preferences
+                    jdbcTemplate.execute("""
+                        CREATE TABLE notifications (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            type TEXT NOT NULL,
+                            title TEXT NOT NULL,
+                            message TEXT NOT NULL,
+                            link TEXT,
+                            is_read BOOLEAN NOT NULL DEFAULT FALSE
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX notifications_user_idx ON notifications (user_id, creation_date DESC)")
+                    jdbcTemplate.execute("ALTER TABLE users ADD COLUMN notify_test_run_assigned BOOLEAN NOT NULL DEFAULT TRUE, ADD COLUMN notify_test_run_completed BOOLEAN NOT NULL DEFAULT TRUE")
+
+                    // per-project jira settings
+                    jdbcTemplate.execute("ALTER TABLE workspace_projects ADD COLUMN jira_failure_mode TEXT NOT NULL DEFAULT 'MANUAL', ADD COLUMN jira_project_key TEXT")
+                    jdbcTemplate.execute("ALTER TABLE test_case_jira_links ADD COLUMN test_case_run_id BIGINT REFERENCES test_case_runs(id) ON DELETE SET NULL")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.7")
+                }
+                SchemaVersion.VERSION_0_0_7 -> {
                     break
                 }
             }

@@ -68,7 +68,7 @@ export default function NewProjectPage() {
 							name="title"
 							id="title"
 							required
-							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 						/>
 					</div>
 					<div>
@@ -83,7 +83,7 @@ export default function NewProjectPage() {
 							name="shortCode"
 							id="shortCode"
 							// required
-							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 							onInput={(e) => {
 								const input = e.currentTarget
 								input.value = input.value.toUpperCase()
@@ -106,7 +106,7 @@ export default function NewProjectPage() {
 							name="description"
 							id="description"
 							rows={3}
-							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 						/>
 					</div>
 					<div className="mt-6 flex justify-end space-x-3">
@@ -119,7 +119,7 @@ export default function NewProjectPage() {
 						</button>
 						<button
 							type="submit"
-							className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+							className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
 						>
 							Create
 						</button>

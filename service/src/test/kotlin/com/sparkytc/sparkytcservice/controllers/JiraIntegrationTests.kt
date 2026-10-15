@@ -70,6 +70,13 @@ class JiraIntegrationTests {
                             201 to """{"id":"10101","key":"SCRUM-101"}"""
                         }
                     exchange.requestMethod == "POST" && path.endsWith("/remotelink") -> 201 to """{"id":1}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/project/QA" -> 200 to """{"key":"QA"}"""
+                    exchange.requestMethod == "POST" && path == "/rest/api/3/search/jql" ->
+                        200 to """{"issues":[
+                            {"key":"SCRUM-50","fields":{"summary":"Steering warning sound at lock limit","status":{"name":"To Do","statusCategory":{"key":"new"}}}},
+                            {"key":"SCRUM-51","fields":{"summary":"Warning about login page","status":{"name":"Done","statusCategory":{"key":"done"}}}},
+                            {"key":"SCRUM-52","fields":{"summary":"Steering wheel lock limit warning sound plays","status":{"name":"In Progress","statusCategory":{"key":"indeterminate"}}}}
+                        ]}"""
                     exchange.requestMethod == "GET" && path == "/rest/api/3/issue/SCRUM-7" ->
                         200 to """{"key":"SCRUM-7","fields":{"summary":"Existing bug","status":{"name":"In Progress","statusCategory":{"key":"indeterminate"}}}}"""
                     else -> 404 to """{"errorMessages":["Issue does not exist or you do not have permission to see it."],"errors":{}}"""
@@ -297,6 +304,117 @@ class JiraIntegrationTests {
         mockMvc.perform(delete("/api/v1/workspace/test-cases/${testCase.testCaseID}"))
             .andExpect(status().isOk)
         assertEquals(0, getTestCases().size)
+    }
+
+    @Test
+    fun `should suggest existing issues similar to the one about to be created`() {
+        val testCaseRun = createTestCaseRun()
+
+        val result = mockMvc.perform(get("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/similar-jira-issues")
+            .param("summary", "Steering warning sound plays at the lock limit"))
+            .andExpect(status().isOk)
+            .andReturn()
+        val similar = objectMapper.readTree(result.response.contentAsString).get("data")
+
+        // ranked by shared words, the unrelated issue is left out
+        assertEquals(listOf("SCRUM-52", "SCRUM-50"), similar.map { it.get("issueKey").asText() })
+
+        val search = objectMapper.readTree(requests.single { it.path == "/rest/api/3/search/jql" }.body)
+        val jql = search.get("jql").asText()
+        assertTrue(jql.startsWith("project = \"SCRUM\" AND ("), jql)
+        assertTrue(jql.contains("summary ~ \"steering\""), jql)
+        assertTrue(!jql.contains("\"the\""), jql)
+    }
+
+    @Test
+    fun `projects can send issues to another jira project or disable issue creation`() {
+        val testCaseRun = createTestCaseRun()
+        val request = CreateJiraIssueDTO("Summary", "Steps", "Expected", "Actual", "1", null)
+
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":"QA"}"""))
+            .andExpect(status().isOk)
+        mockMvc.perform(post("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issue")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk)
+        val createRequest = requests.single { it.method == "POST" && it.path == "/rest/api/3/issue" }
+        assertEquals("QA", objectMapper.readTree(createRequest.body).get("fields").get("project").get("key").asText())
+
+        // a jira project that doesn't exist is rejected
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":"NOPE"}"""))
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"DISABLED","jiraProjectKey":null}"""))
+            .andExpect(status().isOk)
+        mockMvc.perform(post("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issue")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Creating Jira issues is disabled for this project"))
+    }
+
+    @Test
+    fun `automatic mode creates one issue when a failure is saved`() {
+        val testCaseRun = createTestCaseRun()
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"AUTOMATIC","jiraProjectKey":null}"""))
+            .andExpect(status().isOk)
+
+        val failure = mapOf("status" to "FAIL", "notes" to "A chime plays", "appBaseURL" to "http://10.0.0.5:3000")
+        mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(failure)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraIssueKey").value("SCRUM-101"))
+
+        val fields = objectMapper.readTree(requests.single { it.path == "/rest/api/3/issue" }.body).get("fields")
+        assertEquals("Steering warning", fields.get("summary").asText())
+        val text = collectText(fields.get("description"))
+        assertTrue(text.contains("A chime plays") && text.contains("1. Launch trainer") && text.contains("Not provided"), text)
+
+        // saving the failure again, or after a pass, doesn't create another issue
+        for (status in listOf("FAIL", "PASS", "FAIL")) {
+            mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(failure + ("status" to status))))
+                .andExpect(status().isOk)
+        }
+        assertEquals(1, requests.count { it.path == "/rest/api/3/issue" })
+        assertEquals(listOf("SCRUM-101"), getTestCases().first().jiraLinks.map { it.issueKey })
+    }
+
+    @Test
+    fun `automatic mode keeps the result and notifies the user when jira rejects the issue`() {
+        val testCaseRun = createTestCaseRun()
+        mockMvc.perform(put("/api/v1/workspace/test-cases/${getTestCases().first().testCaseID}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateTestCaseDTO("Rejected by Jira", null, null, getTestCases().first().propertyValues))))
+            .andExpect(status().isOk)
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"AUTOMATIC","jiraProjectKey":null}"""))
+            .andExpect(status().isOk)
+        mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/details")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"title":"Rejected by Jira","description":null,"testInstructions":null}"""))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"status":"FAIL","notes":null}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraError").value(Matchers.containsString("Field is required")))
+
+        assertEquals("FAIL", readData<List<TestCaseRunDTO>>(get("/api/v1/workspace/test-case-runs/TEST/1")).first().status.name)
+        val notifications = objectMapper.readTree(mockMvc.perform(get("/api/v1/notifications")).andReturn().response.contentAsString).get("data")
+        assertEquals("JIRA_ISSUE_FAILED", notifications.get("notifications")[0].get("type").asText())
     }
 
     private fun collectText(node: JsonNode): String {

@@ -67,7 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 const inputClassName =
-	'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+	'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 function RoleSelect({
 	defaultValue,
@@ -219,7 +219,7 @@ export default function Users() {
 					<button
 						type="submit"
 						disabled={navigation.state !== 'idle'}
-						className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+						className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
 					>
 						Create user
 					</button>
@@ -246,7 +246,7 @@ function UserProjects({ user, projects }: { user: User; projects: Project[] }) {
 
 	return (
 		<details ref={detailsRef}>
-			<summary className="cursor-pointer whitespace-nowrap text-xs font-medium text-sky-600 hover:text-sky-800">
+			<summary className="cursor-pointer whitespace-nowrap text-xs font-medium text-brand-600 hover:text-brand-800">
 				{assigned.size === 0
 					? 'No projects'
 					: `${assigned.size} project${assigned.size === 1 ? '' : 's'}`}
@@ -271,7 +271,7 @@ function UserProjects({ user, projects }: { user: User; projects: Project[] }) {
 								name="projectIDs"
 								value={project.projectID}
 								defaultChecked={assigned.has(project.projectID)}
-								className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+								className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
 							/>
 							<span className="truncate">
 								{project.title}{' '}
@@ -291,7 +291,7 @@ function UserProjects({ user, projects }: { user: User; projects: Project[] }) {
 				<button
 					type="submit"
 					disabled={fetcher.state !== 'idle'}
-					className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+					className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
 				>
 					{fetcher.state !== 'idle' ? 'Saving...' : 'Save'}
 				</button>
@@ -365,7 +365,7 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 					defaultChecked={user.isActive}
 					aria-label={`${user.username} is active`}
 					onChange={() => setIsDirty(true)}
-					className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+					className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
 				/>
 			</td>
 			<td className="px-3 py-2">

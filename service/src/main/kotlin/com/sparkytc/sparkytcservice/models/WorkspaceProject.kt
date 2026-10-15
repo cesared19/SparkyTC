@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.models
 
+import com.sparkytc.sparkytcservice.dto.projects.JiraFailureMode
 import com.sparkytc.sparkytcservice.dto.projects.WorkspaceProjectDTO
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
@@ -31,9 +32,17 @@ class WorkspaceProject(
 
     @Column(name = "description")
     var description: String?,
+
+    @Column(name = "jira_failure_mode", nullable = false)
+    @Enumerated(EnumType.STRING)
+    var jiraFailureMode: JiraFailureMode = JiraFailureMode.MANUAL,
+
+    // Jira project issues are created in, null uses the default JIRA_PROJECT_KEY
+    @Column(name = "jira_project_key")
+    var jiraProjectKey: String? = null,
 ) {
 
     fun toDTO(): WorkspaceProjectDTO {
-        return WorkspaceProjectDTO(externalID, creationDate, title, projectShortCode, description)
+        return WorkspaceProjectDTO(externalID, creationDate, title, projectShortCode, description, jiraFailureMode, jiraProjectKey)
     }
 }

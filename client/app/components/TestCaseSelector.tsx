@@ -204,7 +204,7 @@ export default function TestCaseSelector({
 				return (
 					<input
 						type="text"
-						className="block w-full rounded-md bg-gray-50 px-3 py-2 text-gray-900 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+						className="block w-full rounded-md bg-gray-50 px-3 py-2 text-gray-900 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
 						placeholder="Type filter..."
 						value={filterValue.type === 'text' ? filterValue.value : ''}
 						onChange={(e) => handleTextChange(propertyID, e.target.value)}
@@ -267,7 +267,7 @@ export default function TestCaseSelector({
 					placeholder="Search test cases..."
 					value={searchQuery}
 					onChange={(e) => setSearchQuery(e.target.value)}
-					className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+					className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
 				/>
 
 				<SelectDropdown
@@ -356,7 +356,7 @@ export default function TestCaseSelector({
 							)
 						)
 					}
-					className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
 				>
 					Done
 				</button>

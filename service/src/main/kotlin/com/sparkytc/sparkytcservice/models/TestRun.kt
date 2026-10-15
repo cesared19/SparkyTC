@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.models
 
+import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestRunStatus
 import jakarta.persistence.*
@@ -44,8 +45,21 @@ class TestRun (
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id")
     var createdBy: User? = null,
+
+    // users responsible for executing the test run
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "test_run_assignees",
+        joinColumns = [JoinColumn(name = "test_run_id")],
+        inverseJoinColumns = [JoinColumn(name = "user_id")]
+    )
+    val assignees: MutableSet<User> = mutableSetOf(),
 ) {
+    val isClosed: Boolean
+        get() = status == TestRunStatus.COMPLETE || status == TestRunStatus.ABORT
+
     fun toDTO(): TestRunDTO {
-        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName)
+        val assigneeSummaries = assignees.sortedBy { it.displayName.lowercase() }.map { UserSummaryDTO(it.externalID, it.displayName) }
+        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries)
     }
 }

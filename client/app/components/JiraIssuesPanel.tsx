@@ -4,8 +4,10 @@ import {
 	CreateJiraIssue,
 	ErrorResponse,
 	JiraConfiguration,
+	JiraFailureMode,
 	JiraIssue,
 	JiraLink,
+	SimilarJiraIssue,
 } from '~/models/types'
 import { Route } from '~/utility/Routes'
 import { ErrorMessage } from './ErrorMessage'
@@ -29,6 +31,9 @@ interface JiraIssuesPanelProps {
 	links: JiraLink[]
 	editable?: boolean
 	createIssue?: CreateIssueOptions
+	jiraFailureMode?: JiraFailureMode
+	// the project's Jira project, when it doesn't use the default one
+	jiraProjectKey?: string
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -46,6 +51,8 @@ export function JiraIssuesPanel({
 	links,
 	editable = false,
 	createIssue,
+	jiraFailureMode = JiraFailureMode.manual,
+	jiraProjectKey,
 }: JiraIssuesPanelProps) {
 	const issuesFetcher = useFetcher<JiraIssuesResponse | ErrorResponse>()
 	const linkFetcher = useFetcher<ActionResponse>()
@@ -90,17 +97,20 @@ export function JiraIssuesPanel({
 			: undefined
 	const visibleLinks = links.filter((link) => link.linkID !== unlinkingID)
 
-	const handleLink = (event: React.FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
-		if (!issueInput.trim()) return
+	const linkIssue = (issue: string) =>
 		linkFetcher.submit(
-			{ issue: issueInput.trim() },
+			{ issue },
 			{
 				method: 'post',
 				action: Route.testCaseJiraLinks(testCaseID),
 				encType: 'application/json',
 			}
 		)
+
+	const handleLink = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		if (!issueInput.trim()) return
+		linkIssue(issueInput.trim())
 	}
 
 	const handleUnlink = (link: JiraLink) => {
@@ -144,7 +154,7 @@ export function JiraIssuesPanel({
 									href={link.issueURL}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="font-medium text-sky-600 hover:text-sky-800 hover:underline"
+									className="font-medium text-brand-600 hover:text-brand-800 hover:underline"
 								>
 									{link.issueKey}
 								</a>
@@ -195,7 +205,7 @@ export function JiraIssuesPanel({
 						onChange={(event) => setIssueInput(event.target.value)}
 						placeholder={`Link existing issue, e.g. ${configuration?.projectKey}-123 or its URL`}
 						aria-label="Jira issue key or URL"
-						className="min-w-[16rem] flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+						className="min-w-[16rem] flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
 					<button
 						type="submit"
@@ -207,30 +217,48 @@ export function JiraIssuesPanel({
 				</form>
 			)}
 
-			{isEnabled && createIssue && !createDefaults && (
-				<div className="flex items-center gap-3">
-					<button
-						type="button"
-						onClick={() => {
-							setCreatedIssueKey(undefined)
-							setCreateDefaults(createIssue.defaults())
-						}}
-						disabled={!createIssue.isFailed}
-						className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						Create bug in Jira
-					</button>
-					{!createIssue.isFailed && (
-						<span className="text-xs text-gray-500">
-							Select Fail to report a bug for this test case
-						</span>
-					)}
-				</div>
-			)}
+			{isEnabled &&
+				createIssue &&
+				jiraFailureMode === JiraFailureMode.automatic && (
+					<p className="text-xs text-gray-500">
+						This project creates a Jira issue automatically when a failed result
+						is saved.
+					</p>
+				)}
+
+			{isEnabled &&
+				createIssue &&
+				jiraFailureMode === JiraFailureMode.manual &&
+				!createDefaults && (
+					<div className="flex items-center gap-3">
+						<button
+							type="button"
+							onClick={() => {
+								setCreatedIssueKey(undefined)
+								setCreateDefaults(createIssue.defaults())
+							}}
+							disabled={!createIssue.isFailed}
+							className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Create bug in Jira
+						</button>
+						{!createIssue.isFailed && (
+							<span className="text-xs text-gray-500">
+								Select Fail to report a bug for this test case
+							</span>
+						)}
+					</div>
+				)}
 
 			{isEnabled && createIssue && createDefaults && configuration && (
 				<CreateJiraIssueForm
 					configuration={configuration}
+					projectKey={jiraProjectKey ?? configuration.projectKey}
+					linkedKeys={issueKeys}
+					onLinkExisting={(issueKey) => {
+						linkIssue(issueKey)
+						setCreateDefaults(undefined)
+					}}
 					testCaseRunID={createIssue.testCaseRunID}
 					defaults={createDefaults}
 					onCancel={() => setCreateDefaults(undefined)}
@@ -246,6 +274,9 @@ export function JiraIssuesPanel({
 
 interface CreateJiraIssueFormProps {
 	configuration: JiraConfiguration
+	projectKey?: string
+	linkedKeys: string[]
+	onLinkExisting: (issueKey: string) => void
 	testCaseRunID: string
 	defaults: CreateJiraIssue
 	onCancel: () => void
@@ -254,14 +285,33 @@ interface CreateJiraIssueFormProps {
 
 function CreateJiraIssueForm({
 	configuration,
+	projectKey,
+	linkedKeys,
+	onLinkExisting,
 	testCaseRunID,
 	defaults,
 	onCancel,
 	onCreated,
 }: CreateJiraIssueFormProps) {
 	const fetcher = useFetcher<ActionResponse>()
+	const similarFetcher = useFetcher<{ issues: SimilarJiraIssue[] }>()
 	const isSubmitting = fetcher.state !== 'idle'
 	const error = errorMessage(fetcher.data)
+
+	const searchSimilar = (summary: string) => {
+		if (summary.trim()) {
+			similarFetcher.load(Route.similarJiraIssues(testCaseRunID, summary))
+		}
+	}
+
+	useEffect(() => {
+		searchSimilar(defaults.summary)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	const similarIssues = (similarFetcher.data?.issues ?? []).filter(
+		(issue) => !linkedKeys.includes(issue.issueKey)
+	)
 
 	useEffect(() => {
 		if (fetcher.state === 'idle' && fetcher.data && 'ok' in fetcher.data) {
@@ -288,7 +338,7 @@ function CreateJiraIssueForm({
 	}
 
 	const inputClassName =
-		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 	const fields: {
 		name:
@@ -314,7 +364,7 @@ function CreateJiraIssueForm({
 		>
 			<div>
 				<h3 className="text-base font-semibold text-gray-900">
-					New {configuration.issueType} in {configuration.projectKey}
+					New {configuration.issueType} in {projectKey}
 				</h3>
 				<p className="mt-1 text-xs text-gray-500">
 					Images and videos are not uploaded to Jira, the issue links to them in
@@ -323,6 +373,45 @@ function CreateJiraIssueForm({
 			</div>
 
 			{error && <ErrorMessage message={error} />}
+
+			{similarIssues.length > 0 && (
+				<div className="rounded-md border border-yellow-200 bg-yellow-50 p-3">
+					<p className="text-sm font-medium text-yellow-800">
+						Similar issues already in Jira. Link one instead of creating a
+						duplicate?
+					</p>
+					<ul className="mt-2 space-y-1">
+						{similarIssues.map((issue) => (
+							<li
+								key={issue.issueKey}
+								className="flex flex-wrap items-center gap-2 text-sm"
+							>
+								<a
+									href={issue.issueURL}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="font-medium text-brand-600 hover:underline"
+								>
+									{issue.issueKey}
+								</a>
+								<span className="min-w-0 flex-1 truncate text-gray-700">
+									{issue.summary}
+								</span>
+								{issue.status && (
+									<span className="text-xs text-gray-500">{issue.status}</span>
+								)}
+								<button
+									type="button"
+									onClick={() => onLinkExisting(issue.issueKey)}
+									className="rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+								>
+									Link instead
+								</button>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
 
 			{fields.map((field) => (
 				<div key={field.name}>
@@ -348,6 +437,12 @@ function CreateJiraIssueForm({
 							type="text"
 							required
 							defaultValue={defaults[field.name]}
+							// look for similar issues again once the summary is edited
+							onBlur={
+								field.name === 'summary'
+									? (event) => searchSimilar(event.target.value)
+									: undefined
+							}
 							className={inputClassName}
 						/>
 					)}

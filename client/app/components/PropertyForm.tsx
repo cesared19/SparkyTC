@@ -174,7 +174,7 @@ export default function PropertyForm({
 								? 'Enter default value'
 								: 'Enter default value (optional)'
 						}
-						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
 				)
 			case PropertyType.number:
@@ -188,7 +188,7 @@ export default function PropertyForm({
 								? 'Enter default value'
 								: 'Enter default value (optional)'
 						}
-						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
 				)
 			default:
@@ -275,7 +275,7 @@ export default function PropertyForm({
 					id="title"
 					required
 					defaultValue={defaultValues?.title}
-					className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+					className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 				/>
 			</div>
 
@@ -288,7 +288,7 @@ export default function PropertyForm({
 						value="true"
 						checked={isRequired}
 						onChange={handleRequiredChange}
-						className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+						className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
 					/>
 					<label
 						htmlFor="isRequired"
@@ -371,7 +371,7 @@ export default function PropertyForm({
 									<button
 										type="button"
 										onClick={addOption}
-										className="rounded-md bg-sky-600 px-2 py-1 text-sm font-medium text-white hover:bg-sky-700"
+										className="rounded-md bg-brand-600 px-2 py-1 text-sm font-medium text-white hover:bg-brand-700"
 									>
 										+ Add Option
 									</button>
@@ -457,7 +457,7 @@ export default function PropertyForm({
 				</Link>
 				<button
 					type="submit"
-					className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
 				>
 					{submitLabel}
 				</button>

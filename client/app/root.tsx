@@ -115,7 +115,7 @@ export function ErrorBoundary() {
 					Something went wrong
 				</h1>
 				<p className="text-sm text-gray-600">{message}</p>
-				<a href="/" className="text-sm text-sky-600 hover:underline">
+				<a href="/" className="text-sm text-brand-600 hover:underline">
 					Go to projects
 				</a>
 			</div>

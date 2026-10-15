@@ -52,6 +52,47 @@ export enum UserRole {
 	tester = 'TESTER',
 }
 
+export interface UserSummary {
+	userID: string
+	displayName: string
+}
+
+export enum JiraFailureMode {
+	disabled = 'DISABLED',
+	manual = 'MANUAL',
+	automatic = 'AUTOMATIC',
+}
+
+export enum NotificationType {
+	testRunAssigned = 'TEST_RUN_ASSIGNED',
+	testRunCompleted = 'TEST_RUN_COMPLETED',
+	jiraIssueFailed = 'JIRA_ISSUE_FAILED',
+}
+
+export interface AppNotification {
+	notificationID: string
+	creationDate: number
+	type: NotificationType
+	title: string
+	message: string
+	link?: string
+	isRead: boolean
+}
+
+export interface NotificationList {
+	unreadCount: number
+	notifications: AppNotification[]
+}
+
+export interface SimilarJiraIssue {
+	issueKey: string
+	issueURL: string
+	summary: string
+	status?: string
+	statusCategory?: string
+	similarity: number
+}
+
 export enum UserTheme {
 	light = 'LIGHT',
 	dark = 'DARK',
@@ -68,6 +109,8 @@ export interface User {
 	theme: UserTheme
 	defaultProjectShortCode?: string
 	projectIDs?: string[]
+	notifyTestRunAssigned: boolean
+	notifyTestRunCompleted: boolean
 }
 
 export interface TestRunSummary {
@@ -170,6 +213,7 @@ export interface TestRun {
 	title: string
 	description?: string
 	createdBy?: string
+	assignees: UserSummary[]
 }
 
 export enum TestCaseRunStatus {
@@ -189,6 +233,7 @@ export interface TestCaseRun {
 	testInstructions?: string
 	notes?: string
 	executedBy?: string
+	assignedTo?: UserSummary
 }
 
 export interface UpdateTestCaseRunDetails extends Record<string, any> {
@@ -227,6 +272,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	testRun: TestRun
 	testCaseRuns: TestCaseRun[]
 	properties: PropertyConfiguration[]
+	projectUsers: UserSummary[]
 }
 
 export interface ErrorResponse extends Record<string, any> {

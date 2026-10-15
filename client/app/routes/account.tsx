@@ -44,7 +44,7 @@ export default function Account() {
 	}, [succeeded])
 
 	const inputClassName =
-		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 	return (
 		<main className="flex-1 overflow-auto p-6">
@@ -57,6 +57,8 @@ export default function Account() {
 				</div>
 
 				<ThemeSelector />
+
+				<NotificationPreferences />
 
 				<Form ref={formRef} method="post" className="space-y-4">
 					<h3 className="text-lg font-medium text-gray-900">Change password</h3>
@@ -105,7 +107,7 @@ export default function Account() {
 					<button
 						type="submit"
 						disabled={navigation.state !== 'idle'}
-						className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+						className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
 					>
 						Change password
 					</button>
@@ -138,7 +140,7 @@ function ThemeSelector() {
 						key={option.value}
 						className={`cursor-pointer rounded-md border px-4 py-2 text-sm font-medium ${
 							selected === option.value
-								? 'border-sky-500 bg-sky-50 text-sky-600'
+								? 'border-brand-500 bg-brand-50 text-brand-600'
 								: 'border-gray-300 text-gray-700 hover:bg-gray-50'
 						}`}
 					>
@@ -163,6 +165,58 @@ function ThemeSelector() {
 					</label>
 				))}
 			</div>
+		</fieldset>
+	)
+}
+
+function NotificationPreferences() {
+	const user = useCurrentUser()
+	const fetcher = useFetcher()
+	const pending = fetcher.json as
+		| { testRunAssigned: boolean; testRunCompleted: boolean }
+		| undefined
+	const preferences = pending ?? {
+		testRunAssigned: user?.notifyTestRunAssigned ?? true,
+		testRunCompleted: user?.notifyTestRunCompleted ?? true,
+	}
+
+	const update = (change: Partial<typeof preferences>) =>
+		fetcher.submit(
+			{ intent: 'notifications', ...preferences, ...change },
+			{ method: 'post', action: Route.preferences, encType: 'application/json' }
+		)
+
+	const options = [
+		{
+			key: 'testRunAssigned' as const,
+			label: 'I am assigned to a test run',
+		},
+		{
+			key: 'testRunCompleted' as const,
+			label: 'A test run in one of my projects is completed',
+		},
+	]
+
+	return (
+		<fieldset className="space-y-3">
+			<legend className="text-lg font-medium text-gray-900">
+				Notifications
+			</legend>
+			<p className="text-sm text-gray-600">Notify me in SparkyTC when:</p>
+			{options.map((option) => (
+				<label
+					key={option.key}
+					className="flex items-center gap-2 text-sm text-gray-700"
+				>
+					<input
+						type="checkbox"
+						checked={preferences[option.key]}
+						onChange={(event) => update({ [option.key]: event.target.checked })}
+						className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+					/>
+					{option.label}
+				</label>
+			))}
 		</fieldset>
 	)
 }

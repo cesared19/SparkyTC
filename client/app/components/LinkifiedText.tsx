@@ -47,7 +47,7 @@ export function LinkifiedText({ text, className }: LinkifiedTextProps) {
 							href={href}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="text-sky-600 underline break-all hover:text-sky-800"
+							className="text-brand-600 underline break-all hover:text-brand-800"
 						>
 							{url}
 						</a>

@@ -9,6 +9,7 @@ import com.sparkytc.sparkytcservice.dto.auth.ChangePasswordDTO
 import com.sparkytc.sparkytcservice.dto.auth.CreateUserDTO
 import com.sparkytc.sparkytcservice.dto.auth.LoginDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateDefaultProjectDTO
+import com.sparkytc.sparkytcservice.dto.auth.UpdateNotificationPreferencesDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateThemeDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateUserDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateUserProjectsDTO
@@ -44,6 +45,12 @@ class AuthController(
     @PutMapping("/auth/preferences/theme")
     fun updateTheme(@RequestBody request: UpdateThemeDTO): ResponseEntity<Any> {
         authService.updateTheme(currentUserOrThrow(), request)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PutMapping("/auth/preferences/notifications")
+    fun updateNotificationPreferences(@RequestBody request: UpdateNotificationPreferencesDTO): ResponseEntity<Any> {
+        authService.updateNotificationPreferences(currentUserOrThrow(), request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 

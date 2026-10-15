@@ -2,6 +2,7 @@ package com.sparkytc.sparkytcservice.services
 
 import com.sparkytc.sparkytcservice.dto.jira.JiraConfigurationDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.jira.SimilarJiraIssueDTO
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.logging.Log
@@ -64,13 +65,17 @@ class JiraService(
 
     fun issueURL(issueKey: String): String = "$baseURL/browse/$issueKey"
 
-    /** Creates an issue in the configured project and returns its key. */
-    fun createIssue(summary: String, description: Map<String, Any>): String {
+    /** The Jira project used when a SparkyTC project doesn't choose one. */
+    val defaultProjectKey: String
+        get() = projectKey
+
+    /** Creates an issue in the given project (or the default one) and returns its key. */
+    fun createIssue(summary: String, description: Map<String, Any>, targetProjectKey: String? = null): String {
         requireEnabled()
 
         val body = mapOf(
             "fields" to mapOf(
-                "project" to mapOf("key" to projectKey),
+                "project" to mapOf("key" to (targetProjectKey ?: projectKey)),
                 "issuetype" to mapOf("name" to issueType),
                 "summary" to summary,
                 "description" to description,
@@ -107,6 +112,61 @@ class JiraService(
         } catch (e: RestClientException) {
             log.warn("Unable to add SparkyTC link to Jira issue $issueKey", e)
         }
+    }
+
+    /** Throws a validation error when the Jira project doesn't exist or the account can't see it. */
+    fun requireProject(key: String) {
+        requireEnabled()
+        call("find Jira project $key") {
+            restClient.get()
+                .uri("/rest/api/3/project/{key}", key)
+                .retrieve()
+                .toBodilessEntity()
+        }
+    }
+
+    /**
+     * Finds existing issues whose summary resembles the given one. Jira returns issues sharing any
+     * significant word, and they are ranked here by how many words the summaries have in common.
+     */
+    fun searchSimilar(summary: String, targetProjectKey: String? = null, limit: Int = 5): List<SimilarJiraIssueDTO> {
+        requireEnabled()
+
+        val words = significantWords(summary)
+        if (words.isEmpty()) return emptyList()
+
+        // words only contain letters and digits, so they are safe inside the JQL string
+        val wordClauses = words.sortedByDescending { it.length }.take(MAX_SEARCH_WORDS).joinToString(" OR ") { "summary ~ \"$it\"" }
+        val jql = "project = \"${targetProjectKey ?: projectKey}\" AND ($wordClauses) ORDER BY updated DESC"
+
+        val response = call("search Jira for similar issues") {
+            restClient.post()
+                .uri("/rest/api/3/search/jql")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mapOf("jql" to jql, "maxResults" to SIMILAR_CANDIDATES, "fields" to listOf("summary", "status")))
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+
+        return response?.get("issues")?.toList().orEmpty().mapNotNull { issue ->
+            val key = issue.get("key")?.asText() ?: return@mapNotNull null
+            val fields = issue.get("fields")
+            val issueSummary = fields?.get("summary")?.asText() ?: return@mapNotNull null
+            val issueWords = significantWords(issueSummary)
+            val union = (words + issueWords).size
+            val similarity = if (union == 0) 0.0 else words.intersect(issueWords).size.toDouble() / union
+            SimilarJiraIssueDTO(
+                issueKey = key,
+                issueURL = issueURL(key),
+                summary = issueSummary,
+                status = fields.get("status")?.get("name")?.asText(),
+                statusCategory = fields.get("status")?.get("statusCategory")?.get("key")?.asText(),
+                similarity = similarity,
+            )
+        }
+            .filter { it.similarity >= MINIMUM_SIMILARITY }
+            .sortedByDescending { it.similarity }
+            .take(limit)
     }
 
     /** Fetches an issue, throwing a validation error when it doesn't exist or can't be read. */
@@ -178,6 +238,23 @@ class JiraService(
     }
 
     companion object {
+        private const val MAX_SEARCH_WORDS = 8
+        private const val SIMILAR_CANDIDATES = 30
+        private const val MINIMUM_SIMILARITY = 0.2
+
+        // common words that say nothing about what an issue is about, in english and spanish
+        private val STOP_WORDS = setOf(
+            "the", "and", "for", "with", "when", "from", "that", "this", "are", "not", "but", "into", "after", "before",
+            "los", "las", "del", "con", "para", "por", "una", "uno", "que", "cuando", "como", "sin", "sobre", "entre",
+        )
+
+        fun significantWords(text: String): Set<String> {
+            return Regex("[\\p{L}\\p{N}]+").findAll(text.lowercase())
+                .map { it.value }
+                .filter { it.length >= 3 && it !in STOP_WORDS }
+                .toSet()
+        }
+
         private val ISSUE_KEY_PATTERN = Regex("[A-Z][A-Z0-9_]+-\\d+")
 
         /** Extracts an issue key from a key or an issue URL, e.g. https://site.atlassian.net/browse/SCRUM-1 */

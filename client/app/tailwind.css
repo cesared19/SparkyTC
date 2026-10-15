@@ -17,6 +17,19 @@
 	--color-gray-950: 3 7 18;
 	--color-page: 255 255 255;
 	--color-surface: 255 255 255;
+
+	/* brand: crimson from the logo (#c01c37) */
+	--color-brand-50: 253 242 244;
+	--color-brand-100: 251 228 232;
+	--color-brand-200: 246 196 205;
+	--color-brand-300: 238 150 167;
+	--color-brand-400: 225 92 120;
+	--color-brand-500: 208 53 83;
+	--color-brand-600: 192 28 55;
+	--color-brand-700: 160 21 48;
+	--color-brand-800: 130 20 43;
+	--color-brand-900: 108 20 39;
+	--color-brand-950: 61 7 18;
 }
 
 /*
@@ -39,6 +52,23 @@
 	--color-gray-950: 250 251 252;
 	--color-page: 11 15 25;
 	--color-surface: 17 22 34;
+
+	/* brand: buttons keep the logo crimson, text and tints are lightened for contrast */
+	--color-brand-50: 72 18 30;
+	--color-brand-100: 92 22 37;
+	--color-brand-200: 120 28 47;
+	--color-brand-500: 232 96 122;
+}
+
+/* links and active states use brand-600 text, which needs to be lighter on dark surfaces */
+.dark .text-brand-600,
+.dark .hover\:text-brand-600:hover {
+	color: rgb(240 110 135);
+}
+.dark .text-brand-700,
+.dark .hover\:text-brand-700:hover,
+.dark .hover\:text-brand-800:hover {
+	color: rgb(245 140 160);
 }
 
 body {
@@ -87,9 +117,6 @@ body {
 .dark .bg-blue-100 {
 	background-color: rgb(30 58 138 / 0.45);
 }
-.dark .bg-sky-50 {
-	background-color: rgb(12 74 110 / 0.4);
-}
 
 /* text on tinted backgrounds and links */
 .dark .text-red-800,
@@ -113,14 +140,6 @@ body {
 }
 .dark .text-blue-800 {
 	color: rgb(147 197 253);
-}
-.dark .text-sky-600,
-.dark .hover\:text-sky-600:hover {
-	color: rgb(56 189 248);
-}
-.dark .hover\:text-sky-700:hover,
-.dark .hover\:text-sky-800:hover {
-	color: rgb(125 211 252);
 }
 .dark .border-red-200,
 .dark .border-red-300 {
