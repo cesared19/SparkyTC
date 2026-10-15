@@ -122,7 +122,12 @@ class AuthTests {
         tester.perform(post("/api/v1/workspace/projects")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(CreateWorkspaceProjectDTO("Project", "PRJ", null))))
+            .andExpect(status().isForbidden)
+        admin.perform(post("/api/v1/workspace/projects")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateWorkspaceProjectDTO("Project", "PRJ", null))))
             .andExpect(status().isOk)
+        assignProjects("tester", "PRJ")
         tester.perform(post("/api/v1/workspace/test-cases/PRJ")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(testCase("Login"))))
@@ -150,6 +155,7 @@ class AuthTests {
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(CreateWorkspaceProjectDTO("Project", "PRJ", null))))
             .andExpect(status().isOk)
+        assignProjects("ana", "PRJ")
         ana.perform(post("/api/v1/workspace/test-cases/PRJ")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(testCase("Login"))))
@@ -250,6 +256,17 @@ class AuthTests {
             .andExpect(status().isOk)
 
         TestAuth.login(context, objectMapper, password = "another-password")
+    }
+
+    private fun assignProjects(username: String, vararg projectShortCodes: String) {
+        val userID = data(admin, "/api/v1/admin/users").first { it.get("username").asText() == username }.get("userID").asText()
+        val projectIDs = data(admin, "/api/v1/workspace/projects")
+            .filter { it.get("projectShortCode").asText() in projectShortCodes }
+            .map { it.get("projectID").asText() }
+        admin.perform(put("/api/v1/admin/users/$userID/projects")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("projectIDs" to projectIDs))))
+            .andExpect(status().isOk)
     }
 
     private fun createUser(username: String, displayName: String, role: UserRole): String {

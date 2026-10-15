@@ -50,6 +50,9 @@ View the progress of your test run and see the results of each test case.
 -  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
 -  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status (see below)
 -  User accounts with Tester and Admin roles, and a record of who created, updated and executed each test case (see below)
+-  Home dashboard per project with test case and test run summaries, and a default project opened after signing in
+-  Per-project visibility: admins choose which projects each tester can see
+-  Light, dark or system theme, chosen by each user from their account page
 
 ### Importing test cases from CSV
 
@@ -68,14 +71,16 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.5`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.6`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
 Everyone signs in with their own account. There are two roles:
 
 -  **Tester**: create, edit and import test cases, run test runs, add images and videos, and create or link Jira issues.
--  **Admin**: everything a tester can do, plus managing users (**Users** page), configuring properties, and deleting test cases and test runs.
+-  **Admin**: everything a tester can do in every project, plus creating projects, managing users (**Users** page), configuring properties, and deleting test cases and test runs.
+
+Testers only see the projects assigned to them: on the **Users** page, click a tester's project count in the **Projects** column and check the projects they should see. Admins always see every project. Testers that existed before project visibility was added keep access to all the projects that existed at that time.
 
 The first admin account is created when the backend starts and there are no users yet. Add these variables to the `.env` file before the first start, then sign in and create the rest of the accounts from the **Users** page:
 

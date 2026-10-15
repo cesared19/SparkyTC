@@ -1,68 +1,57 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { useLoaderData, useNavigate } from '@remix-run/react'
-import type { FetchResponse } from '~/models/types'
-import { APIRoute, Route } from '~/utility/Routes'
+import { type LoaderFunctionArgs, redirect } from '@remix-run/node'
+import { Link, useLoaderData } from '@remix-run/react'
+import { ProjectList } from '~/components/ProjectShell'
 import { Project } from '~/models/project'
-import { Column, Table } from '~/components/Table'
-import { DateDisplay } from '~/components/DateDisplay'
-import { requireAPI } from '~/utility/API.server'
+import { FetchResponse } from '~/models/types'
+import { requireUser } from '~/utility/Authorization.server'
+import { useIsAdmin } from '~/utility/CurrentUser'
+import { APIRoute, Route } from '~/utility/Routes'
 
+// landing page after signing in: opens the user's default project, or the first one they can access
 export async function loader({ request }: LoaderFunctionArgs) {
-	const api = await requireAPI(request)
-	const fetchResponse = await api.get<FetchResponse<Project[]>>(
-		APIRoute.projects
-	)
-	return fetchResponse
+	const { api, user } = await requireUser(request)
+	const projects = await api.get<FetchResponse<Project[]>>(APIRoute.projects)
+
+	const target =
+		projects.data.find(
+			(project) => project.projectShortCode === user.defaultProjectShortCode
+		) ?? projects.data[0]
+	if (target) {
+		return redirect(Route.viewProjectDashboard(target.projectShortCode))
+	}
+	return { projects: projects.data }
 }
 
-export default function Projects() {
-	const navigate = useNavigate()
-	const { data } = useLoaderData<typeof loader>()
-
-	const columns: Column<Project>[] = [
-		{
-			header: 'Project Code',
-			key: 'projectShortCode',
-			render: (project) => project.projectShortCode,
-		},
-		{
-			header: 'Title',
-			key: 'title',
-			render: (project) => project.title,
-		},
-		{
-			header: 'Created',
-			key: 'creationDate',
-			render: (project) => <DateDisplay date={project.creationDate} />,
-		},
-	]
+export default function Home() {
+	const { projects } = useLoaderData<typeof loader>()
+	const isAdmin = useIsAdmin()
 
 	return (
-		<main className="flex-1 overflow-auto">
-			<div className="p-6">
-				<div className="mb-6 flex items-center justify-between">
-					<h2 className="text-2xl font-semibold text-gray-900">
-						Projects
+		<div className="flex min-h-0 flex-1">
+			<ProjectList projects={projects} />
+			<main className="flex flex-1 items-center justify-center p-6">
+				<div className="max-w-sm text-center">
+					<h2 className="text-lg font-semibold text-gray-900">
+						No projects yet
 					</h2>
-					<button
-						onClick={() => navigate(Route.newProject)}
-						className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-					>
-						New Project
-					</button>
+					{isAdmin ? (
+						<p className="mt-2 text-sm text-gray-600">
+							Create the first project to start adding test cases.{' '}
+							<Link
+								to={Route.newProject}
+								className="text-sky-600 hover:underline"
+							>
+								New project
+							</Link>
+						</p>
+					) : (
+						<p className="mt-2 text-sm text-gray-600">
+							You don&apos;t have access to any project yet. Ask an admin to add
+							you to one.
+						</p>
+					)}
 				</div>
-
-				<Table
-					tableRows={data.map((project) => ({
-						id: project.projectID,
-						data: project,
-					}))}
-					columns={columns}
-					onRowClick={(project) =>
-						navigate(Route.viewProjectTestCases(project.projectShortCode))
-					}
-				/>
-			</div>
-		</main>
+			</main>
+		</div>
 	)
 }

@@ -8,16 +8,43 @@ import {
 	ScrollRestoration,
 	useLoaderData,
 	useRouteError,
+	useRouteLoaderData,
 } from '@remix-run/react'
+import { useEffect } from 'react'
+import { User, UserTheme } from '~/models/types'
 import TopNavigation from '~/components/TopNavigation'
 import { requireUser } from '~/utility/Authorization.server'
 
 import './tailwind.css'
 
+// applied before the first paint so dark mode doesn't flash white while the page loads
+const THEME_SCRIPT = `(function(){var t=document.documentElement.dataset.theme;if(t==='DARK'||(t!=='LIGHT'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}})()`
+
+function useTheme(theme: UserTheme) {
+	useEffect(() => {
+		const query = window.matchMedia('(prefers-color-scheme: dark)')
+		const apply = () =>
+			document.documentElement.classList.toggle(
+				'dark',
+				theme === UserTheme.dark ||
+					(theme === UserTheme.system && query.matches)
+			)
+		apply()
+		query.addEventListener('change', apply)
+		return () => query.removeEventListener('change', apply)
+	}, [theme])
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+	const data = useRouteLoaderData('root') as { user?: User } | undefined
+	const theme = data?.user?.theme ?? UserTheme.system
+	useTheme(theme)
+
 	return (
-		<html lang="en">
+		<html lang="en" data-theme={theme} suppressHydrationWarning>
 			<head>
+				{/* eslint-disable-next-line react/no-danger */}
+				<script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>SparkyTC</title>

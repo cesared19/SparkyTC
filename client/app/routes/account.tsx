@@ -1,10 +1,16 @@
 import { type ActionFunctionArgs } from '@remix-run/node'
-import { Form, useActionData, useNavigation } from '@remix-run/react'
+import {
+	Form,
+	useActionData,
+	useFetcher,
+	useNavigation,
+} from '@remix-run/react'
+import { UserTheme } from '~/models/types'
 import { useEffect, useRef } from 'react'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { requireAPI } from '~/utility/API.server'
 import { useCurrentUser } from '~/utility/CurrentUser'
-import { APIRoute } from '~/utility/Routes'
+import { APIRoute, Route } from '~/utility/Routes'
 import { Tools } from '~/utility/Tools'
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -49,6 +55,8 @@ export default function Account() {
 						Signed in as <b>{user?.username}</b> ({user?.displayName})
 					</p>
 				</div>
+
+				<ThemeSelector />
 
 				<Form ref={formRef} method="post" className="space-y-4">
 					<h3 className="text-lg font-medium text-gray-900">Change password</h3>
@@ -104,5 +112,57 @@ export default function Account() {
 				</Form>
 			</div>
 		</main>
+	)
+}
+
+const THEME_OPTIONS = [
+	{ value: UserTheme.light, label: 'Light' },
+	{ value: UserTheme.dark, label: 'Dark' },
+	{ value: UserTheme.system, label: 'Same as system' },
+]
+
+function ThemeSelector() {
+	const user = useCurrentUser()
+	const fetcher = useFetcher()
+	// show the pending choice right away, the page re-themes once the preference is saved
+	const pendingTheme = (fetcher.json as { theme?: UserTheme } | undefined)
+		?.theme
+	const selected = pendingTheme ?? user?.theme ?? UserTheme.system
+
+	return (
+		<fieldset className="space-y-3">
+			<legend className="text-lg font-medium text-gray-900">Appearance</legend>
+			<div className="flex flex-wrap gap-2">
+				{THEME_OPTIONS.map((option) => (
+					<label
+						key={option.value}
+						className={`cursor-pointer rounded-md border px-4 py-2 text-sm font-medium ${
+							selected === option.value
+								? 'border-sky-500 bg-sky-50 text-sky-600'
+								: 'border-gray-300 text-gray-700 hover:bg-gray-50'
+						}`}
+					>
+						<input
+							type="radio"
+							name="theme"
+							value={option.value}
+							checked={selected === option.value}
+							onChange={() =>
+								fetcher.submit(
+									{ intent: 'theme', theme: option.value },
+									{
+										method: 'post',
+										action: Route.preferences,
+										encType: 'application/json',
+									}
+								)
+							}
+							className="sr-only"
+						/>
+						{option.label}
+					</label>
+				))}
+			</div>
+		</fieldset>
 	)
 }

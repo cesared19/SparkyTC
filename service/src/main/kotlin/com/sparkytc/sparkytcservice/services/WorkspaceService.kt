@@ -3,7 +3,9 @@ package com.sparkytc.sparkytcservice.services
 import com.sparkytc.sparkytcservice.auth.CurrentUser
 import com.sparkytc.sparkytcservice.dto.attachments.AttachmentContentDTO
 import com.sparkytc.sparkytcservice.dto.attachments.TestCaseAttachmentDTO
+import com.sparkytc.sparkytcservice.dto.dashboard.*
 import com.sparkytc.sparkytcservice.dto.documents.*
+import com.sparkytc.sparkytcservice.dto.jira.JiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraLinkDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
@@ -42,12 +44,13 @@ class WorkspaceService(
     private val testCaseAttachmentContentRepository: TestCaseAttachmentContentRepository,
     private val testCaseJiraLinkRepository: TestCaseJiraLinkRepository,
     private val jiraService: JiraService,
+    private val projectAccessService: ProjectAccessService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
     fun retrieveProjects(): List<WorkspaceProjectDTO> {
-        val projects = projectRepository.findAll()
-        return projects.map { it.toDTO() }
+        val projects = projectRepository.findAllByOrderByTitleAsc()
+        return projectAccessService.accessibleProjects(CurrentUser.get(), projects).map { it.toDTO() }
     }
 
     fun createProject(project: CreateWorkspaceProjectDTO) {
@@ -75,9 +78,67 @@ class WorkspaceService(
     }
 
     @Transactional
+    fun retrieveProjectDashboard(projectShortCode: String): ProjectDashboardDTO {
+        val project = projectRepository.findByProjectShortCode(projectShortCode)
+        requireNotNull(project) { "No project found" }
+        projectAccessService.requireAccess(project)
+
+        val testCases = testCaseRepository.findByProjectOrderByTestCaseNumberAsc(project)
+        val propertyBreakdowns = propertyConfigurationRepository.findAll()
+            .filter { it.propertyType == PropertyConfigurationType.SINGLE_SELECT_LIST }
+            .sortedBy { it.id }
+            .map { property ->
+                val values = testCases.map { testCase ->
+                    testCase.propertyValues.firstOrNull { it.propertyConfiguration.id == property.id }?.value
+                }
+                val options = property.selectOptions.orEmpty()
+                val counts = options.map { option -> ValueCountDTO(option, values.count { it == option }) }
+                val notSet = values.count { it == null || it !in options }
+                PropertyBreakdownDTO(property.title, if (notSet > 0) counts + ValueCountDTO("Not set", notSet) else counts)
+            }
+
+        val testRuns = testRunRepository.findAllByProject(project).sortedByDescending { it.testRunNumber }
+        val summaries = testRuns.associateWith { testRun ->
+            val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
+            TestRunSummaryDTO(
+                testRunID = testRun.externalID,
+                testRunNumber = testRun.testRunNumber,
+                title = testRun.title,
+                status = testRun.status,
+                creationDate = testRun.creationDate,
+                createdBy = testRun.createdBy?.displayName,
+                totalCount = testCaseRuns.size,
+                resultCounts = TestCaseRunStatus.entries.associateWith { status -> testCaseRuns.count { it.status == status } },
+            )
+        }
+
+        val activeStatuses = setOf(TestRunStatus.PENDING, TestRunStatus.IN_PROGRESS)
+        return ProjectDashboardDTO(
+            project = project.toDTO(),
+            testCaseCount = testCases.size,
+            propertyBreakdowns = propertyBreakdowns,
+            testRunCounts = TestRunStatus.entries.associateWith { status -> testRuns.count { it.status == status } },
+            activeTestRuns = testRuns.filter { it.status in activeStatuses }.mapNotNull { summaries[it] },
+            recentTestRuns = testRuns.filter { it.status !in activeStatuses }.take(5).mapNotNull { summaries[it] },
+            linkedJiraIssueCount = testCases.flatMap { testCase -> testCase.jiraLinks.map { it.issueKey } }.distinct().size,
+        )
+    }
+
+    /** Jira issue details, limited to issues linked to test cases in projects the user can see. */
+    @Transactional
+    fun retrieveJiraIssues(issueKeys: List<String>): List<JiraIssueDTO> {
+        val visibleKeys = testCaseJiraLinkRepository.findAllByIssueKeyIn(issueKeys.distinct())
+            .filter { projectAccessService.canAccess(CurrentUser.get(), it.testCase.project) }
+            .map { it.issueKey }
+            .toSet()
+        return jiraService.retrieveIssues(issueKeys.filter { it in visibleKeys })
+    }
+
+    @Transactional
     fun retrieveTestCases(projectShortCode: String): List<TestCaseDTO> {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found" }
+        projectAccessService.requireAccess(project)
         val testCases = testCaseRepository.findByProjectOrderByTestCaseNumberAsc(project)
         return testCases.map { it.toDTO() }
     }
@@ -86,6 +147,7 @@ class WorkspaceService(
     fun updateTestCase(testCaseID: UUID, updateDTO: CreateTestCaseDTO) {
         val testCase = testCaseRepository.findByExternalID(testCaseID)
         requireNotNull(testCase) { "No test case found with id $testCaseID" }
+        projectAccessService.requireAccess(testCase.project)
 
         require(updateDTO.title.isNotBlank()) { "Test case must have a title" }
 
@@ -104,6 +166,7 @@ class WorkspaceService(
     fun createTestCase(projectShortCode: String, testCase: CreateTestCaseDTO) {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found" }
+        projectAccessService.requireAccess(project)
 
         // find the test case with the largest test case number and bump it up by 1
         val largestTestCaseNumber = testCaseRepository.findTopByProjectOrderByTestCaseNumberDesc(project)?.testCaseNumber ?: 0
@@ -114,6 +177,7 @@ class WorkspaceService(
     fun batchCreateTestCases(projectShortCode: String, batch: BatchCreateTestCasesDTO): Int {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found" }
+        projectAccessService.requireAccess(project)
 
         require(batch.testCases.isNotEmpty()) { "There must be at least one test case to import" }
 
@@ -192,6 +256,7 @@ class WorkspaceService(
     fun deleteTestCase(testCaseID: UUID) {
         val testCase = testCaseRepository.findByExternalID(testCaseID)
         requireNotNull(testCase) { "No test case found with id $testCaseID" }
+        projectAccessService.requireAccess(testCase.project)
 
         // delete all references to this test case from test case property values
         testCasePropertyValueRepository.deleteAllByTestCase(testCase)
@@ -292,6 +357,7 @@ class WorkspaceService(
     fun retrieveTestRuns(projectShortCode: String): List<TestRunDTO> {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
+        projectAccessService.requireAccess(project)
         val testRuns = testRunRepository.findAllByProject(project)
         return testRuns.map { it.toDTO() }
     }
@@ -300,6 +366,7 @@ class WorkspaceService(
     fun createTestRun(projectShortCode: String, testRun: CreateTestRunDTO) {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
+        projectAccessService.requireAccess(project)
 
         require(testRun.testCaseIDs.isNotEmpty()) { "There must be at least one test case for the test run" }
 
@@ -318,6 +385,7 @@ class WorkspaceService(
         for (testCaseID in testRun.testCaseIDs) {
             val testCaseModel = testCaseRepository.findByExternalID(testCaseID)
             requireNotNull(testCaseModel) { "No test case found for id $testCaseID" }
+            require(testCaseModel.project.id == project.id) { "No test case found for id $testCaseID" }
             val newTestCaseRun = TestCaseRun(
                 testRun = newTestRun,
                 testCase = testCaseModel,
@@ -335,6 +403,7 @@ class WorkspaceService(
     fun updateTestRun(testRunID: UUID, updateDTO: UpdateTestRunDTO) {
         val testRun = testRunRepository.findByExternalID(testRunID)
         requireNotNull(testRun) { "No test run found for id $testRunID" }
+        projectAccessService.requireAccess(testRun.project)
 
         testRun.title = updateDTO.title
         testRun.description = updateDTO.description
@@ -347,6 +416,7 @@ class WorkspaceService(
     fun deleteTestRun(testRunID: UUID) {
         val testRun = testRunRepository.findByExternalID(testRunID)
         requireNotNull(testRun) { "No test run found for id $testRunID" }
+        projectAccessService.requireAccess(testRun.project)
 
         // First delete all associated test case runs
         testCaseRunRepository.deleteAllByTestRun(testRun)
@@ -366,6 +436,7 @@ class WorkspaceService(
     fun retrieveNextTestCaseRun(testCaseRunID: UUID): TestCaseRunDTO? {
         val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
         requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        projectAccessService.requireAccess(testCaseRun.testRun.project)
 
         if (testCaseRun.testRun.status != TestRunStatus.IN_PROGRESS) {
             log.info("Test run ${testCaseRun.testRun.id} is not eligible to auto-retrieve")
@@ -399,6 +470,7 @@ class WorkspaceService(
     fun updateTestCaseRun(testCaseRunID: UUID, updateDTO: UpdateTestCaseRunDTO) {
         val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
         requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        projectAccessService.requireAccess(testCaseRun.testRun.project)
 
         testCaseRun.status = updateDTO.status
         testCaseRun.notes = updateDTO.notes
@@ -423,6 +495,7 @@ class WorkspaceService(
     fun updateTestCaseRunDetails(testCaseRunID: UUID, updateDTO: UpdateTestCaseRunDetailsDTO) {
         val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
         requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        projectAccessService.requireAccess(testCaseRun.testRun.project)
 
         require(updateDTO.title.isNotBlank()) { "Test case must have a title" }
 
@@ -443,13 +516,17 @@ class WorkspaceService(
 
     @Transactional
     fun deleteTestCaseRun(testCaseRunID: UUID) {
-        testCaseRunRepository.deleteByExternalID(testCaseRunID)
+        val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
+        requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        projectAccessService.requireAccess(testCaseRun.testRun.project)
+        testCaseRunRepository.delete(testCaseRun)
     }
 
     @Transactional
     fun uploadTestCaseAttachments(testCaseID: UUID, files: List<MultipartFile>): List<TestCaseAttachmentDTO> {
         val testCase = testCaseRepository.findByExternalID(testCaseID)
         requireNotNull(testCase) { "No test case found with id $testCaseID" }
+        projectAccessService.requireAccess(testCase.project)
 
         require(files.isNotEmpty()) { "At least one file is required" }
 
@@ -476,6 +553,7 @@ class WorkspaceService(
     fun retrieveAttachmentContent(attachmentID: UUID): AttachmentContentDTO {
         val attachment = testCaseAttachmentRepository.findByExternalID(attachmentID)
         requireNotNull(attachment) { "No attachment found with id $attachmentID" }
+        projectAccessService.requireAccess(attachment.testCase.project)
 
         val content = testCaseAttachmentContentRepository.findByAttachment(attachment)
         requireNotNull(content) { "No content found for attachment $attachmentID" }
@@ -487,6 +565,7 @@ class WorkspaceService(
     fun deleteAttachment(attachmentID: UUID) {
         val attachment = testCaseAttachmentRepository.findByExternalID(attachmentID)
         requireNotNull(attachment) { "No attachment found with id $attachmentID" }
+        projectAccessService.requireAccess(attachment.testCase.project)
 
         testCaseAttachmentContentRepository.deleteAllByAttachment(attachment)
         testCaseAttachmentRepository.delete(attachment)
@@ -496,6 +575,7 @@ class WorkspaceService(
     fun createJiraIssue(testCaseRunID: UUID, request: CreateJiraIssueDTO): JiraLinkDTO {
         val testCaseRun = testCaseRunRepository.findByExternalID(testCaseRunID)
         requireNotNull(testCaseRun) { "No test case found for id $testCaseRunID" }
+        projectAccessService.requireAccess(testCaseRun.testRun.project)
 
         require(request.summary.isNotBlank()) { "Summary is required" }
         require(request.stepsToReproduce.isNotBlank()) { "Steps to reproduce are required" }
@@ -542,6 +622,7 @@ class WorkspaceService(
     fun linkJiraIssue(testCaseID: UUID, request: LinkJiraIssueDTO): JiraLinkDTO {
         val testCase = testCaseRepository.findByExternalID(testCaseID)
         requireNotNull(testCase) { "No test case found with id $testCaseID" }
+        projectAccessService.requireAccess(testCase.project)
 
         val issueKey = JiraService.parseIssueKey(request.issue)
         requireNotNull(issueKey) { "'${request.issue}' is not a valid Jira issue key, e.g. SCRUM-123" }
@@ -566,6 +647,7 @@ class WorkspaceService(
     fun deleteJiraLink(linkID: UUID) {
         val link = testCaseJiraLinkRepository.findByExternalID(linkID)
         requireNotNull(link) { "No Jira link found with id $linkID" }
+        projectAccessService.requireAccess(link.testCase.project)
 
         // only the link in SparkyTC is removed, the jira issue is left untouched
         testCaseJiraLinkRepository.delete(link)
@@ -653,6 +735,7 @@ class WorkspaceService(
     ): TestRun {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
+        projectAccessService.requireAccess(project)
 
         val testRun = testRunRepository.findByProjectAndTestRunNumber(project, testRunNumber)
         requireNotNull(testRun) { "No test run found with test run number $testRunNumber" }

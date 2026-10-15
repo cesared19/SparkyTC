@@ -1,3 +1,128 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* light theme: tailwind's default gray scale */
+:root {
+	--color-gray-50: 249 250 251;
+	--color-gray-100: 243 244 246;
+	--color-gray-200: 229 231 235;
+	--color-gray-300: 209 213 219;
+	--color-gray-400: 156 163 175;
+	--color-gray-500: 107 114 128;
+	--color-gray-600: 75 85 99;
+	--color-gray-700: 55 65 81;
+	--color-gray-800: 31 41 55;
+	--color-gray-900: 17 24 39;
+	--color-gray-950: 3 7 18;
+	--color-page: 255 255 255;
+	--color-surface: 255 255 255;
+}
+
+/*
+ * dark theme: the gray scale is inverted, so text-gray-900 becomes light text and bg-gray-50
+ * becomes a subtle dark fill. White surfaces and the light tinted backgrounds used for
+ * messages and badges are remapped below.
+ */
+.dark {
+	color-scheme: dark;
+	--color-gray-50: 27 33 47;
+	--color-gray-100: 34 42 58;
+	--color-gray-200: 48 58 76;
+	--color-gray-300: 68 79 98;
+	--color-gray-400: 110 119 136;
+	--color-gray-500: 152 161 176;
+	--color-gray-600: 178 186 199;
+	--color-gray-700: 207 212 221;
+	--color-gray-800: 226 229 235;
+	--color-gray-900: 241 243 246;
+	--color-gray-950: 250 251 252;
+	--color-page: 11 15 25;
+	--color-surface: 17 22 34;
+}
+
+body {
+	background-color: rgb(var(--color-page));
+	color: rgb(var(--color-gray-900));
+}
+
+.dark .bg-white,
+.dark .hover\:bg-white:hover,
+.dark .focus\:bg-white:focus {
+	background-color: rgb(var(--color-surface));
+}
+.dark .bg-white\/90 {
+	background-color: rgb(var(--color-surface) / 0.9);
+}
+
+.dark input:not([type='checkbox']):not([type='radio']),
+.dark textarea,
+.dark select {
+	background-color: rgb(var(--color-surface));
+}
+
+/* tinted backgrounds */
+.dark .bg-red-50,
+.dark .bg-red-50\/40,
+.dark .hover\:bg-red-50:hover {
+	background-color: rgb(127 29 29 / 0.28);
+}
+.dark .bg-red-100 {
+	background-color: rgb(153 27 27 / 0.4);
+}
+.dark .bg-green-50,
+.dark .hover\:bg-green-50:hover {
+	background-color: rgb(20 83 45 / 0.3);
+}
+.dark .bg-green-100 {
+	background-color: rgb(22 101 52 / 0.45);
+}
+.dark .bg-yellow-50,
+.dark .hover\:bg-yellow-50:hover {
+	background-color: rgb(113 63 18 / 0.3);
+}
+.dark .bg-yellow-100 {
+	background-color: rgb(133 77 14 / 0.45);
+}
+.dark .bg-blue-100 {
+	background-color: rgb(30 58 138 / 0.45);
+}
+.dark .bg-sky-50 {
+	background-color: rgb(12 74 110 / 0.4);
+}
+
+/* text on tinted backgrounds and links */
+.dark .text-red-800,
+.dark .text-red-700,
+.dark .hover\:text-red-700:hover,
+.dark .hover\:text-red-800:hover {
+	color: rgb(252 165 165);
+}
+.dark .text-red-600,
+.dark .hover\:text-red-600:hover {
+	color: rgb(248 113 113);
+}
+.dark .text-green-800,
+.dark .text-green-700,
+.dark .hover\:text-green-700:hover {
+	color: rgb(134 239 172);
+}
+.dark .text-yellow-800,
+.dark .hover\:text-yellow-700:hover {
+	color: rgb(253 230 138);
+}
+.dark .text-blue-800 {
+	color: rgb(147 197 253);
+}
+.dark .text-sky-600,
+.dark .hover\:text-sky-600:hover {
+	color: rgb(56 189 248);
+}
+.dark .hover\:text-sky-700:hover,
+.dark .hover\:text-sky-800:hover {
+	color: rgb(125 211 252);
+}
+.dark .border-red-200,
+.dark .border-red-300 {
+	border-color: rgb(153 27 27 / 0.7);
+}

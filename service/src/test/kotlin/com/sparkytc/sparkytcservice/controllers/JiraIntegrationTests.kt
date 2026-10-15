@@ -252,8 +252,8 @@ class JiraIntegrationTests {
             .andExpect(jsonPath("$.data[0].summary").value("Existing bug"))
             .andExpect(jsonPath("$.data[0].status").value("In Progress"))
             .andExpect(jsonPath("$.data[0].statusCategory").value("indeterminate"))
-            .andExpect(jsonPath("$.data[1].issueKey").value("SCRUM-404"))
-            .andExpect(jsonPath("$.data[1].error").value(Matchers.containsString("not found")))
+            // issues that aren't linked to a visible test case are never looked up
+            .andExpect(jsonPath("$.data.size()").value(1))
 
         val link = getTestCases().first().jiraLinks.single()
         mockMvc.perform(delete("/api/v1/workspace/jira-links/${link.linkID}"))

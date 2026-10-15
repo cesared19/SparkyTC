@@ -48,10 +48,16 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = projects))
     }
 
+    @AdminOnly
     @PostMapping("/projects")
     fun createProject(@RequestBody request: CreateWorkspaceProjectDTO): ResponseEntity<Any> {
         workspaceService.createProject(request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/dashboard")
+    fun retrieveProjectDashboard(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveProjectDashboard(projectShortCode)))
     }
 
     @GetMapping("test-cases/{projectShortCode}")
@@ -195,7 +201,7 @@ class WorkspaceController(
 
     @GetMapping("/jira/issues")
     fun retrieveJiraIssues(@RequestParam("keys") issueKeys: List<String>): ResponseEntity<Any> {
-        return ResponseEntity.ok(DataResponse(data = jiraService.retrieveIssues(issueKeys)))
+        return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveJiraIssues(issueKeys)))
     }
 
     @PostMapping("/test-case-runs/{testCaseRunID}/jira-issue")

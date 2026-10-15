@@ -9,4 +9,6 @@ interface TestCaseJiraLinkRepository : JpaRepository<TestCaseJiraLink, Long> {
     fun findByExternalID(externalID: UUID): TestCaseJiraLink?
 
     fun findByTestCaseAndIssueKey(testCase: TestCase, issueKey: String): TestCaseJiraLink?
+
+    fun findAllByIssueKeyIn(issueKeys: List<String>): List<TestCaseJiraLink>
 }

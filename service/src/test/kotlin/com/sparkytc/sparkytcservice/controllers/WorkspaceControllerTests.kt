@@ -107,14 +107,13 @@ class WorkspaceControllerTests {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data").isArray)
             .andExpect(jsonPath("$.data.size()").value(2))
-            // project 1
-            .andExpect(jsonPath("$.data[0].title").value("Test Project"))
-            .andExpect(jsonPath("$.data[0].projectShortCode").value("TEST"))
-            .andExpect(jsonPath("$.data[0].description").value("Test Description"))
-            // project 2
-            .andExpect(jsonPath("$.data[1].title").value("Second Test Project"))
-            .andExpect(jsonPath("$.data[1].projectShortCode").value("TEST2"))
-            .andExpect(jsonPath("$.data[1].description").value("Second Test Description"))
+            // projects are sorted by title
+            .andExpect(jsonPath("$.data[0].title").value("Second Test Project"))
+            .andExpect(jsonPath("$.data[0].projectShortCode").value("TEST2"))
+            .andExpect(jsonPath("$.data[0].description").value("Second Test Description"))
+            .andExpect(jsonPath("$.data[1].title").value("Test Project"))
+            .andExpect(jsonPath("$.data[1].projectShortCode").value("TEST"))
+            .andExpect(jsonPath("$.data[1].description").value("Test Description"))
     }
 
     @Test

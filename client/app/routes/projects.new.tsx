@@ -1,4 +1,5 @@
-import { json, type ActionFunctionArgs, redirect } from '@remix-run/node'
+import { type ActionFunctionArgs, redirect } from '@remix-run/node'
+import { requireAdmin } from '~/utility/Authorization.server'
 import { useNavigate, useSubmit, Form, useActionData } from '@remix-run/react'
 import { APIRoute, Route } from '~/utility/Routes'
 import { NewProject } from '~/models/project'
@@ -6,6 +7,12 @@ import type { ErrorResponse } from '~/models/types'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { Tools } from '~/utility/Tools'
 import { requireAPI } from '~/utility/API.server'
+
+// creating projects is restricted to admins, who then choose which testers can see them
+export async function loader({ request }: ActionFunctionArgs) {
+	await requireAdmin(request)
+	return null
+}
 
 export async function action({ request }: ActionFunctionArgs) {
 	const api = await requireAPI(request)
@@ -44,9 +51,7 @@ export default function NewProjectPage() {
 	return (
 		<div className="p-6 space-y-6">
 			<div className="flex items-center justify-between">
-				<h2 className="text-2xl font-semibold text-gray-900">
-					New Project
-				</h2>
+				<h2 className="text-2xl font-semibold text-gray-900">New Project</h2>
 			</div>
 			{actionData?.message && <ErrorMessage message={actionData.message} />}
 			<div>

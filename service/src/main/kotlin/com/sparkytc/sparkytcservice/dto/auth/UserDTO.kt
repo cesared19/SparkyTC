@@ -11,5 +11,9 @@ data class UserDTO(
     val displayName: String,
     val role: UserRole,
     @JsonProperty("isActive")
-    val isActive: Boolean
+    val isActive: Boolean,
+    val theme: UserTheme = UserTheme.SYSTEM,
+    val defaultProjectShortCode: String? = null,
+    // only included in the admin user list
+    val projectIDs: List<UUID>? = null
 )

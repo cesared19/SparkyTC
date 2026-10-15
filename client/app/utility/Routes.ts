@@ -15,6 +15,14 @@ export class Route {
 		return `/test-cases/${projectShortCode}/${testCaseNumber}`
 	}
 
+	static viewProjectDashboard(projectShortCode: string) {
+		return `/projects/${projectShortCode}`
+	}
+
+	static get preferences() {
+		return '/preferences'
+	}
+
 	static importTestCases(projectShortCode: string) {
 		return `/test-cases/${projectShortCode}/import`
 	}
@@ -89,6 +97,22 @@ export class APIRoute {
 
 	static get projects() {
 		return `${this.baseAPIURL}/api/v1/workspace/projects`
+	}
+
+	static projectDashboard(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/dashboard`
+	}
+
+	static get themePreference() {
+		return `${this.baseAPIURL}/api/v1/auth/preferences/theme`
+	}
+
+	static get defaultProjectPreference() {
+		return `${this.baseAPIURL}/api/v1/auth/preferences/default-project`
+	}
+
+	static userProjects(userID: string) {
+		return `${this.baseAPIURL}/api/v1/admin/users/${userID}/projects`
 	}
 
 	static projectTestCases(projectShortCode: string) {

@@ -283,6 +283,29 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.5")
                 }
                 SchemaVersion.VERSION_0_0_5 -> {
+                    // projects visible to each tester
+                    jdbcTemplate.execute("""
+                        CREATE TABLE project_members (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            UNIQUE (project_id, user_id)
+                        )
+                    """.trimIndent())
+
+                    // testers created before project visibility existed keep access to every project
+                    jdbcTemplate.execute("""
+                        INSERT INTO project_members (project_id, user_id)
+                        SELECT p.id, u.id FROM workspace_projects p CROSS JOIN users u WHERE u.role = 'TESTER'
+                    """.trimIndent())
+
+                    // user preferences
+                    jdbcTemplate.execute("ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'SYSTEM', ADD COLUMN default_project_id BIGINT REFERENCES workspace_projects(id) ON DELETE SET NULL")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.6")
+                }
+                SchemaVersion.VERSION_0_0_6 -> {
                     break
                 }
             }
