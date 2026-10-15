@@ -44,6 +44,11 @@ export class Tools {
 	}
 
 	static mapErrorToResponse(error: unknown): ErrorResponse {
+		// redirects (e.g. to the login page) are thrown as responses and must not be swallowed
+		if (error instanceof Response) {
+			throw error
+		}
+
 		if (error instanceof Error) {
 			return {
 				message: error.message,

@@ -3,13 +3,14 @@ import { useActionData, useSubmit } from '@remix-run/react'
 import type { PropertyFormData } from '~/components/PropertyForm'
 import PropertyForm, { PropertyFormMode } from '~/components/PropertyForm'
 import { Route, APIRoute } from '~/utility/Routes'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 import { ErrorResponse } from '../models/types'
 
 export async function action({ request }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
-		await APIClient.post(APIRoute.properties, {
+		await api.post(APIRoute.properties, {
 			body: await request.json(),
 		})
 

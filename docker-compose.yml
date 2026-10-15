@@ -9,8 +9,16 @@ services:
          DATABASE_URL: ${DATABASE_URL}
          DATABASE_USERNAME: ${DATABASE_USERNAME}
          DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+         ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+         ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+         JIRA_BASE_URL: ${JIRA_BASE_URL:-}
+         JIRA_EMAIL: ${JIRA_EMAIL:-}
+         JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+         JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-SCRUM}
+         JIRA_ISSUE_TYPE: ${JIRA_ISSUE_TYPE:-Error}
+      # only reachable from the host itself, the client talks to the backend over app-network
       ports:
-         - '8080:8080'
+         - '127.0.0.1:8080:8080'
       networks:
          - app-network
 
@@ -21,6 +29,9 @@ services:
       environment:
          NODE_ENV: production
          VITE_API_URL: http://backend-service:8080
+         SPARKYTC_PUBLIC_URL: ${SPARKYTC_PUBLIC_URL:-}
+         SESSION_SECRET: ${SESSION_SECRET:-}
+         COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ports:
          - '3000:3000'
       depends_on:

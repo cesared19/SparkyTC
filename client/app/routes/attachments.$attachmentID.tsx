@@ -3,7 +3,7 @@ import {
 	type LoaderFunctionArgs,
 } from '@remix-run/node'
 import { APIRoute } from '~/utility/Routes'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 
 // headers forwarded from the backend so browsers can render and seek through media
@@ -16,6 +16,7 @@ const FORWARDED_HEADERS = [
 ]
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
 	const attachmentID = params.attachmentID
 	if (!attachmentID) {
 		throw new Response('Attachment ID is required', { status: 400 })
@@ -27,7 +28,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		headers['Range'] = range
 	}
 
-	const response = await fetch(APIRoute.attachment(attachmentID), {
+	const response = await api.fetch(APIRoute.attachment(attachmentID), {
 		headers,
 	})
 	if (!response.ok) {
@@ -50,6 +51,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const attachmentID = params.attachmentID
 		if (!attachmentID) {
@@ -59,7 +61,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			throw 'Invalid request method'
 		}
 
-		await APIClient.delete(APIRoute.attachment(attachmentID))
+		await api.delete(APIRoute.attachment(attachmentID))
 		return { ok: true }
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), { status: 400 })

@@ -5,11 +5,12 @@ import { NewProject } from '~/models/project'
 import type { ErrorResponse } from '~/models/types'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { Tools } from '~/utility/Tools'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
 export async function action({ request }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
-		await APIClient.post(APIRoute.projects, {
+		await api.post(APIRoute.projects, {
 			body: await request.json(),
 		})
 

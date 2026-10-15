@@ -6,10 +6,12 @@ import type {
 	ProjectTestCaseRunsOutletContext,
 	ProjectTestRunsOutletContext,
 	TestCaseRun,
+	PropertyConfiguration,
 } from '~/models/types'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
 	const projectShortCode = params.projectShortCode
 	const testRunNumber = Number(params.testRunNumber)
 	if (!projectShortCode) {
@@ -19,16 +21,23 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		throw new Response('Test run number is required', { status: 400 })
 	}
 
-	const response = await APIClient.get<FetchResponse<TestCaseRun[]>>(
-		APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
-	)
-	return { testRunNumber, testCaseRuns: response.data }
+	const [response, propertiesResponse] = await Promise.all([
+		api.get<FetchResponse<TestCaseRun[]>>(
+			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
+		),
+		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+	])
+	return {
+		testRunNumber,
+		testCaseRuns: response.data,
+		properties: propertiesResponse.data,
+	}
 }
 
 export default function TestRunsIndex() {
-	const { testRunNumber, testCaseRuns } = useLoaderData<typeof loader>()
-	const { project, testRuns } =
-		useOutletContext<ProjectTestRunsOutletContext>()
+	const { testRunNumber, testCaseRuns, properties } =
+		useLoaderData<typeof loader>()
+	const { project, testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
 	const testRun = testRuns.find(
 		(testRun) => testRun.testRunNumber === testRunNumber
 	)
@@ -40,6 +49,7 @@ export default function TestRunsIndex() {
 		project,
 		testRun,
 		testCaseRuns,
+		properties,
 	}
 
 	return <Outlet context={outletContext} />

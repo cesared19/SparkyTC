@@ -27,6 +27,20 @@ export class Route {
 		return `/test-case-attachments/${testCaseID}`
 	}
 
+	static jiraIssues(issueKeys: string[]) {
+		const params = new URLSearchParams()
+		issueKeys.forEach((key) => params.append('keys', key))
+		return `/jira-issues?${params.toString()}`
+	}
+
+	static testCaseJiraLinks(testCaseID: string) {
+		return `/test-case-jira-links/${testCaseID}`
+	}
+
+	static jiraLink(linkID: string) {
+		return `/jira-links/${linkID}`
+	}
+
 	static viewProjectTestRuns(projectShortCode: string) {
 		return `/test-runs/${projectShortCode}`
 	}
@@ -41,6 +55,22 @@ export class Route {
 		testCaseNumber: number
 	) {
 		return `/test-runs/${projectShortCode}/${testRunNumber}/${testCaseNumber}`
+	}
+
+	static get login() {
+		return '/login'
+	}
+
+	static get logout() {
+		return '/logout'
+	}
+
+	static get account() {
+		return '/account'
+	}
+
+	static get users() {
+		return '/admin/users'
 	}
 
 	static get viewProperties() {
@@ -81,6 +111,30 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/attachments/${attachmentID}`
 	}
 
+	static get jiraConfiguration() {
+		return `${this.baseAPIURL}/api/v1/workspace/jira/configuration`
+	}
+
+	static jiraIssues(issueKeys: string[]) {
+		const params = new URLSearchParams()
+		issueKeys.forEach((key) => params.append('keys', key))
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/jira/issues?${params.toString()}`
+	}
+
+	static testCaseJiraLinks(testCaseID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}/jira-links`
+	}
+
+	static jiraLink(linkID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/jira-links/${linkID}`
+	}
+
+	static createJiraIssue(testCaseRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issue`
+	}
+
 	static projectTestRuns(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${projectShortCode}`
 	}
@@ -107,6 +161,30 @@ export class APIRoute {
 
 	static nextTestCaseRun(testCaseRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/next`
+	}
+
+	static get login() {
+		return `${this.baseAPIURL}/api/v1/auth/login`
+	}
+
+	static get logout() {
+		return `${this.baseAPIURL}/api/v1/auth/logout`
+	}
+
+	static get currentUser() {
+		return `${this.baseAPIURL}/api/v1/auth/me`
+	}
+
+	static get changePassword() {
+		return `${this.baseAPIURL}/api/v1/auth/password`
+	}
+
+	static get users() {
+		return `${this.baseAPIURL}/api/v1/admin/users`
+	}
+
+	static user(userID: string) {
+		return `${this.baseAPIURL}/api/v1/admin/users/${userID}`
 	}
 
 	static get properties() {

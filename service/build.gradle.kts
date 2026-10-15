@@ -6,7 +6,7 @@ plugins {
     kotlin("plugin.jpa") version "1.9.25"
 }
 
-group = "com.cherry"
+group = "com.sparkytc"
 version = "0.0.1-SNAPSHOT"
 
 java {
@@ -25,6 +25,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
+    implementation("org.springframework.security:spring-security-crypto")
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

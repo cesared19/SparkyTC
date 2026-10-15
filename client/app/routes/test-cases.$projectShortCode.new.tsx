@@ -8,17 +8,18 @@ import {
 import { APIRoute, Route } from '~/utility/Routes'
 import { TestCaseForm, TestCaseFormMode } from '~/components/TestCaseForm'
 import { ProjectTestCasesOutletContext, ErrorResponse } from '~/models/types'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const projectShortCode = params.projectShortCode
 		if (!projectShortCode) {
 			throw 'Project short code is required'
 		}
 
-		await APIClient.post(APIRoute.projectTestCases(projectShortCode), {
+		await api.post(APIRoute.projectTestCases(projectShortCode), {
 			body: await request.json(),
 		})
 		return redirect(Route.viewProjectTestCases(projectShortCode))

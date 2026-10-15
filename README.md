@@ -1,8 +1,10 @@
-# Cherry Test Management Platform
+# SparkyTC Test Management Platform
 
-<img src="./documentation/assets/cherry.png" alt="Cherry Logo" width=300>
+<img src="./documentation/assets/sparkytc.png" alt="SparkyTC Logo" width=300>
 
-Cherry is a modern test case management platform that helps teams organize, track, and execute their testing efforts efficiently. Built on top of enterprise-grade open source tools, Cherry provides a robust and reliable solution for managing and executing test cases.
+SparkyTC is a modern test case management platform that helps teams organize, track, and execute their testing efforts efficiently. Built on top of enterprise-grade open source tools, SparkyTC provides a robust and reliable solution for managing and executing test cases.
+
+SparkyTC is based on [Cherry](https://github.com/bennettadam/cherry) by Adam Bennett and is distributed under the Apache License 2.0 (see [LICENSE](./LICENSE)). It has been modified to add CSV import, media attachments, Jira integration and user accounts, among other changes.
 
 ## Features
 
@@ -46,6 +48,8 @@ View the progress of your test run and see the results of each test case.
 -  Images and videos attached to test cases, visible while executing a test run
 -  Links inside test case descriptions, instructions and properties are clickable and open in a new tab
 -  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
+-  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status (see below)
+-  User accounts with Tester and Admin roles, and a record of who created, updated and executed each test case (see below)
 
 ### Importing test cases from CSV
 
@@ -64,11 +68,48 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.3`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.5`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+
+### User accounts
+
+Everyone signs in with their own account. There are two roles:
+
+-  **Tester**: create, edit and import test cases, run test runs, add images and videos, and create or link Jira issues.
+-  **Admin**: everything a tester can do, plus managing users (**Users** page), configuring properties, and deleting test cases and test runs.
+
+The first admin account is created when the backend starts and there are no users yet. Add these variables to the `.env` file before the first start, then sign in and create the rest of the accounts from the **Users** page:
+
+```
+ADMIN_USERNAME=<username>
+ADMIN_PASSWORD=<at least 8 characters>
+SESSION_SECRET=<long random string, e.g. the output of: openssl rand -hex 32>
+```
+
+`SESSION_SECRET` signs the session cookie of the client service. If it isn't set a random one is used and everyone is signed out whenever the client restarts. Sessions last 7 days. Set `COOKIE_SECURE=true` once the application is served over HTTPS.
+
+Users can change their password from their account page (click their name in the top bar). Admins can reset passwords and deactivate accounts, which signs the user out immediately.
+
+### Jira integration
+
+SparkyTC can create a bug in Jira Cloud from a failed test case run, link existing issues to a test case, and show the current status of the linked issues. Add these variables to the `.env` file of the backend service:
+
+```
+JIRA_BASE_URL=https://your-site.atlassian.net
+JIRA_EMAIL=user@example.com
+JIRA_API_TOKEN=<api token>
+JIRA_PROJECT_KEY=SCRUM   # project where bugs are created
+JIRA_ISSUE_TYPE=Error    # issue type name used for bugs
+```
+
+API tokens are created at https://id.atlassian.com/manage-profile/security/api-tokens and act with the permissions of the account that created them (it needs Browse projects, Create issues and Link issues). Tokens expire, so renew them when SparkyTC reports that Jira rejected the credentials. The integration is disabled while any of the first three variables is empty.
+
+-  To report a bug, mark a test case as **Fail** during a test run and click **Create bug in Jira**. The form is pre-filled from the test case: the summary from the title, the steps from the test instructions, the expected result and build number from the `Expected Result` and `Build Number` properties, and the actual result from the run notes.
+-  Images and videos are **never uploaded to Jira**, so they don't use its storage quota. The issue description links to them in SparkyTC instead, and a link back to the test case is added to the issue.
+-  The links use the address you open SparkyTC with (e.g. `http://192.168.1.20:3000`). Set `SPARKYTC_PUBLIC_URL` in the client service to override it, for example when a domain is added.
 
 ## Architecture Overview
 
-Cherry follows a three-tier architecture:
+SparkyTC follows a three-tier architecture:
 
 1. **Client service (Remix + React)**
 
@@ -92,7 +133,7 @@ graph TD
     C -->|SQL| D[(PostgreSQL)]
 ```
 
-## Deploying Cherry to production
+## Deploying SparkyTC to production
 
 ### Prerequisites
 

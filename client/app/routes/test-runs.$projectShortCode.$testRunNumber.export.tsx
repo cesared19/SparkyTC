@@ -1,8 +1,9 @@
 import { type LoaderFunctionArgs } from '@remix-run/node'
 import { APIRoute } from '~/utility/Routes'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
 	const url = new URL(request.url)
 	const type = url.searchParams.get('type')
 	if (!type) {
@@ -26,7 +27,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		APIRoute.exportTestRun(projectShortCode, testRunNumber)
 	)
 	apiRoute.searchParams.set('type', type)
-	const response = await APIClient.postWithResponse(apiRoute.toString(), {
+	const response = await api.postWithResponse(apiRoute.toString(), {
 		body: { type },
 	})
 

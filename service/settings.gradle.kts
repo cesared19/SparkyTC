@@ -1,1 +1,1 @@
-rootProject.name = "cherry-service"
+rootProject.name = "sparkytc-service"

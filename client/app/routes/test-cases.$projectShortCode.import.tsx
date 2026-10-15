@@ -13,7 +13,7 @@ import {
 	ErrorResponse,
 	ProjectTestCasesOutletContext,
 } from '~/models/types'
-import { APIClient } from '~/utility/APIClient'
+import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { BackButton } from '~/components/BackButton'
@@ -24,6 +24,7 @@ import {
 } from '~/utility/TestCaseImport'
 
 export async function action({ request, params }: ActionFunctionArgs) {
+	const api = await requireAPI(request)
 	try {
 		const projectShortCode = params.projectShortCode
 		if (!projectShortCode) {
@@ -33,7 +34,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		const { testCases } = (await request.json()) as {
 			testCases: CreateTestCase[]
 		}
-		await APIClient.post(APIRoute.batchCreateTestCases(projectShortCode), {
+		await api.post(APIRoute.batchCreateTestCases(projectShortCode), {
 			body: { testCases },
 		})
 		return redirect(Route.viewProjectTestCases(projectShortCode))
