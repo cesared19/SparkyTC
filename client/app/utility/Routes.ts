@@ -27,6 +27,10 @@ export class Route {
 		return `/projects/${projectShortCode}/settings`
 	}
 
+	static viewProjectBuilds(projectShortCode: string) {
+		return `/projects/${projectShortCode}/builds`
+	}
+
 	static get assignments() {
 		return '/assignments'
 	}
@@ -37,6 +41,14 @@ export class Route {
 
 	static jiraIssueTypes(projectKey: string) {
 		return `/jira-issue-types?${new URLSearchParams({ projectKey }).toString()}`
+	}
+
+	static jiraUsers(query: string) {
+		return `/jira-users?${new URLSearchParams({ query }).toString()}`
+	}
+
+	static get linkJiraUser() {
+		return '/jira-users'
 	}
 
 	static get notifications() {
@@ -136,6 +148,10 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/settings`
 	}
 
+	static projectBuildResults(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/build-results`
+	}
+
 	static projectBuilds(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/builds`
 	}
@@ -225,6 +241,28 @@ export class APIRoute {
 
 	static get jiraSpaces() {
 		return `${this.baseAPIURL}/api/v1/workspace/jira/projects`
+	}
+
+	static jiraReporterPermission(projectKey: string) {
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/jira/projects/${encodeURIComponent(
+			projectKey
+		)}/reporter-permission`
+	}
+
+	static jiraUsers(query: string) {
+		return `${this.baseAPIURL}/api/v1/auth/jira-users?${new URLSearchParams({
+			query,
+		}).toString()}`
+	}
+
+	static get ownJiraUser() {
+		return `${this.baseAPIURL}/api/v1/auth/jira-user`
+	}
+
+	static userJiraUser(userID: string) {
+		return `${this.baseAPIURL}/api/v1/admin/users/${userID}/jira-user`
 	}
 
 	static jiraIssueTypes(projectKey: string) {

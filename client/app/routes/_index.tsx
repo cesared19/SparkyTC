@@ -28,7 +28,7 @@ export default function Home() {
 
 	return (
 		<div className="flex min-h-0 flex-1">
-			<ProjectList projects={projects} />
+			<ProjectList projects={projects} className="hidden md:flex" />
 			<main className="flex flex-1 items-center justify-center p-6">
 				<div className="max-w-sm text-center">
 					<h2 className="text-lg font-semibold text-gray-900">

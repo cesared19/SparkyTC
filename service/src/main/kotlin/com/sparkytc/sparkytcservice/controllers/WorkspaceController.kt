@@ -5,6 +5,7 @@ import com.sparkytc.sparkytcservice.dto.*
 import com.sparkytc.sparkytcservice.dto.builds.SaveProjectBuildDTO
 import com.sparkytc.sparkytcservice.dto.documents.TestRunExportType
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.jira.JiraReporterPermissionDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.projects.UpdateProjectSettingsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunAssigneeDTO
@@ -19,6 +20,7 @@ import com.sparkytc.sparkytcservice.dto.testruns.CreateTestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
+import com.sparkytc.sparkytcservice.services.BuildResultsService
 import com.sparkytc.sparkytcservice.services.JiraService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
@@ -47,6 +49,7 @@ class WorkspaceController(
     private val workspaceService: WorkspaceService,
     private val jiraService: JiraService,
     private val projectBuildService: ProjectBuildService,
+    private val buildResultsService: BuildResultsService,
 ) {
 
     @GetMapping("/projects")
@@ -76,6 +79,11 @@ class WorkspaceController(
     @GetMapping("/projects/{projectShortCode}/builds")
     fun retrieveBuilds(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = projectBuildService.retrieveBuilds(projectShortCode)))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/build-results")
+    fun retrieveBuildResults(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = buildResultsService.retrieveBuildResults(projectShortCode)))
     }
 
     @AdminOnly
@@ -271,6 +279,12 @@ class WorkspaceController(
     @GetMapping("/jira/projects/{projectKey}/issue-types")
     fun retrieveJiraIssueTypes(@PathVariable projectKey: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = jiraService.listIssueTypes(projectKey)))
+    }
+
+    @AdminOnly
+    @GetMapping("/jira/projects/{projectKey}/reporter-permission")
+    fun retrieveJiraReporterPermission(@PathVariable projectKey: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = JiraReporterPermissionDTO(projectKey, jiraService.canModifyReporter(projectKey))))
     }
 
     @GetMapping("/jira/issues")

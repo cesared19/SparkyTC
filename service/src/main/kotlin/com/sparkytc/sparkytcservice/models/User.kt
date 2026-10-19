@@ -59,8 +59,15 @@ class User(
     // the ADMIN_USERNAME account, the only one that can reset other users' passwords
     @Column(name = "is_super_admin", nullable = false)
     var isSuperAdmin: Boolean = false,
+
+    // the Jira user set as reporter of the issues this user creates, null reports them as the shared account
+    @Column(name = "jira_account_id")
+    var jiraAccountID: String? = null,
+
+    @Column(name = "jira_display_name")
+    var jiraDisplayName: String? = null,
 ) {
     fun toDTO(projectIDs: List<UUID>? = null): UserDTO {
-        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted, isSuperAdmin)
+        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted, isSuperAdmin, jiraAccountID, jiraDisplayName)
     }
 }

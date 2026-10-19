@@ -57,6 +57,8 @@ View the progress of your test run and see the results of each test case.
 -  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page; read notifications can be deleted one by one or all at once with **Clear read**
 -  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and pick the Jira space and issue type from lists; similar existing issues are suggested before creating a new one
 -  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
+-  Build results: the dashboard charts the current build's pass and fail rate after each of its test runs, and the **Builds** tab compares the results of every build
+-  Works on phones and tablets: the menu and project list fold away, and tables become cards
 
 ### Importing test cases from CSV
 
@@ -75,7 +77,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.8`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.9`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
@@ -105,6 +107,8 @@ Users can change their password from their account page (click their name in the
 ### Builds
 
 Admins register each build of the product under test from the **Current build** card of the project dashboard, or from the **Builds** section of the project's **Settings** tab, where builds can also be renamed or deleted (builds used by a test run can't be deleted). Build numbers are free text, e.g. `2.3.1 (4512)`, and the newest one is the project's current build.
+
+Each build's results count the latest executed result of each test case across the build's test runs, so a failure fixed in a later run counts as passed. Pass and fail rates are over the executed test cases (passed, failed and skipped). The dashboard charts the current build after each of its test runs, and the **Builds** tab lists every build with its rates, its test runs and a chart comparing builds.
 
 When creating a test run the current build is preselected. Testers pick one of the registered builds, and anyone working on the run can change it while it's open. The build is sent with the Jira issues created from the run.
 
@@ -161,6 +165,15 @@ Each project has its own Jira settings in its **Settings** tab (admins only):
 -  **Issue type**: the type of the issues created for failures, picked from the issue types of the chosen space (subtasks aren't listed). *Default* uses `JIRA_ISSUE_TYPE`. The issue type, chosen or default, must exist in the space, otherwise the settings aren't saved.
 
 If Jira can't be reached the lists are replaced by text fields where the space key and issue type can be typed.
+
+#### Reporting bugs in each user's name
+
+Bugs are created with the shared Jira account, and Jira's **Reporter** is set to the Jira user linked to whoever reports the failure (in *Automatic* mode, whoever saved the result). Users without a linked Jira user report as the shared account, as before. The description always ends with "Reported from SparkyTC by …".
+
+-  **In Jira (once):** the shared account needs the **Modify Reporter** permission in each space bugs are created in, the **Reporter** field on the create screen of the issue type, and the global **Browse users and groups** permission to search users. Each project's **Settings** tab shows whether the permission is in place for its space.
+-  **In SparkyTC:** each user links their Jira user from their account page (search by name or email), and admins can link anyone from the **Jira user** column of the **Users** page. Only the Jira account id and name are stored, no Jira credentials.
+-  If Jira rejects the reporter, the issue is created again as the shared account and the user gets a notification explaining why.
+-  Jira's history still shows the shared account as the one that created the issue.
 
 Before creating an issue, SparkyTC searches the Jira project for issues whose summary shares words with the new one and suggests them, so the tester can link an existing issue instead of creating a duplicate. The search uses Jira's text search and ranks results by the words both summaries have in common; it doesn't use AI.
 

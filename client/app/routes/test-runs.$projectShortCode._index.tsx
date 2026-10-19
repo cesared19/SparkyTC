@@ -12,6 +12,7 @@ export default function TestRunsIndex() {
 		{
 			header: 'Title',
 			key: 'title',
+			mobile: 'title',
 			render: (testRun) => testRun.title,
 		},
 		{
@@ -28,11 +29,9 @@ export default function TestRunsIndex() {
 
 	return (
 		<div>
-			<div className="mb-6 flex justify-between items-center">
+			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<h1 className="text-2xl font-semibold text-gray-900">
-						Test Runs
-					</h1>
+					<h1 className="text-2xl font-semibold text-gray-900">Test Runs</h1>
 				</div>
 
 				<Link

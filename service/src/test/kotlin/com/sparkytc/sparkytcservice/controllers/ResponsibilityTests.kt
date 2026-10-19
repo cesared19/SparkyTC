@@ -265,6 +265,42 @@ class ResponsibilityTests {
         expectError(ana, put("/api/v1/workspace/test-runs/$testRunID/build"), mapOf("buildID" to null), "The build can't be changed once the test run is closed")
     }
 
+    @Test
+    fun `build results count the latest executed result of each test case`() {
+        val older = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "1.0")).get("data").get("buildID").asText()
+        val current = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "1.1")).get("data").get("buildID").asText()
+        val (first, second) = testCaseIDs()
+        fun run(buildID: String?, vararg results: Pair<UUID, TestCaseRunStatus>) {
+            post(admin, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Run", null, listOf(first, second), emptyList(), buildID?.let { UUID.fromString(it) }))
+            val number = data(admin, "/api/v1/workspace/test-runs/PRJ").size()
+            val testCaseRuns = data(admin, "/api/v1/workspace/test-case-runs/PRJ/$number")
+            for ((testCaseID, status) in results) {
+                val testCaseRunID = testCaseRuns.first { it.get("testCase").get("testCaseID").asText() == testCaseID.toString() }.get("testCaseRunID").asText()
+                put(admin, "/api/v1/workspace/test-case-runs/$testCaseRunID", UpdateTestCaseRunDTO(status, null))
+            }
+        }
+        run(current, first to TestCaseRunStatus.PASS, second to TestCaseRunStatus.FAIL)
+        // the second run fixes the failure and leaves the first test case pending, which keeps its pass
+        run(current, second to TestCaseRunStatus.PASS)
+        run(older, first to TestCaseRunStatus.FAIL)
+        run(null, first to TestCaseRunStatus.SKIP)
+
+        val timeline = data(ana, "/api/v1/workspace/projects/PRJ/dashboard").get("currentBuildTimeline")
+        assertEquals(listOf(1L, 2L), timeline.map { it.get("testRunNumber").asLong() })
+        assertEquals(listOf(0.5, 1.0), timeline.map { it.get("counts").get("passRate").asDouble() })
+        assertEquals(listOf(0.5, 0.0), timeline.map { it.get("counts").get("failRate").asDouble() })
+
+        val builds = data(ana, "/api/v1/workspace/projects/PRJ/build-results")
+        assertEquals(listOf("1.1", "1.0", null), builds.map { it.get("build")?.get("buildNumber")?.asText() })
+        val (currentCounts, olderCounts, noBuildCounts) = builds.map { it.get("counts") }
+        assertEquals(listOf(2, 0, 0, 2), listOf("passed", "failed", "pending", "executed").map { currentCounts.get(it).asInt() })
+        assertEquals(listOf(2L, 1L), builds[0].get("testRuns").map { it.get("testRunNumber").asLong() })
+        assertEquals(listOf(0, 1, 1), listOf("passed", "failed", "pending").map { olderCounts.get(it).asInt() })
+        assertEquals(1.0, olderCounts.get("failRate").asDouble())
+        assertEquals(listOf(1, 1), listOf("skipped", "pending").map { noBuildCounts.get(it).asInt() })
+        assertEquals(0.0, noBuildCounts.get("passRate").asDouble())
+    }
+
     private fun createTestRun(assignees: List<String>, creator: MockMvc = admin) {
         post(creator, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Run", null, testCaseIDs(), assignees.map { UUID.fromString(userIDs[it]) }))
     }

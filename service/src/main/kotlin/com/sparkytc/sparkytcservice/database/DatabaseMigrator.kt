@@ -365,6 +365,12 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.8")
                 }
                 SchemaVersion.VERSION_0_0_8 -> {
+                    // the Jira user issues created by each user are reported as
+                    jdbcTemplate.execute("ALTER TABLE users ADD COLUMN jira_account_id TEXT, ADD COLUMN jira_display_name TEXT")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.9")
+                }
+                SchemaVersion.VERSION_0_0_9 -> {
                     break
                 }
             }

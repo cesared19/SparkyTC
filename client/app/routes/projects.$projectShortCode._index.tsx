@@ -1,6 +1,7 @@
 import { type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
 import { CurrentBuildCard } from '~/components/Builds'
+import { RateChart } from '~/components/RateChart'
 import { DateDisplay } from '~/components/DateDisplay'
 import { ProjectShell } from '~/components/ProjectShell'
 import { RunProgressBar } from '~/components/RunProgressBar'
@@ -72,12 +73,50 @@ export default function ProjectDashboardPage() {
 					/>
 				</section>
 
-				<section aria-label="Build">
+				<section aria-label="Build" className="space-y-4">
 					<CurrentBuildCard
 						key={dashboard.currentBuild?.buildID}
 						projectShortCode={project.projectShortCode}
 						build={dashboard.currentBuild}
 					/>
+					{dashboard.currentBuild && (
+						<div className="rounded-lg border border-gray-200 bg-white p-4">
+							<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+								<h2 className="text-sm font-semibold text-gray-900">
+									Pass and fail rate on build{' '}
+									{dashboard.currentBuild.buildNumber}
+								</h2>
+								<Link
+									to={Route.viewProjectBuilds(project.projectShortCode)}
+									className="text-xs font-medium text-brand-600 hover:underline"
+								>
+									Previous builds
+								</Link>
+							</div>
+							{dashboard.currentBuildTimeline.length === 0 ? (
+								<p className="text-sm text-gray-500">
+									No test runs on this build yet.
+								</p>
+							) : (
+								<>
+									<p className="mb-3 text-xs text-gray-500">
+										After each test run, counting the latest result of each test
+										case. Rates are over the executed test cases (passed, failed
+										and skipped).
+									</p>
+									<RateChart
+										firstColumn="Test run"
+										points={dashboard.currentBuildTimeline.map((point) => ({
+											id: point.testRunID,
+											label: `#${point.testRunNumber}`,
+											title: `#${point.testRunNumber} ${point.title}`,
+											counts: point.counts,
+										}))}
+									/>
+								</>
+							)}
+						</div>
+					)}
 				</section>
 
 				<section>

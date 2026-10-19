@@ -18,12 +18,14 @@ export default function TestCasesIndex() {
 		{
 			header: 'ID',
 			key: 'testCaseNumber',
+			mobile: 'subtitle',
 			render: (testCase) =>
 				`${project.projectShortCode}-${testCase.testCaseNumber}`,
 		},
 		{
 			header: 'Title',
 			key: 'title',
+			mobile: 'title',
 			render: (testCase) => testCase.title,
 		},
 		{
@@ -31,9 +33,8 @@ export default function TestCasesIndex() {
 			key: 'priority',
 			render: (testCase) =>
 				priorityConfig
-					? testCase.propertyValues[
-							priorityConfig.propertyConfigurationID
-					  ] || '-'
+					? testCase.propertyValues[priorityConfig.propertyConfigurationID] ||
+					  '-'
 					: '-',
 		},
 		{
@@ -41,8 +42,7 @@ export default function TestCasesIndex() {
 			key: 'type',
 			render: (testCase) =>
 				typeConfig
-					? testCase.propertyValues[typeConfig.propertyConfigurationID] ||
-					  '-'
+					? testCase.propertyValues[typeConfig.propertyConfigurationID] || '-'
 					: '-',
 		},
 		{
@@ -54,9 +54,9 @@ export default function TestCasesIndex() {
 
 	return (
 		<div>
-			<div className="mb-6 flex items-center justify-between">
+			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<h2 className="text-2xl font-semibold text-gray-900">Test Cases</h2>
-				<div className="flex items-center gap-3">
+				<div className="flex flex-wrap items-center gap-3">
 					<Link
 						to="import"
 						className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -78,9 +78,7 @@ export default function TestCasesIndex() {
 					data: testCase,
 				}))}
 				columns={columns}
-				onRowClick={(testCase) =>
-					navigate(testCase.testCaseNumber.toString())
-				}
+				onRowClick={(testCase) => navigate(testCase.testCaseNumber.toString())}
 			/>
 		</div>
 	)

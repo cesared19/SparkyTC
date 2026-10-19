@@ -19,5 +19,7 @@ data class UserDTO(
     val notifyTestRunAssigned: Boolean = true,
     val notifyTestRunCompleted: Boolean = true,
     @JsonProperty("isSuperAdmin")
-    val isSuperAdmin: Boolean = false
+    val isSuperAdmin: Boolean = false,
+    val jiraAccountID: String? = null,
+    val jiraDisplayName: String? = null
 )

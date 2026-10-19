@@ -22,7 +22,7 @@ export default function TestCaseDetails() {
 				</Link>
 			</div>
 			<div className="mb-4">
-				<div className="flex items-center gap-4">
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
 					<h2 className="text-2xl font-semibold text-gray-900 flex items-center">
 						{testCase.title}
 					</h2>

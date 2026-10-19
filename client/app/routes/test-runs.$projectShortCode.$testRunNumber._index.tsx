@@ -166,12 +166,14 @@ export default function TestRunDetails() {
 		{
 			header: 'ID',
 			key: 'id',
+			mobile: 'subtitle',
 			render: (testCaseRun) =>
 				Tools.testCaseDisplayCode(project, testCaseRun.testCase),
 		},
 		{
 			header: 'Title',
 			key: 'title',
+			mobile: 'title',
 			render: (testCaseRun) => testCaseRun.title,
 		},
 		{
@@ -213,7 +215,7 @@ export default function TestRunDetails() {
 			<div className="flex items-center justify-between mb-4">
 				<BackButton />
 			</div>
-			<div className="mb-6 flex justify-between items-start">
+			<div className="mb-6 flex flex-col-reverse items-start justify-between gap-3 sm:flex-row">
 				<div>
 					<h1 className="text-2xl font-semibold text-gray-900">
 						{testRun.title}

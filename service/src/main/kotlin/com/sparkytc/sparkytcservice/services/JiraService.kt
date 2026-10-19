@@ -4,6 +4,7 @@ import com.sparkytc.sparkytcservice.dto.jira.JiraConfigurationDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueTypeDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraProjectDTO
+import com.sparkytc.sparkytcservice.dto.jira.JiraUserDTO
 import com.sparkytc.sparkytcservice.dto.jira.SimilarJiraIssueDTO
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -75,29 +76,114 @@ class JiraService(
     val defaultIssueType: String
         get() = issueType
 
-    /** Creates an issue in the given project and issue type (or the default ones) and returns its key. */
-    fun createIssue(summary: String, description: Map<String, Any>, targetProjectKey: String? = null, targetIssueType: String? = null): String {
+    data class CreatedIssue(
+        val key: String,
+        // set when the issue was created without the requested reporter because Jira rejected it
+        val reporterError: String? = null,
+    )
+
+    /**
+     * Creates an issue in the given project and issue type (or the default ones). The reporter is the given Jira
+     * user, which needs the Modify Reporter permission for the shared account; when Jira rejects the reporter the
+     * issue is created again without it, so the failure is still reported.
+     */
+    fun createIssue(
+        summary: String,
+        description: Map<String, Any>,
+        targetProjectKey: String? = null,
+        targetIssueType: String? = null,
+        reporterAccountID: String? = null,
+    ): CreatedIssue {
         requireEnabled()
 
-        val body = mapOf(
-            "fields" to mapOf(
-                "project" to mapOf("key" to (targetProjectKey ?: projectKey)),
-                "issuetype" to mapOf("name" to (targetIssueType ?: issueType)),
-                "summary" to summary,
-                "description" to description,
-            )
+        val fields = mapOf(
+            "project" to mapOf("key" to (targetProjectKey ?: projectKey)),
+            "issuetype" to mapOf("name" to (targetIssueType ?: issueType)),
+            "summary" to summary,
+            "description" to description,
         )
+        if (reporterAccountID == null) return CreatedIssue(postIssue(fields))
 
+        return try {
+            CreatedIssue(postIssue(fields + ("reporter" to mapOf("id" to reporterAccountID))))
+        } catch (e: IllegalArgumentException) {
+            val cause = e.cause as? RestClientResponseException
+            if (cause == null || cause.statusCode.value() != 400 || !rejectsField(cause.responseBodyAsString, "reporter")) throw e
+            CreatedIssue(postIssue(fields), describeError(cause.statusCode, cause.responseBodyAsString))
+        }
+    }
+
+    private fun postIssue(fields: Map<String, Any>): String {
         val response = call("create the Jira issue") {
             restClient.post()
                 .uri("/rest/api/3/issue")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
+                .body(mapOf("fields" to fields))
                 .retrieve()
                 .body(JsonNode::class.java)
         }
-
         return response?.get("key")?.asText() ?: throw IllegalArgumentException("Jira did not return the created issue key")
+    }
+
+    /** Whether a Jira error body like {"errors": {"reporter": "..."}} is about the given field. */
+    private fun rejectsField(body: String, field: String): Boolean {
+        return try {
+            objectMapper.readTree(body).get("errors")?.has(field) == true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Active Jira users whose name or email matches the query, to pick the reporter of a SparkyTC user. */
+    fun searchUsers(query: String): List<JiraUserDTO> {
+        requireEnabled()
+
+        val response = call("search Jira users") {
+            restClient.get()
+                .uri("/rest/api/3/user/search?query={query}&maxResults={max}", query, USER_SEARCH_LIMIT)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        // apps and customer accounts can't report issues
+        return response?.toList().orEmpty()
+            .filter { it.get("accountType")?.asText() == "atlassian" && it.get("active")?.asBoolean() != false }
+            .mapNotNull { toJiraUser(it) }
+    }
+
+    /** The Jira user with the given account id, throwing a validation error when it doesn't exist. */
+    fun retrieveUser(accountID: String): JiraUserDTO {
+        requireEnabled()
+
+        val response = call("find the Jira user") {
+            restClient.get()
+                .uri("/rest/api/3/user?accountId={id}", accountID)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        return response?.let { toJiraUser(it) } ?: throw IllegalArgumentException("Jira did not return the user")
+    }
+
+    /** Whether the shared account can set the reporter of the issues it creates in the project. */
+    fun canModifyReporter(targetProjectKey: String): Boolean {
+        requireEnabled()
+
+        val response = call("check the Jira permissions in $targetProjectKey") {
+            restClient.get()
+                .uri("/rest/api/3/mypermissions?projectKey={key}&permissions=MODIFY_REPORTER", targetProjectKey)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        return response?.get("permissions")?.get("MODIFY_REPORTER")?.get("havePermission")?.asBoolean() == true
+    }
+
+    private fun toJiraUser(user: JsonNode): JiraUserDTO? {
+        val accountID = user.get("accountId")?.asText() ?: return null
+        return JiraUserDTO(
+            accountID = accountID,
+            displayName = user.get("displayName")?.asText() ?: accountID,
+            emailAddress = user.get("emailAddress")?.asText()?.takeIf { it.isNotBlank() },
+            avatarURL = user.get("avatarUrls")?.get("24x24")?.asText(),
+        )
     }
 
     /** Adds a link in the Jira issue that points back to SparkyTC. Failures are logged but not fatal. */
@@ -293,6 +379,7 @@ class JiraService(
         private const val MINIMUM_SIMILARITY = 0.2
         private const val PAGE_SIZE = 100
         private const val MAX_PROJECTS = 1000
+        private const val USER_SEARCH_LIMIT = 20
 
         // common words that say nothing about what an issue is about, in english and spanish
         private val STOP_WORDS = setOf(

@@ -1,17 +1,30 @@
-import { type ActionFunctionArgs } from '@remix-run/node'
+import {
+	type ActionFunctionArgs,
+	type LoaderFunctionArgs,
+} from '@remix-run/node'
 import {
 	Form,
 	useActionData,
 	useFetcher,
+	useLoaderData,
 	useNavigation,
 } from '@remix-run/react'
-import { UserTheme } from '~/models/types'
+import { FetchResponse, JiraConfiguration, UserTheme } from '~/models/types'
 import { useEffect, useRef } from 'react'
 import { ErrorMessage } from '~/components/ErrorMessage'
+import { JiraUserPicker } from '~/components/JiraUserPicker'
 import { requireAPI } from '~/utility/API.server'
 import { useCurrentUser } from '~/utility/CurrentUser'
 import { APIRoute, Route } from '~/utility/Routes'
 import { Tools } from '~/utility/Tools'
+
+export async function loader({ request }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
+	const jira = await api.get<FetchResponse<JiraConfiguration>>(
+		APIRoute.jiraConfiguration
+	)
+	return { jira: jira.data }
+}
 
 export async function action({ request }: ActionFunctionArgs) {
 	const api = await requireAPI(request)
@@ -34,6 +47,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function Account() {
 	const user = useCurrentUser()
+	const { jira } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const formRef = useRef<HTMLFormElement>(null)
@@ -47,7 +61,7 @@ export default function Account() {
 		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 	return (
-		<main className="flex-1 overflow-auto p-6">
+		<main className="flex-1 overflow-auto p-4 md:p-6">
 			<div className="max-w-md space-y-6">
 				<div>
 					<h2 className="text-2xl font-semibold text-gray-900">Account</h2>
@@ -59,6 +73,17 @@ export default function Account() {
 				<ThemeSelector />
 
 				<NotificationPreferences />
+
+				{jira.isEnabled && user && (
+					<section className="space-y-3">
+						<h3 className="text-lg font-medium text-gray-900">Jira user</h3>
+						<p className="text-sm text-gray-600">
+							The Jira bugs you create from SparkyTC are reported in the name of
+							this Jira user.
+						</p>
+						<JiraUserPicker key={user.jiraAccountID ?? 'none'} user={user} />
+					</section>
+				)}
 
 				<Form ref={formRef} method="post" className="space-y-4">
 					<h3 className="text-lg font-medium text-gray-900">Change password</h3>

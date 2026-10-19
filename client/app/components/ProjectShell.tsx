@@ -1,4 +1,5 @@
-import { Link, NavLink, useFetcher } from '@remix-run/react'
+import { Link, NavLink, useFetcher, useLocation } from '@remix-run/react'
+import { useEffect, useState } from 'react'
 import { Project } from '~/models/project'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 import { Route } from '~/utility/Routes'
@@ -11,7 +12,7 @@ interface ProjectShellProps {
 
 /**
  * Layout shared by every project page: the projects the user can access on the left and the
- * Dashboard | Test Cases | Test Runs tabs above the page content.
+ * Dashboard | Test Cases | Test Runs | Builds tabs above the page content.
  */
 export function ProjectShell({
 	projects,
@@ -19,6 +20,10 @@ export function ProjectShell({
 	children,
 }: ProjectShellProps) {
 	const isAdmin = useIsAdmin()
+	const location = useLocation()
+	// on phones the project list opens as a drawer
+	const [isListOpen, setIsListOpen] = useState(false)
+	useEffect(() => setIsListOpen(false), [location.pathname])
 	const tabs = [
 		{
 			to: Route.viewProjectDashboard(currentProject.projectShortCode),
@@ -33,6 +38,10 @@ export function ProjectShell({
 			to: Route.viewProjectTestRuns(currentProject.projectShortCode),
 			label: 'Test Runs',
 		},
+		{
+			to: Route.viewProjectBuilds(currentProject.projectShortCode),
+			label: 'Builds',
+		},
 		...(isAdmin
 			? [
 					{
@@ -45,11 +54,51 @@ export function ProjectShell({
 
 	return (
 		<div className="flex min-h-0 flex-1">
-			<ProjectList projects={projects} currentProject={currentProject} />
+			<ProjectList
+				projects={projects}
+				currentProject={currentProject}
+				className="hidden md:flex"
+			/>
+			{isListOpen && (
+				<div className="fixed inset-0 z-40 flex md:hidden">
+					<ProjectList
+						projects={projects}
+						currentProject={currentProject}
+						className="flex w-72 max-w-[85vw] shadow-xl"
+					/>
+					<button
+						type="button"
+						aria-label="Close projects"
+						onClick={() => setIsListOpen(false)}
+						className="flex-1 bg-gray-950/40"
+					/>
+				</div>
+			)}
 			<div className="flex min-w-0 flex-1 flex-col">
-				<div className="border-b border-gray-200 bg-white px-6 pt-4">
+				<div className="border-b border-gray-200 bg-white px-4 pt-4 md:px-6">
 					<div className="flex items-baseline gap-3">
-						<h1 className="text-xl font-semibold text-gray-900">
+						<button
+							type="button"
+							onClick={() => setIsListOpen(true)}
+							aria-label="Switch project"
+							className="-ml-1 self-center rounded-md p-1 text-gray-600 hover:bg-gray-100 md:hidden"
+						>
+							<svg
+								className="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth="2"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M4 6h16M4 12h10M4 18h16"
+								/>
+							</svg>
+						</button>
+						<h1 className="min-w-0 truncate text-xl font-semibold text-gray-900">
 							{currentProject.title}
 						</h1>
 						<span className="text-sm text-gray-500">
@@ -61,14 +110,17 @@ export function ProjectShell({
 							{currentProject.description}
 						</p>
 					)}
-					<nav className="-mb-px mt-3 flex gap-6" aria-label="Project views">
+					<nav
+						className="-mx-4 -mb-px mt-3 flex gap-4 overflow-x-auto px-4 md:mx-0 md:gap-6 md:px-0"
+						aria-label="Project views"
+					>
 						{tabs.map((tab) => (
 							<NavLink
 								key={tab.to}
 								to={tab.to}
 								end={'end' in tab && tab.end}
 								className={({ isActive }) =>
-									`border-b-2 px-1 pb-3 text-sm font-medium ${
+									`shrink-0 whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium ${
 										isActive
 											? 'border-brand-500 text-brand-600'
 											: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
@@ -80,7 +132,7 @@ export function ProjectShell({
 						))}
 					</nav>
 				</div>
-				<div className="flex-1 overflow-auto p-6">{children}</div>
+				<div className="flex-1 overflow-auto p-4 md:p-6">{children}</div>
 			</div>
 		</div>
 	)
@@ -89,9 +141,15 @@ export function ProjectShell({
 interface ProjectListProps {
 	projects: Project[]
 	currentProject?: Project
+	// controls visibility and width, a fixed sidebar by default
+	className?: string
 }
 
-export function ProjectList({ projects, currentProject }: ProjectListProps) {
+export function ProjectList({
+	projects,
+	currentProject,
+	className = 'flex',
+}: ProjectListProps) {
 	const user = useCurrentUser()
 	const isAdmin = useIsAdmin()
 	const fetcher = useFetcher()
@@ -117,7 +175,9 @@ export function ProjectList({ projects, currentProject }: ProjectListProps) {
 	}
 
 	return (
-		<aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
+		<aside
+			className={`w-64 shrink-0 flex-col border-r border-gray-200 bg-white ${className}`}
+		>
 			<div className="flex items-center justify-between px-4 pb-2 pt-4">
 				<h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
 					Projects

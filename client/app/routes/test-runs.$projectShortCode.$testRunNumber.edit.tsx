@@ -69,11 +69,9 @@ export default function EditTestRun() {
 	}
 
 	return (
-		<div className="p-6">
+		<div className="md:p-6">
 			<div className="mb-6">
-				<h1 className="text-2xl font-semibold text-gray-900">
-					Edit Test Run
-				</h1>
+				<h1 className="text-2xl font-semibold text-gray-900">Edit Test Run</h1>
 			</div>
 
 			<Form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -81,9 +79,7 @@ export default function EditTestRun() {
 					<div className="rounded-md bg-red-50 p-4">
 						<div className="flex">
 							<div className="ml-3">
-								<h3 className="text-sm font-medium text-red-800">
-									{error}
-								</h3>
+								<h3 className="text-sm font-medium text-red-800">{error}</h3>
 							</div>
 						</div>
 					</div>
@@ -102,7 +98,7 @@ export default function EditTestRun() {
 						id="title"
 						defaultValue={testRun.title}
 						required
-						className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
 				</div>
 
@@ -118,7 +114,7 @@ export default function EditTestRun() {
 						id="description"
 						defaultValue={testRun.description}
 						rows={4}
-						className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
 				</div>
 
