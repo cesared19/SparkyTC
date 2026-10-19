@@ -61,7 +61,7 @@ export default function Account() {
 		'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 	return (
-		<main className="flex-1 overflow-auto p-6">
+		<main className="flex-1 overflow-auto p-4 md:p-6">
 			<div className="max-w-md space-y-6">
 				<div>
 					<h2 className="text-2xl font-semibold text-gray-900">Account</h2>

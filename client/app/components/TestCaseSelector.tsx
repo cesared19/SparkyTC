@@ -178,10 +178,7 @@ export default function TestCaseSelector({
 								filterValue.type === 'select' &&
 								filterValue.values.includes(option)
 							return (
-								<label
-									key={option}
-									className="inline-flex items-center"
-								>
+								<label key={option} className="inline-flex items-center">
 									<input
 										type="checkbox"
 										className="h-4 w-4"
@@ -190,9 +187,7 @@ export default function TestCaseSelector({
 											handleSelectOptionToggle(propertyID, option)
 										}
 									/>
-									<span className="ml-2 text-sm text-gray-700">
-										{option}
-									</span>
+									<span className="ml-2 text-sm text-gray-700">{option}</span>
 								</label>
 							)
 						})}
@@ -222,24 +217,22 @@ export default function TestCaseSelector({
 				key: 'selection',
 				render: (testCase) => {
 					const isSelected = selectedTestCaseIDs.has(testCase.testCaseID)
-					return (
-						<Checkbox isSelected={isSelected} />
-					)
+					return <Checkbox isSelected={isSelected} />
 				},
 			},
 			{
 				header: 'ID',
 				key: 'id',
+				mobile: 'subtitle',
 				render: (testCase) => Tools.testCaseDisplayCode(project, testCase),
 			},
 			{
 				header: 'Title',
 				key: 'title',
+				mobile: 'title',
 				render: (testCase) => (
 					<div>
-						<div className="font-medium text-gray-900">
-							{testCase.title}
-						</div>
+						<div className="font-medium text-gray-900">{testCase.title}</div>
 						{testCase.description && (
 							<div className="text-sm text-gray-500">
 								{testCase.description}
@@ -274,9 +267,7 @@ export default function TestCaseSelector({
 					value="Filter"
 					options={availableProperties.map((prop) => prop.title)}
 					onChange={(title) => {
-						const property = availableProperties.find(
-							(p) => p.title === title
-						)
+						const property = availableProperties.find((p) => p.title === title)
 						if (property) {
 							handleAddProperty(property.propertyConfigurationID)
 						}
@@ -351,9 +342,7 @@ export default function TestCaseSelector({
 				<button
 					onClick={() =>
 						onDone(
-							testCases.filter((tc) =>
-								selectedTestCaseIDs.has(tc.testCaseID)
-							)
+							testCases.filter((tc) => selectedTestCaseIDs.has(tc.testCaseID))
 						)
 					}
 					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"

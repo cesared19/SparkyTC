@@ -200,7 +200,7 @@ function TestCaseRunView({
 			<BackButton />
 
 			<div>
-				<div className="flex items-center gap-4">
+				<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
 					<h1 className="text-2xl font-semibold text-gray-900">
 						{testCaseRun.title}
 					</h1>

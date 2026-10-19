@@ -23,6 +23,7 @@ import {
 import { Project } from '~/models/project'
 import { requireAdmin } from '~/utility/Authorization.server'
 import { useCurrentUser } from '~/utility/CurrentUser'
+import { useMediaQuery } from '~/utility/useMediaQuery'
 import { APIRoute } from '~/utility/Routes'
 import { Tools } from '~/utility/Tools'
 
@@ -104,6 +105,8 @@ function RoleSelect({
 export default function Users() {
 	const { users, projects, isJiraEnabled } = useLoaderData<typeof loader>()
 	const currentUser = useCurrentUser()
+	// cards on phones, rendered instead of the table so the row forms aren't duplicated
+	const isWide = useMediaQuery('(min-width: 768px)', true)
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const createFormRef = useRef<HTMLFormElement>(null)
@@ -115,7 +118,7 @@ export default function Users() {
 	}, [created])
 
 	return (
-		<main className="flex-1 overflow-auto p-6">
+		<main className="flex-1 overflow-auto p-4 md:p-6">
 			<div className="space-y-8">
 				<div>
 					<h2 className="text-2xl font-semibold text-gray-900">Users</h2>
@@ -128,42 +131,59 @@ export default function Users() {
 					</p>
 				</div>
 
-				<div className="overflow-x-auto rounded-md border border-gray-200">
-					<table className="min-w-full divide-y divide-gray-200 text-sm">
-						<thead className="bg-gray-50">
-							<tr>
-								{[
-									'Username',
-									'Display name',
-									'Role',
-									'Projects',
-									...(isJiraEnabled ? ['Jira user'] : []),
-									'Active',
-									...(currentUser?.isSuperAdmin ? ['Reset password'] : []),
-									'Created',
-									'',
-								].map((header) => (
-									<th
-										key={header}
-										className="px-3 py-2 text-left font-medium text-gray-500"
-									>
-										{header}
-									</th>
+				{!isWide && (
+					<div className="space-y-3">
+						{users.map((user) => (
+							<UserRow
+								key={user.userID}
+								user={user}
+								projects={projects}
+								isJiraEnabled={isJiraEnabled}
+								layout="card"
+							/>
+						))}
+					</div>
+				)}
+
+				{isWide && (
+					<div className="overflow-x-auto rounded-md border border-gray-200">
+						<table className="min-w-full divide-y divide-gray-200 text-sm">
+							<thead className="bg-gray-50">
+								<tr>
+									{[
+										'Username',
+										'Display name',
+										'Role',
+										'Projects',
+										...(isJiraEnabled ? ['Jira user'] : []),
+										'Active',
+										...(currentUser?.isSuperAdmin ? ['Reset password'] : []),
+										'Created',
+										'',
+									].map((header) => (
+										<th
+											key={header}
+											className="px-3 py-2 text-left font-medium text-gray-500"
+										>
+											{header}
+										</th>
+									))}
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-gray-200 bg-white">
+								{users.map((user) => (
+									<UserRow
+										key={user.userID}
+										user={user}
+										projects={projects}
+										isJiraEnabled={isJiraEnabled}
+										layout="row"
+									/>
 								))}
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-gray-200 bg-white">
-							{users.map((user) => (
-								<UserRow
-									key={user.userID}
-									user={user}
-									projects={projects}
-									isJiraEnabled={isJiraEnabled}
-								/>
-							))}
-						</tbody>
-					</table>
-				</div>
+							</tbody>
+						</table>
+					</div>
+				)}
 
 				<Form ref={createFormRef} method="post" className="max-w-xl space-y-4">
 					<h3 className="text-lg font-medium text-gray-900">New user</h3>
@@ -324,10 +344,13 @@ function UserRow({
 	user,
 	projects,
 	isJiraEnabled,
+	layout,
 }: {
 	user: User
 	projects: Project[]
 	isJiraEnabled: boolean
+	// a table row on wide screens, a card on phones
+	layout: 'row' | 'card'
 }) {
 	const fetcher = useFetcher<ErrorResponse | { ok: true }>()
 	const currentUser = useCurrentUser()
@@ -344,53 +367,139 @@ function UserRow({
 		}
 	}, [fetcher.state, fetcher.data])
 
+	const identity = (
+		<>
+			<span className="font-medium">{user.username}</span>
+			{user.userID === currentUser?.userID && (
+				<span className="ml-2 text-xs text-gray-500">(you)</span>
+			)}
+			{user.isSuperAdmin && (
+				<span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+					Super admin
+				</span>
+			)}
+			<fetcher.Form id={formID} method="post" onChange={() => setIsDirty(true)}>
+				<input type="hidden" name="intent" value="update" />
+				<input type="hidden" name="userID" value={user.userID} />
+			</fetcher.Form>
+			{error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+		</>
+	)
+	const displayName = (
+		<input
+			form={formID}
+			name="displayName"
+			defaultValue={user.displayName}
+			aria-label={`Display name for ${user.username}`}
+			disabled={isLocked}
+			onChange={() => setIsDirty(true)}
+			className={inputClassName}
+		/>
+	)
+	const role = (
+		<select
+			form={formID}
+			name="role"
+			defaultValue={user.role}
+			aria-label={`Role for ${user.username}`}
+			disabled={isLocked}
+			onChange={() => setIsDirty(true)}
+			className={inputClassName}
+		>
+			<option value={UserRole.tester}>Tester</option>
+			<option value={UserRole.admin}>Admin</option>
+		</select>
+	)
+	const active = (
+		<input
+			form={formID}
+			type="checkbox"
+			name="isActive"
+			defaultChecked={user.isActive}
+			aria-label={`${user.username} is active`}
+			disabled={isLocked}
+			onChange={() => setIsDirty(true)}
+			className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+		/>
+	)
+	const password = currentUser?.isSuperAdmin && (
+		<input
+			form={formID}
+			type="password"
+			name="password"
+			placeholder="New password"
+			autoComplete="new-password"
+			aria-label={`New password for ${user.username}`}
+			onChange={() => setIsDirty(true)}
+			className={inputClassName}
+		/>
+	)
+	const save = (
+		<button
+			type="submit"
+			form={formID}
+			hidden={isLocked}
+			disabled={!isDirty || fetcher.state !== 'idle'}
+			className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+		>
+			{fetcher.state !== 'idle' ? 'Saving...' : 'Save'}
+		</button>
+	)
+
+	if (layout === 'card') {
+		const label = 'block text-xs font-medium text-gray-500'
+		return (
+			<div
+				className={`space-y-3 rounded-lg border border-gray-200 p-3 ${
+					user.isActive ? 'bg-white' : 'bg-gray-50 text-gray-400'
+				}`}
+			>
+				<div className="text-sm">{identity}</div>
+				<div className="grid grid-cols-2 gap-3">
+					<div className="col-span-2">
+						<span className={label}>Display name</span>
+						{displayName}
+					</div>
+					<div>
+						<span className={label}>Role</span>
+						{role}
+					</div>
+					<label className="flex items-end gap-2 pb-2 text-sm text-gray-700">
+						{active}
+						Active
+					</label>
+					<div className="col-span-2">
+						<span className={label}>Projects</span>
+						<UserProjects user={user} projects={projects} />
+					</div>
+					{isJiraEnabled && (
+						<div className="col-span-2">
+							<span className={label}>Jira user</span>
+							<UserJiraUser user={user} isLocked={isLocked} />
+						</div>
+					)}
+					{password && (
+						<div className="col-span-2">
+							<span className={label}>Reset password</span>
+							{password}
+						</div>
+					)}
+				</div>
+				<div className="flex items-center justify-between text-xs text-gray-500">
+					<span>
+						Created <DateDisplay date={user.creationDate} />
+					</span>
+					{save}
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<tr className={user.isActive ? undefined : 'bg-gray-50 text-gray-400'}>
-			<td className="px-3 py-2 font-medium">
-				{user.username}
-				{user.userID === currentUser?.userID && (
-					<span className="ml-2 text-xs text-gray-500">(you)</span>
-				)}
-				{user.isSuperAdmin && (
-					<span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
-						Super admin
-					</span>
-				)}
-				<fetcher.Form
-					id={formID}
-					method="post"
-					onChange={() => setIsDirty(true)}
-				>
-					<input type="hidden" name="intent" value="update" />
-					<input type="hidden" name="userID" value={user.userID} />
-				</fetcher.Form>
-				{error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-			</td>
-			<td className="px-3 py-2">
-				<input
-					form={formID}
-					name="displayName"
-					defaultValue={user.displayName}
-					aria-label={`Display name for ${user.username}`}
-					disabled={isLocked}
-					onChange={() => setIsDirty(true)}
-					className={inputClassName}
-				/>
-			</td>
-			<td className="px-3 py-2">
-				<select
-					form={formID}
-					name="role"
-					defaultValue={user.role}
-					aria-label={`Role for ${user.username}`}
-					disabled={isLocked}
-					onChange={() => setIsDirty(true)}
-					className={inputClassName}
-				>
-					<option value={UserRole.tester}>Tester</option>
-					<option value={UserRole.admin}>Admin</option>
-				</select>
-			</td>
+			<td className="px-3 py-2">{identity}</td>
+			<td className="px-3 py-2">{displayName}</td>
+			<td className="px-3 py-2">{role}</td>
 			<td className="px-3 py-2 align-top">
 				<UserProjects user={user} projects={projects} />
 			</td>
@@ -399,46 +508,12 @@ function UserRow({
 					<UserJiraUser user={user} isLocked={isLocked} />
 				</td>
 			)}
-			<td className="px-3 py-2">
-				<input
-					form={formID}
-					type="checkbox"
-					name="isActive"
-					defaultChecked={user.isActive}
-					aria-label={`${user.username} is active`}
-					disabled={isLocked}
-					onChange={() => setIsDirty(true)}
-					className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-				/>
-			</td>
-			{currentUser?.isSuperAdmin && (
-				<td className="px-3 py-2">
-					<input
-						form={formID}
-						type="password"
-						name="password"
-						placeholder="New password"
-						autoComplete="new-password"
-						aria-label={`New password for ${user.username}`}
-						onChange={() => setIsDirty(true)}
-						className={inputClassName}
-					/>
-				</td>
-			)}
+			<td className="px-3 py-2">{active}</td>
+			{password && <td className="px-3 py-2">{password}</td>}
 			<td className="px-3 py-2 whitespace-nowrap">
 				<DateDisplay date={user.creationDate} />
 			</td>
-			<td className="px-3 py-2">
-				<button
-					type="submit"
-					form={formID}
-					hidden={isLocked}
-					disabled={!isDirty || fetcher.state !== 'idle'}
-					className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-				>
-					{fetcher.state !== 'idle' ? 'Saving...' : 'Save'}
-				</button>
-			</td>
+			<td className="px-3 py-2">{save}</td>
 		</tr>
 	)
 }

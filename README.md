@@ -57,6 +57,8 @@ View the progress of your test run and see the results of each test case.
 -  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page; read notifications can be deleted one by one or all at once with **Clear read**
 -  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and pick the Jira space and issue type from lists; similar existing issues are suggested before creating a new one
 -  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
+-  Build results: the dashboard charts the current build's pass and fail rate after each of its test runs, and the **Builds** tab compares the results of every build
+-  Works on phones and tablets: the menu and project list fold away, and tables become cards
 
 ### Importing test cases from CSV
 
@@ -105,6 +107,8 @@ Users can change their password from their account page (click their name in the
 ### Builds
 
 Admins register each build of the product under test from the **Current build** card of the project dashboard, or from the **Builds** section of the project's **Settings** tab, where builds can also be renamed or deleted (builds used by a test run can't be deleted). Build numbers are free text, e.g. `2.3.1 (4512)`, and the newest one is the project's current build.
+
+Each build's results count the latest executed result of each test case across the build's test runs, so a failure fixed in a later run counts as passed. Pass and fail rates are over the executed test cases (passed, failed and skipped). The dashboard charts the current build after each of its test runs, and the **Builds** tab lists every build with its rates, its test runs and a chart comparing builds.
 
 When creating a test run the current build is preselected. Testers pick one of the registered builds, and anyone working on the run can change it while it's open. The build is sent with the Jira issues created from the run.
 
