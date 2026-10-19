@@ -27,6 +27,10 @@ export class Route {
 		return `/projects/${projectShortCode}/settings`
 	}
 
+	static viewProjectBuilds(projectShortCode: string) {
+		return `/projects/${projectShortCode}/builds`
+	}
+
 	static get assignments() {
 		return '/assignments'
 	}
@@ -142,6 +146,10 @@ export class APIRoute {
 
 	static projectSettings(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/settings`
+	}
+
+	static projectBuildResults(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/build-results`
 	}
 
 	static projectBuilds(projectShortCode: string) {

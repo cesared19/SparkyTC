@@ -20,6 +20,7 @@ import com.sparkytc.sparkytcservice.dto.testruns.CreateTestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
+import com.sparkytc.sparkytcservice.services.BuildResultsService
 import com.sparkytc.sparkytcservice.services.JiraService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
@@ -48,6 +49,7 @@ class WorkspaceController(
     private val workspaceService: WorkspaceService,
     private val jiraService: JiraService,
     private val projectBuildService: ProjectBuildService,
+    private val buildResultsService: BuildResultsService,
 ) {
 
     @GetMapping("/projects")
@@ -77,6 +79,11 @@ class WorkspaceController(
     @GetMapping("/projects/{projectShortCode}/builds")
     fun retrieveBuilds(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = projectBuildService.retrieveBuilds(projectShortCode)))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/build-results")
+    fun retrieveBuildResults(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = buildResultsService.retrieveBuildResults(projectShortCode)))
     }
 
     @AdminOnly

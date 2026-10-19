@@ -159,6 +159,35 @@ export interface ProjectDashboard {
 	recentTestRuns: TestRunSummary[]
 	linkedJiraIssueCount: number
 	currentBuild?: ProjectBuild
+	currentBuildTimeline: BuildTimelinePoint[]
+}
+
+// latest executed result of each test case on a build; rates are over pass, fail and skip
+export interface BuildResultCounts {
+	testCaseCount: number
+	passed: number
+	failed: number
+	skipped: number
+	pending: number
+	executed: number
+	passRate?: number | null
+	failRate?: number | null
+}
+
+export interface BuildTimelinePoint {
+	testRunID: string
+	testRunNumber: number
+	title: string
+	creationDate: number
+	counts: BuildResultCounts
+}
+
+export interface BuildResults {
+	// missing for the test runs without a build
+	build?: ProjectBuild
+	counts: BuildResultCounts
+	testRuns: TestRunSummary[]
+	timeline: BuildTimelinePoint[]
 }
 
 export interface ProjectBuild {

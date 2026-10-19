@@ -53,6 +53,7 @@ class WorkspaceService(
     private val notificationService: NotificationService,
     private val userRepository: UserRepository,
     private val projectBuildService: ProjectBuildService,
+    private val buildResultsService: BuildResultsService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -107,17 +108,7 @@ class WorkspaceService(
 
         val testRuns = testRunRepository.findAllByProject(project).sortedByDescending { it.testRunNumber }
         val summaries = testRuns.associateWith { testRun ->
-            val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
-            TestRunSummaryDTO(
-                testRunID = testRun.externalID,
-                testRunNumber = testRun.testRunNumber,
-                title = testRun.title,
-                status = testRun.status,
-                creationDate = testRun.creationDate,
-                createdBy = testRun.createdBy?.displayName,
-                totalCount = testCaseRuns.size,
-                resultCounts = TestCaseRunStatus.entries.associateWith { status -> testCaseRuns.count { it.status == status } },
-            )
+            buildResultsService.summary(testRun, testCaseRunRepository.findAllByTestRun(testRun))
         }
 
         val activeStatuses = setOf(TestRunStatus.PENDING, TestRunStatus.IN_PROGRESS)
@@ -130,6 +121,7 @@ class WorkspaceService(
             recentTestRuns = testRuns.filter { it.status !in activeStatuses }.take(5).mapNotNull { summaries[it] },
             linkedJiraIssueCount = testCases.flatMap { testCase -> testCase.jiraLinks.map { it.issueKey } }.distinct().size,
             currentBuild = projectBuildService.currentBuild(project),
+            currentBuildTimeline = buildResultsService.currentBuildTimeline(project),
         )
     }
 
