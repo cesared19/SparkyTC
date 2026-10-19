@@ -40,6 +40,20 @@ export async function createUserSession(token: string, redirectTo: string) {
 	})
 }
 
+// routes without a page, that only answer fetchers, form posts or downloads. Signing in and landing on
+// one shows a blank page, e.g. when the session expires while the notification bell refreshes.
+// Add new resource routes here.
+const RESOURCE_ROUTES = [
+	/^\/(assignments|builds|jira-issue-types|jira-issues|jira-similar|jira-users|logout|notifications|preferences)$/,
+	/^\/(attachments|jira-links|test-case-attachments|test-case-jira-links)\//,
+	/^\/test-runs\/[^/]+\/[^/]+\/export$/,
+]
+
+function isPagePath(path: string) {
+	const pathname = path.split(/[?#]/)[0]
+	return !RESOURCE_ROUTES.some((pattern) => pattern.test(pathname))
+}
+
 /** Redirects to the login page, clearing the session cookie. */
 export async function redirectToLogin(request: Request) {
 	const session = await sessionStorage.getSession(request.headers.get('Cookie'))
@@ -47,7 +61,7 @@ export async function redirectToLogin(request: Request) {
 	// data requests (.data) are sent by the client router, send the user back to the page itself
 	const path = url.pathname.replace(/\.data$/, '') || '/'
 	const params = new URLSearchParams()
-	if (path !== '/' && path !== '/login') {
+	if (path !== '/' && path !== '/login' && isPagePath(path)) {
 		params.set('redirectTo', path)
 	}
 	const query = params.toString()
@@ -64,7 +78,8 @@ export function safeRedirect(
 		!to ||
 		typeof to !== 'string' ||
 		!to.startsWith('/') ||
-		to.startsWith('//')
+		to.startsWith('//') ||
+		!isPagePath(to)
 	) {
 		return '/'
 	}
