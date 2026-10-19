@@ -261,6 +261,18 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = jiraService.configuration()))
     }
 
+    @AdminOnly
+    @GetMapping("/jira/projects")
+    fun retrieveJiraProjects(): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = jiraService.listProjects()))
+    }
+
+    @AdminOnly
+    @GetMapping("/jira/projects/{projectKey}/issue-types")
+    fun retrieveJiraIssueTypes(@PathVariable projectKey: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = jiraService.listIssueTypes(projectKey)))
+    }
+
     @GetMapping("/jira/issues")
     fun retrieveJiraIssues(@RequestParam("keys") issueKeys: List<String>): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveJiraIssues(issueKeys)))

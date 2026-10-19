@@ -55,7 +55,7 @@ View the progress of your test run and see the results of each test case.
 -  Light, dark or system theme, chosen by each user from their account page
 -  Test run responsibilities: assign test runs to users, testers take test cases so work isn't duplicated, and each result shows who completed it
 -  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page; read notifications can be deleted one by one or all at once with **Clear read**
--  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and choose the Jira project; similar existing issues are suggested before creating a new one
+-  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and pick the Jira space and issue type from lists; similar existing issues are suggested before creating a new one
 -  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
 
 ### Importing test cases from CSV
@@ -116,8 +116,8 @@ SparkyTC can create a bug in Jira Cloud from a failed test case run, link existi
 JIRA_BASE_URL=https://your-site.atlassian.net
 JIRA_EMAIL=user@example.com
 JIRA_API_TOKEN=<api token>
-JIRA_PROJECT_KEY=SCRUM   # project where bugs are created
-JIRA_ISSUE_TYPE=Error    # issue type name used for bugs
+JIRA_PROJECT_KEY=SCRUM   # default space (project) where bugs are created
+JIRA_ISSUE_TYPE=Error    # default issue type name used for bugs
 ```
 
 API tokens are created at https://id.atlassian.com/manage-profile/security/api-tokens and act with the permissions of the account that created them (it needs Browse projects, Create issues and Link issues). Tokens expire, so renew them when SparkyTC reports that Jira rejected the credentials. The integration is disabled while any of the first three variables is empty.
@@ -157,7 +157,10 @@ graph TD
 Each project has its own Jira settings in its **Settings** tab (admins only):
 
 -  **When a test case fails**: *Disabled* (no issues are created, existing ones can still be linked), *Manual* (the pre-filled form described above) or *Automatic* (saving a failed result creates the issue right away from the test case, its `Expected Result` property, the test run's build and the run notes; missing details are sent as "Not provided", and if Jira rejects the issue the result is still saved and the tester gets a notification).
--  **Jira project**: the key of the Jira project issues are created in. Empty uses `JIRA_PROJECT_KEY`.
+-  **Jira space**: the space (Jira project) issues are created in, picked from the spaces the Jira account can see. *Default* uses `JIRA_PROJECT_KEY`.
+-  **Issue type**: the type of the issues created for failures, picked from the issue types of the chosen space (subtasks aren't listed). *Default* uses `JIRA_ISSUE_TYPE`. The issue type, chosen or default, must exist in the space, otherwise the settings aren't saved.
+
+If Jira can't be reached the lists are replaced by text fields where the space key and issue type can be typed.
 
 Before creating an issue, SparkyTC searches the Jira project for issues whose summary shares words with the new one and suggests them, so the tester can link an existing issue instead of creating a duplicate. The search uses Jira's text search and ranks results by the words both summaries have in common; it doesn't use AI.
 

@@ -359,6 +359,9 @@ class DatabaseMigrator(
                     jdbcTemplate.execute("CREATE UNIQUE INDEX project_builds_number_idx ON project_builds (project_id, LOWER(build_number))")
                     jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN build_id BIGINT REFERENCES project_builds(id)")
 
+                    // per-project jira issue type
+                    jdbcTemplate.execute("ALTER TABLE workspace_projects ADD COLUMN jira_issue_type TEXT")
+
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.8")
                 }
                 SchemaVersion.VERSION_0_0_8 -> {

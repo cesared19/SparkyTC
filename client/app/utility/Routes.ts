@@ -35,6 +35,10 @@ export class Route {
 		return '/builds'
 	}
 
+	static jiraIssueTypes(projectKey: string) {
+		return `/jira-issue-types?${new URLSearchParams({ projectKey }).toString()}`
+	}
+
 	static get notifications() {
 		return '/notifications'
 	}
@@ -217,6 +221,18 @@ export class APIRoute {
 
 	static get jiraConfiguration() {
 		return `${this.baseAPIURL}/api/v1/workspace/jira/configuration`
+	}
+
+	static get jiraSpaces() {
+		return `${this.baseAPIURL}/api/v1/workspace/jira/projects`
+	}
+
+	static jiraIssueTypes(projectKey: string) {
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/jira/projects/${encodeURIComponent(
+			projectKey
+		)}/issue-types`
 	}
 
 	static jiraIssues(issueKeys: string[]) {

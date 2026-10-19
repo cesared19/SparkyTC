@@ -71,6 +71,12 @@ class JiraIntegrationTests {
                         }
                     exchange.requestMethod == "POST" && path.endsWith("/remotelink") -> 201 to """{"id":1}"""
                     exchange.requestMethod == "GET" && path == "/rest/api/3/project/QA" -> 200 to """{"key":"QA"}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/project/search" ->
+                        200 to """{"isLast":true,"values":[{"key":"QA","name":"Quality"},{"key":"SCRUM","name":"Scrum team"}]}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/issue/createmeta/QA/issuetypes" ->
+                        200 to """{"issueTypes":[{"id":"1","name":"Bug","subtask":false},{"id":"2","name":"Task","subtask":false},{"id":"3","name":"Sub-task","subtask":true}]}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/issue/createmeta/SCRUM/issuetypes" ->
+                        200 to """{"issueTypes":[{"id":"10","name":"Error","subtask":false}]}"""
                     exchange.requestMethod == "POST" && path == "/rest/api/3/search/jql" ->
                         200 to """{"issues":[
                             {"key":"SCRUM-50","fields":{"summary":"Steering warning sound at lock limit","status":{"name":"To Do","statusCategory":{"key":"new"}}}},
@@ -333,7 +339,7 @@ class JiraIntegrationTests {
 
         mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":"QA"}"""))
+            .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":"QA","jiraIssueType":"Bug"}"""))
             .andExpect(status().isOk)
         mockMvc.perform(post("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issue")
             .contentType(MediaType.APPLICATION_JSON)
@@ -357,6 +363,51 @@ class JiraIntegrationTests {
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.message").value("Creating Jira issues is disabled for this project"))
+    }
+
+    @Test
+    fun `admins pick the jira space and issue type of a project from lists`() {
+        val testCaseRun = createTestCaseRun()
+
+        val projects = objectMapper.readTree(mockMvc.perform(get("/api/v1/workspace/jira/projects")).andExpect(status().isOk).andReturn().response.contentAsString).get("data")
+        assertEquals(listOf("QA" to "Quality", "SCRUM" to "Scrum team"), projects.map { it.get("key").asText() to it.get("name").asText() })
+        val issueTypes = objectMapper.readTree(mockMvc.perform(get("/api/v1/workspace/jira/projects/QA/issue-types")).andExpect(status().isOk).andReturn().response.contentAsString).get("data")
+        assertEquals(listOf("Bug", "Task"), issueTypes.map { it.get("name").asText() })
+
+        // the issue type, chosen or default, must exist in the chosen space, or in the default one when none is chosen
+        for (issueType in listOf("\"Error\"", "null")) {
+            mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":"QA","jiraIssueType":$issueType}"""))
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.message").value("Jira project QA has no issue type named 'Error'"))
+        }
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":null,"jiraIssueType":"Bug"}"""))
+            .andExpect(status().isBadRequest)
+        mockMvc.perform(put("/api/v1/workspace/projects/TEST/settings")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jiraFailureMode":"MANUAL","jiraProjectKey":"QA","jiraIssueType":"Bug"}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraIssueType").value("Bug"))
+
+        requests.clear()
+        mockMvc.perform(post("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issue")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateJiraIssueDTO("Summary", "Steps", "Expected", "Actual", "1", null))))
+            .andExpect(status().isOk)
+        val fields = objectMapper.readTree(requests.single { it.path == "/rest/api/3/issue" }.body).get("fields")
+        assertEquals("QA", fields.get("project").get("key").asText())
+        assertEquals("Bug", fields.get("issuetype").get("name").asText())
+
+        // testers can't list them
+        mockMvc.perform(post("/api/v1/admin/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"username":"tester","displayName":"Tester","role":"TESTER","password":"tester-password"}"""))
+            .andExpect(status().isOk)
+        val tester = TestAuth.authenticatedMockMvc(webApplicationContext, TestAuth.login(webApplicationContext, objectMapper, "tester", "tester-password"))
+        tester.perform(get("/api/v1/workspace/jira/projects")).andExpect(status().isForbidden)
     }
 
     @Test

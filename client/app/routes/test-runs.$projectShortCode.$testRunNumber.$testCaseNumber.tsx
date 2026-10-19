@@ -384,6 +384,7 @@ function TestCaseRunView({
 						editable
 						jiraFailureMode={project.jiraFailureMode}
 						jiraProjectKey={project.jiraProjectKey}
+						jiraIssueType={project.jiraIssueType}
 						createIssue={{
 							testCaseRunID: testCaseRun.testCaseRunID,
 							isFailed: selectedStatus === TestCaseRunStatus.fail,

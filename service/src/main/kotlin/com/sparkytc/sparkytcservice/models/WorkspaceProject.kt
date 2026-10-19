@@ -40,9 +40,13 @@ class WorkspaceProject(
     // Jira project issues are created in, null uses the default JIRA_PROJECT_KEY
     @Column(name = "jira_project_key")
     var jiraProjectKey: String? = null,
+
+    // issue type name used for bugs, null uses the default JIRA_ISSUE_TYPE
+    @Column(name = "jira_issue_type")
+    var jiraIssueType: String? = null,
 ) {
 
     fun toDTO(): WorkspaceProjectDTO {
-        return WorkspaceProjectDTO(externalID, creationDate, title, projectShortCode, description, jiraFailureMode, jiraProjectKey)
+        return WorkspaceProjectDTO(externalID, creationDate, title, projectShortCode, description, jiraFailureMode, jiraProjectKey, jiraIssueType)
     }
 }

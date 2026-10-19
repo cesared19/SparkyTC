@@ -648,8 +648,18 @@ class WorkspaceService(
             }
         }
 
+        // the issue type, chosen or default, must exist in the space issues are created in
+        val jiraIssueType = request.jiraIssueType?.trim()?.takeIf { it.isNotEmpty() }
+        if ((jiraIssueType != null || jiraProjectKey != null) && jiraService.isEnabled) {
+            val targetProjectKey = jiraProjectKey ?: jiraService.defaultProjectKey
+            val targetIssueType = jiraIssueType ?: jiraService.defaultIssueType
+            val issueTypes = jiraService.listIssueTypes(targetProjectKey)
+            require(issueTypes.any { it.name == targetIssueType }) { "Jira project $targetProjectKey has no issue type named '$targetIssueType'" }
+        }
+
         project.jiraFailureMode = request.jiraFailureMode
         project.jiraProjectKey = jiraProjectKey
+        project.jiraIssueType = jiraIssueType
         projectRepository.save(project)
         return project.toDTO()
     }
@@ -795,7 +805,7 @@ class WorkspaceService(
 
         CurrentUser.get()?.let { description.paragraph("Reported from SparkyTC by ${it.displayName}") }
 
-        val issueKey = jiraService.createIssue(request.summary.trim(), description.build(), project.jiraProjectKey)
+        val issueKey = jiraService.createIssue(request.summary.trim(), description.build(), project.jiraProjectKey, project.jiraIssueType)
         if (appBaseURL != null) {
             jiraService.addRemoteLink(issueKey, testCaseURL(appBaseURL, testCase), testCaseLinkTitle(testCase))
         }
