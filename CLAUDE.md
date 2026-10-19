@@ -1,6 +1,8 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.1.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.2.0 está en `main`.
+
+**Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
 **Idioma:** comunícate con el usuario en español.
 
@@ -8,7 +10,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 - **Backend:** Spring Boot 3 + Kotlin (JDK 21), en `service/`. Paquete `com.sparkytc.sparkytcservice`, configuración con prefijo `sparkytc.*`.
 - **Frontend:** Remix + React + Tailwind, en `client/`. Todas las llamadas a la API pasan por el servidor Remix con la sesión del usuario (`requireAPI` / `requireUser` / `requireAdmin`).
-- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.8). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
+- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.9). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
 - **Deploy:** Docker Compose (`docker-compose.yml`). El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
 
 ## Funcionalidades existentes (v1.0.0)
@@ -22,12 +24,13 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - Notificaciones en la app (campana) al asignar un run y al completarlo, con preferencias por usuario. Las leídas se pueden borrar una a una o con "Clear read".
 - Builds por proyecto (desde 1.1.0): los admins registran builds (texto libre); la más reciente es la actual y se muestra en el dashboard. Cada test run guarda su build (se elige entre las registradas y se puede cambiar mientras esté abierto) y se envía en los bugs de Jira.
 - Jira Cloud: crear bugs desde un fail (modo Disabled, Manual o Automatic por proyecto), elegir de listas el espacio (proyecto) de Jira y el tipo de issue por proyecto (desde 1.1.0; el tipo, elegido o por defecto, debe existir en el espacio), vincular tickets existentes con su estado en vivo y sugerir tickets similares. **Nunca se suben archivos a Jira.**
+- Reporter de Jira por usuario (desde 1.3.0): los bugs se crean con la cuenta compartida y el campo Reporter es el usuario de Jira vinculado (`users.jira_account_id`), elegido por cada usuario en Account o por un admin en Users. Sin vínculo se reporta como la cuenta compartida; si Jira rechaza el reporter, se crea sin él y se notifica al usuario. Settings indica si la cuenta compartida tiene *Modify Reporter* en el espacio. No se guardan credenciales de Jira por usuario.
 - Modo claro, oscuro o del sistema. Paleta de marca carmesí `#C01C37`, con la escala de grises y la escala `brand` definidas como variables CSS en `client/app/tailwind.css`.
 
 ## Cómo trabajar
 
 - **Antes de hacer push:**
-  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 63).
+  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 64).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint ya tiene 55 problemas heredados de `main` (42 errores, 13 warnings); el criterio es no agregar nuevos.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
@@ -43,4 +46,4 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Versión en curso
 
-- **1.2.0** (rama `claude/v1.2.0`) — hechos: el título y la descripción de un test run nuevo se perdían al elegir test cases (el formulario se desmontaba al abrir el selector); ahora viven en estado de React. Pendiente: el usuario mandará los pasos del bug de carga de la landing page.
+- **1.3.0** (rama `claude/v1.3.0`) — hechos: reporter de Jira por usuario mediante el campo Reporter (sin tokens personales). Pendiente: el usuario mandará los pasos del bug de carga de la landing page.

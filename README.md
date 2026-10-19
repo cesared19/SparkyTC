@@ -75,7 +75,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.8`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.9`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
@@ -161,6 +161,15 @@ Each project has its own Jira settings in its **Settings** tab (admins only):
 -  **Issue type**: the type of the issues created for failures, picked from the issue types of the chosen space (subtasks aren't listed). *Default* uses `JIRA_ISSUE_TYPE`. The issue type, chosen or default, must exist in the space, otherwise the settings aren't saved.
 
 If Jira can't be reached the lists are replaced by text fields where the space key and issue type can be typed.
+
+#### Reporting bugs in each user's name
+
+Bugs are created with the shared Jira account, and Jira's **Reporter** is set to the Jira user linked to whoever reports the failure (in *Automatic* mode, whoever saved the result). Users without a linked Jira user report as the shared account, as before. The description always ends with "Reported from SparkyTC by …".
+
+-  **In Jira (once):** the shared account needs the **Modify Reporter** permission in each space bugs are created in, the **Reporter** field on the create screen of the issue type, and the global **Browse users and groups** permission to search users. Each project's **Settings** tab shows whether the permission is in place for its space.
+-  **In SparkyTC:** each user links their Jira user from their account page (search by name or email), and admins can link anyone from the **Jira user** column of the **Users** page. Only the Jira account id and name are stored, no Jira credentials.
+-  If Jira rejects the reporter, the issue is created again as the shared account and the user gets a notification explaining why.
+-  Jira's history still shows the shared account as the one that created the issue.
 
 Before creating an issue, SparkyTC searches the Jira project for issues whose summary shares words with the new one and suggests them, so the tester can link an existing issue instead of creating a duplicate. The search uses Jira's text search and ranks results by the words both summaries have in common; it doesn't use AI.
 

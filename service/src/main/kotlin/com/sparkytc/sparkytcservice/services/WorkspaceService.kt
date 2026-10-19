@@ -803,9 +803,15 @@ class WorkspaceService(
             ))
         }
 
-        CurrentUser.get()?.let { description.paragraph("Reported from SparkyTC by ${it.displayName}") }
+        val reporter = CurrentUser.get()
+        reporter?.let { description.paragraph("Reported from SparkyTC by ${it.displayName}") }
 
-        val issueKey = jiraService.createIssue(request.summary.trim(), description.build(), project.jiraProjectKey, project.jiraIssueType)
+        // the issue is reported as the user's linked Jira user, or as the shared account
+        val created = jiraService.createIssue(request.summary.trim(), description.build(), project.jiraProjectKey, project.jiraIssueType, reporter?.jiraAccountID)
+        val issueKey = created.key
+        if (reporter != null && created.reporterError != null) {
+            notificationService.notifyJiraReporterNotSet(reporter, testCaseRun.testRun, issueKey, created.reporterError)
+        }
         if (appBaseURL != null) {
             jiraService.addRemoteLink(issueKey, testCaseURL(appBaseURL, testCase), testCaseLinkTitle(testCase))
         }

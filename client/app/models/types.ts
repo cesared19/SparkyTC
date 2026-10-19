@@ -50,6 +50,13 @@ export interface JiraIssueType {
 	name: string
 }
 
+export interface JiraUser {
+	accountID: string
+	displayName: string
+	emailAddress?: string
+	avatarURL?: string
+}
+
 export interface CreateJiraIssue extends Record<string, any> {
 	summary: string
 	stepsToReproduce: string
@@ -78,6 +85,7 @@ export enum NotificationType {
 	testRunAssigned = 'TEST_RUN_ASSIGNED',
 	testRunCompleted = 'TEST_RUN_COMPLETED',
 	jiraIssueFailed = 'JIRA_ISSUE_FAILED',
+	jiraReporterNotSet = 'JIRA_REPORTER_NOT_SET',
 }
 
 export interface AppNotification {
@@ -123,6 +131,9 @@ export interface User {
 	notifyTestRunAssigned: boolean
 	notifyTestRunCompleted: boolean
 	isSuperAdmin: boolean
+	// the Jira user this user's issues are reported as
+	jiraAccountID?: string
+	jiraDisplayName?: string
 }
 
 export interface TestRunSummary {

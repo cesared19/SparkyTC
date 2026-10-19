@@ -9,17 +9,32 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const { api } = await requireAdmin(request)
 	const projectKey = new URL(request.url).searchParams.get('projectKey')
 	if (!projectKey) {
-		return { issueTypes: [] as JiraIssueType[] }
+		return {
+			issueTypes: [] as JiraIssueType[],
+			canModifyReporter: null as boolean | null,
+		}
 	}
 
 	try {
 		const response = await api.get<FetchResponse<JiraIssueType[]>>(
 			APIRoute.jiraIssueTypes(projectKey)
 		)
-		return { issueTypes: response.data }
+		// the reporter check is informative, failing it doesn't hide the issue types
+		let canModifyReporter: boolean | null = null
+		try {
+			canModifyReporter = (
+				await api.get<FetchResponse<{ canModifyReporter: boolean }>>(
+					APIRoute.jiraReporterPermission(projectKey)
+				)
+			).data.canModifyReporter
+		} catch {
+			canModifyReporter = null
+		}
+		return { issueTypes: response.data, canModifyReporter }
 	} catch (error) {
 		return {
 			issueTypes: [] as JiraIssueType[],
+			canModifyReporter: null as boolean | null,
 			...Tools.mapErrorToResponse(error),
 		}
 	}

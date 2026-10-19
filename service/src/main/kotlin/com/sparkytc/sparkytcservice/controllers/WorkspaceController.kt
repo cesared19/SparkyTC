@@ -5,6 +5,7 @@ import com.sparkytc.sparkytcservice.dto.*
 import com.sparkytc.sparkytcservice.dto.builds.SaveProjectBuildDTO
 import com.sparkytc.sparkytcservice.dto.documents.TestRunExportType
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.jira.JiraReporterPermissionDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.projects.UpdateProjectSettingsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunAssigneeDTO
@@ -271,6 +272,12 @@ class WorkspaceController(
     @GetMapping("/jira/projects/{projectKey}/issue-types")
     fun retrieveJiraIssueTypes(@PathVariable projectKey: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = jiraService.listIssueTypes(projectKey)))
+    }
+
+    @AdminOnly
+    @GetMapping("/jira/projects/{projectKey}/reporter-permission")
+    fun retrieveJiraReporterPermission(@PathVariable projectKey: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = JiraReporterPermissionDTO(projectKey, jiraService.canModifyReporter(projectKey))))
     }
 
     @GetMapping("/jira/issues")

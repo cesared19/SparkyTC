@@ -9,6 +9,7 @@ import {
 	JiraLink,
 	SimilarJiraIssue,
 } from '~/models/types'
+import { useCurrentUser } from '~/utility/CurrentUser'
 import { Route } from '~/utility/Routes'
 import { ErrorMessage } from './ErrorMessage'
 
@@ -297,6 +298,7 @@ function CreateJiraIssueForm({
 	onCancel,
 	onCreated,
 }: CreateJiraIssueFormProps) {
+	const currentUser = useCurrentUser()
 	const fetcher = useFetcher<ActionResponse>()
 	const similarFetcher = useFetcher<{ issues: SimilarJiraIssue[] }>()
 	const isSubmitting = fetcher.state !== 'idle'
@@ -371,7 +373,9 @@ function CreateJiraIssueForm({
 					New {issueType} in {projectKey}
 				</h3>
 				<p className="mt-1 text-xs text-gray-500">
-					Images and videos are not uploaded to Jira, the issue links to them in
+					Reported as{' '}
+					{currentUser?.jiraDisplayName ?? 'the shared Jira account'}. Images
+					and videos are not uploaded to Jira, the issue links to them in
 					SparkyTC instead
 				</p>
 			</div>

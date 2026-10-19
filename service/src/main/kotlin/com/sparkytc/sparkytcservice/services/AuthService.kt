@@ -24,6 +24,7 @@ class AuthService(
     private val projectRepository: WorkspaceProjectRepository,
     private val projectMemberRepository: ProjectMemberRepository,
     private val projectAccessService: ProjectAccessService,
+    private val jiraService: JiraService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val secureRandom = SecureRandom()
@@ -188,6 +189,26 @@ class AuthService(
             userSessionRepository.deleteAllByUser(user)
         }
 
+        return user.toDTO()
+    }
+
+    /** Links the Jira user the user's issues are reported as, or unlinks it when accountID is null. */
+    @Transactional
+    fun updateJiraUser(actor: User, userID: UUID, request: UpdateJiraUserDTO): UserDTO {
+        val user = userRepository.findByExternalID(userID)
+        requireNotNull(user) { "No user found with id $userID" }
+        require(!user.isSuperAdmin || user.id == actor.id) { "Only the super admin can change the super admin account" }
+
+        val accountID = request.accountID?.trim()?.takeIf { it.isNotEmpty() }
+        if (accountID == null) {
+            user.jiraAccountID = null
+            user.jiraDisplayName = null
+        } else {
+            val jiraUser = jiraService.retrieveUser(accountID)
+            user.jiraAccountID = jiraUser.accountID
+            user.jiraDisplayName = jiraUser.displayName
+        }
+        userRepository.save(user)
         return user.toDTO()
     }
 

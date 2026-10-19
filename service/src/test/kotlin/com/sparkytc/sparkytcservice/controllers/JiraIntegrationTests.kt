@@ -55,22 +55,40 @@ class JiraIntegrationTests {
 
         private val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
 
+        // each created issue gets the next key, SCRUM-101 first
+        private val createdIssues = java.util.concurrent.atomic.AtomicInteger()
+
         // fake jira cloud api
         private val jiraServer: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
             createContext("/") { exchange ->
                 val body = exchange.requestBody.readBytes().toString(Charsets.UTF_8)
                 val path = exchange.requestURI.path
+                val query = exchange.requestURI.query.orEmpty()
                 requests.add(RecordedRequest(exchange.requestMethod, path, exchange.requestHeaders.getFirst("Authorization"), body))
 
                 val (status, response) = when {
                     exchange.requestMethod == "POST" && path == "/rest/api/3/issue" ->
-                        if (body.contains("\"summary\":\"Rejected by Jira\"")) {
+                        if (body.contains("\"reporter\":{\"id\":\"acc-blocked\"}")) {
+                            400 to """{"errorMessages":[],"errors":{"reporter":"Field 'reporter' cannot be set. It is not on the appropriate screen, or unknown."}}"""
+                        } else if (body.contains("\"summary\":\"Rejected by Jira\"")) {
                             400 to """{"errorMessages":[],"errors":{"customfield_10010":"Field is required"}}"""
                         } else {
-                            201 to """{"id":"10101","key":"SCRUM-101"}"""
+                            201 to """{"id":"10101","key":"SCRUM-${101 + createdIssues.getAndIncrement()}"}"""
                         }
                     exchange.requestMethod == "POST" && path.endsWith("/remotelink") -> 201 to """{"id":1}"""
                     exchange.requestMethod == "GET" && path == "/rest/api/3/project/QA" -> 200 to """{"key":"QA"}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/user/search" ->
+                        200 to """[
+                            {"accountId":"acc-ana","displayName":"Ana Jira","accountType":"atlassian","active":true,"emailAddress":"ana@example.com","avatarUrls":{"24x24":"https://avatar/ana"}},
+                            {"accountId":"app-1","displayName":"Automation for Jira","accountType":"app","active":true},
+                            {"accountId":"acc-gone","displayName":"Former","accountType":"atlassian","active":false}
+                        ]"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/user" && query == "accountId=acc-ana" ->
+                        200 to """{"accountId":"acc-ana","displayName":"Ana Jira","accountType":"atlassian","active":true}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/user" && query == "accountId=acc-blocked" ->
+                        200 to """{"accountId":"acc-blocked","displayName":"Blocked Jira","accountType":"atlassian","active":true}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/mypermissions" ->
+                        200 to """{"permissions":{"MODIFY_REPORTER":{"key":"MODIFY_REPORTER","havePermission":${!query.contains("projectKey=QA")}}}}"""
                     exchange.requestMethod == "GET" && path == "/rest/api/3/project/search" ->
                         200 to """{"isLast":true,"values":[{"key":"QA","name":"Quality"},{"key":"SCRUM","name":"Scrum team"}]}"""
                     exchange.requestMethod == "GET" && path == "/rest/api/3/issue/createmeta/QA/issuetypes" ->
@@ -138,6 +156,7 @@ class JiraIntegrationTests {
         adminBootstrap.run()
         mockMvc = TestAuth.authenticatedMockMvc(webApplicationContext, TestAuth.login(webApplicationContext, objectMapper))
         requests.clear()
+        createdIssues.set(0)
     }
 
     @Test
@@ -408,6 +427,70 @@ class JiraIntegrationTests {
             .andExpect(status().isOk)
         val tester = TestAuth.authenticatedMockMvc(webApplicationContext, TestAuth.login(webApplicationContext, objectMapper, "tester", "tester-password"))
         tester.perform(get("/api/v1/workspace/jira/projects")).andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `issues are reported as the jira user linked to the sparkytc user`() {
+        val testCaseRun = createTestCaseRun()
+        val request = CreateJiraIssueDTO("Summary", "Steps", "Expected", "Actual", "1", null)
+        fun createIssue(mvc: MockMvc) = mvc.perform(post("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issue")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk)
+        fun issueBodies() = requests.filter { it.method == "POST" && it.path == "/rest/api/3/issue" }.map { objectMapper.readTree(it.body).get("fields") }
+
+        // only active people are offered, not apps or deactivated accounts
+        val users = readData<List<Map<String, Any>>>(get("/api/v1/auth/jira-users").param("query", "ana"))
+        assertEquals(listOf("acc-ana" to "Ana Jira"), users.map { it["accountID"] to it["displayName"] })
+        assertEquals("ana@example.com", users.single()["emailAddress"])
+        mockMvc.perform(get("/api/v1/auth/jira-users").param("query", "a")).andExpect(status().isBadRequest)
+
+        // without a linked jira user the issue is reported as the shared account
+        createIssue(mockMvc)
+        assertEquals(null, issueBodies().single().get("reporter"))
+
+        mockMvc.perform(put("/api/v1/auth/jira-user").contentType(MediaType.APPLICATION_JSON).content("""{"accountID":"unknown"}"""))
+            .andExpect(status().isBadRequest)
+        mockMvc.perform(put("/api/v1/auth/jira-user").contentType(MediaType.APPLICATION_JSON).content("""{"accountID":"acc-ana"}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraDisplayName").value("Ana Jira"))
+        requests.clear()
+        createIssue(mockMvc)
+        assertEquals("acc-ana", issueBodies().single().get("reporter").get("id").asText())
+
+        // admins link other users; when jira rejects the reporter the issue is still created and the user is told
+        mockMvc.perform(post("/api/v1/admin/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"username":"tester","displayName":"Tester","role":"TESTER","password":"tester-password"}"""))
+            .andExpect(status().isOk)
+        val testerID = readData<List<Map<String, Any>>>(get("/api/v1/admin/users")).first { it["username"] == "tester" }["userID"]
+        val tester = TestAuth.authenticatedMockMvc(webApplicationContext, TestAuth.login(webApplicationContext, objectMapper, "tester", "tester-password"))
+        tester.perform(put("/api/v1/admin/users/$testerID/jira-user").contentType(MediaType.APPLICATION_JSON).content("""{"accountID":"acc-blocked"}"""))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(put("/api/v1/admin/users/$testerID/jira-user").contentType(MediaType.APPLICATION_JSON).content("""{"accountID":"acc-blocked"}"""))
+            .andExpect(status().isOk)
+        mockMvc.perform(put("/api/v1/admin/users/$testerID/projects").contentType(MediaType.APPLICATION_JSON)
+            .content("""{"projectIDs":["${readData<List<Map<String, Any>>>(get("/api/v1/workspace/projects")).single()["projectID"]}"]}"""))
+            .andExpect(status().isOk)
+        requests.clear()
+        createIssue(tester)
+        assertEquals(listOf("acc-blocked", null), issueBodies().map { it.get("reporter")?.get("id")?.asText() })
+        val notification = objectMapper.readTree(tester.perform(get("/api/v1/notifications")).andReturn().response.contentAsString)
+            .get("data").get("notifications")[0]
+        assertEquals("JIRA_REPORTER_NOT_SET", notification.get("type").asText())
+        assertTrue(notification.get("message").asText().contains("Field 'reporter' cannot be set"), notification.toString())
+
+        // unlinking goes back to the shared account
+        mockMvc.perform(put("/api/v1/auth/jira-user").contentType(MediaType.APPLICATION_JSON).content("""{"accountID":null}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraAccountID").doesNotExist())
+
+        // admins see whether the shared account can set the reporter in each space
+        for ((key, expected) in listOf("SCRUM" to true, "QA" to false)) {
+            mockMvc.perform(get("/api/v1/workspace/jira/projects/$key/reporter-permission"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.data.canModifyReporter").value(expected))
+        }
     }
 
     @Test

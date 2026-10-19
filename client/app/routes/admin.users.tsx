@@ -12,7 +12,14 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { DateDisplay } from '~/components/DateDisplay'
 import { ErrorMessage } from '~/components/ErrorMessage'
-import { ErrorResponse, FetchResponse, User, UserRole } from '~/models/types'
+import { JiraUserPicker } from '~/components/JiraUserPicker'
+import {
+	ErrorResponse,
+	FetchResponse,
+	JiraConfiguration,
+	User,
+	UserRole,
+} from '~/models/types'
 import { Project } from '~/models/project'
 import { requireAdmin } from '~/utility/Authorization.server'
 import { useCurrentUser } from '~/utility/CurrentUser'
@@ -21,11 +28,16 @@ import { Tools } from '~/utility/Tools'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const { api } = await requireAdmin(request)
-	const [users, projects] = await Promise.all([
+	const [users, projects, jira] = await Promise.all([
 		api.get<FetchResponse<User[]>>(APIRoute.users),
 		api.get<FetchResponse<Project[]>>(APIRoute.projects),
+		api.get<FetchResponse<JiraConfiguration>>(APIRoute.jiraConfiguration),
 	])
-	return { users: users.data, projects: projects.data }
+	return {
+		users: users.data,
+		projects: projects.data,
+		isJiraEnabled: jira.data.isEnabled,
+	}
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -90,7 +102,7 @@ function RoleSelect({
 }
 
 export default function Users() {
-	const { users, projects } = useLoaderData<typeof loader>()
+	const { users, projects, isJiraEnabled } = useLoaderData<typeof loader>()
 	const currentUser = useCurrentUser()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
@@ -125,6 +137,7 @@ export default function Users() {
 									'Display name',
 									'Role',
 									'Projects',
+									...(isJiraEnabled ? ['Jira user'] : []),
 									'Active',
 									...(currentUser?.isSuperAdmin ? ['Reset password'] : []),
 									'Created',
@@ -141,7 +154,12 @@ export default function Users() {
 						</thead>
 						<tbody className="divide-y divide-gray-200 bg-white">
 							{users.map((user) => (
-								<UserRow key={user.userID} user={user} projects={projects} />
+								<UserRow
+									key={user.userID}
+									user={user}
+									projects={projects}
+									isJiraEnabled={isJiraEnabled}
+								/>
 							))}
 						</tbody>
 					</table>
@@ -302,7 +320,15 @@ function UserProjects({ user, projects }: { user: User; projects: Project[] }) {
 	)
 }
 
-function UserRow({ user, projects }: { user: User; projects: Project[] }) {
+function UserRow({
+	user,
+	projects,
+	isJiraEnabled,
+}: {
+	user: User
+	projects: Project[]
+	isJiraEnabled: boolean
+}) {
 	const fetcher = useFetcher<ErrorResponse | { ok: true }>()
 	const currentUser = useCurrentUser()
 	const [isDirty, setIsDirty] = useState(false)
@@ -368,6 +394,11 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 			<td className="px-3 py-2 align-top">
 				<UserProjects user={user} projects={projects} />
 			</td>
+			{isJiraEnabled && (
+				<td className="px-3 py-2 align-top">
+					<UserJiraUser user={user} isLocked={isLocked} />
+				</td>
+			)}
 			<td className="px-3 py-2">
 				<input
 					form={formID}
@@ -409,5 +440,31 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 				</button>
 			</td>
 		</tr>
+	)
+}
+
+/** The Jira user a user's issues are reported as, linked by an admin. */
+function UserJiraUser({ user, isLocked }: { user: User; isLocked: boolean }) {
+	if (isLocked) {
+		return (
+			<span className="text-xs text-gray-500">
+				{user.jiraDisplayName ?? 'Not linked'}
+			</span>
+		)
+	}
+
+	return (
+		<details>
+			<summary className="cursor-pointer whitespace-nowrap text-xs font-medium text-brand-600 hover:text-brand-800">
+				{user.jiraDisplayName ?? 'Not linked'}
+			</summary>
+			<div className="mt-2 w-72 rounded-md border border-gray-200 bg-white p-3">
+				<JiraUserPicker
+					key={user.jiraAccountID ?? 'none'}
+					user={user}
+					forOtherUser
+				/>
+			</div>
+		</details>
 	)
 }

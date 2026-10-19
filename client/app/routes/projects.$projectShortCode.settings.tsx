@@ -47,6 +47,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	let spaces: JiraSpace[] | null = null
 	let spacesError: string | undefined
 	let issueTypes: JiraIssueType[] | null = null
+	let canModifyReporter: boolean | null = null
 	if (jira.data.isEnabled) {
 		try {
 			spaces = (await api.get<FetchResponse<JiraSpace[]>>(APIRoute.jiraSpaces))
@@ -65,6 +66,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			} catch {
 				issueTypes = null
 			}
+			canModifyReporter = await reporterPermission(api, spaceKey)
 		}
 	}
 
@@ -76,6 +78,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		spaces,
 		spacesError,
 		issueTypes,
+		canModifyReporter,
 	}
 }
 
@@ -120,8 +123,16 @@ const MODES = [
 ]
 
 export default function ProjectSettings() {
-	const { projects, project, jira, builds, spaces, spacesError, issueTypes } =
-		useLoaderData<typeof loader>()
+	const {
+		projects,
+		project,
+		jira,
+		builds,
+		spaces,
+		spacesError,
+		issueTypes,
+		canModifyReporter,
+	} = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const [mode, setMode] = useState(project.jiraFailureMode)
@@ -191,6 +202,7 @@ export default function ProjectSettings() {
 					spaces={spaces}
 					spacesError={spacesError}
 					initialIssueTypes={issueTypes}
+					initialCanModifyReporter={canModifyReporter}
 				/>
 
 				<button
@@ -232,17 +244,20 @@ function JiraTargetFields({
 	spaces,
 	spacesError,
 	initialIssueTypes,
+	initialCanModifyReporter,
 }: {
 	project: Project
 	jira: JiraConfiguration
 	spaces: JiraSpace[] | null
 	spacesError?: string
 	initialIssueTypes: JiraIssueType[] | null
+	initialCanModifyReporter: boolean | null
 }) {
 	const [spaceKey, setSpaceKey] = useState(project.jiraProjectKey ?? '')
 	const [issueType, setIssueType] = useState(project.jiraIssueType ?? '')
 	const typesFetcher = useFetcher<{
 		issueTypes: JiraIssueType[]
+		canModifyReporter: boolean | null
 		message?: string
 	}>()
 	const isLoadingTypes = typesFetcher.state !== 'idle'
@@ -250,6 +265,9 @@ function JiraTargetFields({
 		? typesFetcher.data.issueTypes
 		: initialIssueTypes
 	const issueTypesError = typesFetcher.data?.message
+	const canModifyReporter = typesFetcher.data
+		? typesFetcher.data.canModifyReporter
+		: initialCanModifyReporter
 
 	// keep the issue type only if the newly picked space has it
 	useEffect(() => {
@@ -329,6 +347,19 @@ function JiraTargetFields({
 					default is set with JIRA_PROJECT_KEY ({jira.projectKey ?? 'not set'}
 					).
 				</p>
+				{spaces && canModifyReporter === true && (
+					<p className="mt-1 text-xs text-green-700">
+						✓ Bugs are reported in the name of each user&apos;s linked Jira
+						user.
+					</p>
+				)}
+				{spaces && canModifyReporter === false && (
+					<p className="mt-1 rounded-md bg-yellow-50 p-2 text-xs text-yellow-800">
+						The shared Jira account doesn&apos;t have the Modify Reporter
+						permission in this space, so bugs are reported as the shared
+						account. Grant it in the space&apos;s permissions in Jira.
+					</p>
+				)}
 			</div>
 
 			<div>
@@ -384,4 +415,19 @@ function JiraTargetFields({
 			</div>
 		</>
 	)
+}
+
+/** Whether the shared Jira account can report issues in other users' names, null when unknown. */
+async function reporterPermission(
+	api: Awaited<ReturnType<typeof requireAdmin>>['api'],
+	spaceKey: string
+) {
+	try {
+		const response = await api.get<
+			FetchResponse<{ canModifyReporter: boolean }>
+		>(APIRoute.jiraReporterPermission(spaceKey))
+		return response.data.canModifyReporter
+	} catch {
+		return null
+	}
 }

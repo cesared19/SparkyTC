@@ -91,5 +91,15 @@ class NotificationService(
         ))
     }
 
+    fun notifyJiraReporterNotSet(user: User, testRun: TestRun, issueKey: String, error: String) {
+        notificationRepository.save(Notification(
+            user = user,
+            type = NotificationType.JIRA_REPORTER_NOT_SET,
+            title = "$issueKey wasn't reported in your name",
+            message = "The issue was created as the shared Jira account because Jira didn't accept your Jira user as reporter: $error",
+            link = testRunLink(testRun),
+        ))
+    }
+
     private fun testRunLink(testRun: TestRun) = "/test-runs/${testRun.project.projectShortCode}/${testRun.testRunNumber}"
 }
