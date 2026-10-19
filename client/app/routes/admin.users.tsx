@@ -67,7 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 const inputClassName =
-	'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
+	'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60'
 
 function RoleSelect({
 	defaultValue,

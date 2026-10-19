@@ -22,6 +22,7 @@ import { useState } from 'react'
 import { ExportModal } from '~/components/ExportModal'
 import { useIsAdmin } from '~/utility/CurrentUser'
 import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
+import { TestRunBuild } from '~/components/Builds'
 import { TestCaseRunStatus } from '~/models/types'
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -52,7 +53,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestRunDetails() {
 	const [showExportModal, setShowExportModal] = useState(false)
-	const { project, testRun, testCaseRuns, projectUsers } =
+	const { project, testRun, testCaseRuns, projectUsers, builds } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 
 	const navigate = useNavigate()
@@ -232,10 +233,14 @@ export default function TestRunDetails() {
 							projectUsers={projectUsers}
 						/>
 					</div>
-					<div className="mt-4 grid grid-cols-2 gap-4">
+					<div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<h3 className="text-lg font-medium text-gray-900 mb-1">Status</h3>
 							<TestRunStatusBadge status={testRun.status} />
+						</div>
+						<div>
+							<h3 className="text-lg font-medium text-gray-900 mb-1">Build</h3>
+							<TestRunBuild testRun={testRun} builds={builds} />
 						</div>
 						<div>
 							<h3 className="text-lg font-medium text-gray-900 mb-1">

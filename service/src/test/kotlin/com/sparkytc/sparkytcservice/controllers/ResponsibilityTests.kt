@@ -229,8 +229,48 @@ class ResponsibilityTests {
         assertEquals("QA", project.get("jiraProjectKey").asText())
     }
 
+    @Test
+    fun `admins register builds and test runs record the build they test`() {
+        expectStatus(ana.perform(post("/api/v1/workspace/projects/PRJ/builds").contentType(MediaType.APPLICATION_JSON).content("""{"buildNumber":"1.0"}""")), 403)
+        val first = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to " 1.0 (100) ")).get("data").get("buildID").asText()
+        val second = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "1.1 (101)")).get("data").get("buildID").asText()
+        expectError(admin, post("/api/v1/workspace/projects/PRJ/builds"), mapOf("buildNumber" to "1.1 (101)"), "Build 1.1 (101) already exists")
+        expectError(admin, post("/api/v1/workspace/projects/PRJ/builds"), mapOf("buildNumber" to "  "), "Build number is required")
+        val otherProject = post(admin, "/api/v1/workspace/projects/OTH/builds", mapOf("buildNumber" to "9.9")).get("data").get("buildID").asText()
+
+        // everyone with access sees them newest first, the newest is the current build
+        assertEquals(listOf("1.1 (101)", "1.0 (100)"), data(ana, "/api/v1/workspace/projects/PRJ/builds").map { it.get("buildNumber").asText() })
+        val currentBuild = data(ana, "/api/v1/workspace/projects/PRJ/dashboard").get("currentBuild")
+        assertEquals("1.1 (101)", currentBuild.get("buildNumber").asText())
+        assertEquals("admin", currentBuild.get("createdBy").asText())
+
+        // testers pick one of the project's builds for their test run
+        post(ana, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Run", null, testCaseIDs(), emptyList(), UUID.fromString(first)))
+        val testRun = data(ana, "/api/v1/workspace/test-runs/PRJ")[0]
+        assertEquals("1.0 (100)", testRun.get("build").get("buildNumber").asText())
+        val testRunID = testRun.get("testRunID").asText()
+        expectError(ana, put("/api/v1/workspace/test-runs/$testRunID/build"), mapOf("buildID" to otherProject), "No build found")
+        put(ana, "/api/v1/workspace/test-runs/$testRunID/build", mapOf("buildID" to second))
+        assertEquals("1.1 (101)", data(ana, "/api/v1/workspace/test-runs/PRJ")[0].get("build").get("buildNumber").asText())
+
+        // fixing a build number shows up in the test runs using it, which keep it from being deleted
+        put(admin, "/api/v1/workspace/builds/$second", mapOf("buildNumber" to "1.1 (102)"))
+        assertEquals("1.1 (102)", data(ana, "/api/v1/workspace/test-runs/PRJ")[0].get("build").get("buildNumber").asText())
+        expectStatus(ana.perform(delete("/api/v1/workspace/builds/$first")), 403)
+        expectError(admin, delete("/api/v1/workspace/builds/$second"), emptyMap<String, String>(), "is used by test runs and can't be deleted")
+        admin.perform(delete("/api/v1/workspace/builds/$first")).andExpect(status().isOk)
+        assertEquals(listOf("1.1 (102)"), data(ana, "/api/v1/workspace/projects/PRJ/builds").map { it.get("buildNumber").asText() })
+
+        put(admin, "/api/v1/workspace/test-runs/$testRunID", UpdateTestRunDTO("Run", null, TestRunStatus.ABORT))
+        expectError(ana, put("/api/v1/workspace/test-runs/$testRunID/build"), mapOf("buildID" to null), "The build can't be changed once the test run is closed")
+    }
+
     private fun createTestRun(assignees: List<String>, creator: MockMvc = admin) {
         post(creator, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Run", null, testCaseIDs(), assignees.map { UUID.fromString(userIDs[it]) }))
+    }
+
+    private fun expectStatus(result: org.springframework.test.web.servlet.ResultActions, code: Int) {
+        result.andExpect(status().`is`(code))
     }
 
     private fun testCaseIDs(): List<UUID> {

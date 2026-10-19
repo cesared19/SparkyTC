@@ -31,6 +31,10 @@ export class Route {
 		return '/assignments'
 	}
 
+	static get builds() {
+		return '/builds'
+	}
+
 	static get notifications() {
 		return '/notifications'
 	}
@@ -126,6 +130,18 @@ export class APIRoute {
 
 	static projectSettings(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/settings`
+	}
+
+	static projectBuilds(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/builds`
+	}
+
+	static build(buildID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/builds/${buildID}`
+	}
+
+	static testRunBuild(testRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}/build`
 	}
 
 	static testRunAssignees(testRunID: string) {

@@ -54,8 +54,9 @@ View the progress of your test run and see the results of each test case.
 -  Per-project visibility: admins choose which projects each tester can see
 -  Light, dark or system theme, chosen by each user from their account page
 -  Test run responsibilities: assign test runs to users, testers take test cases so work isn't duplicated, and each result shows who completed it
--  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page
+-  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page; read notifications can be deleted one by one or all at once with **Clear read**
 -  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and choose the Jira project; similar existing issues are suggested before creating a new one
+-  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
 
 ### Importing test cases from CSV
 
@@ -74,7 +75,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.7`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.8`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
@@ -85,7 +86,9 @@ Everyone signs in with their own account. There are two roles:
 
 Testers only see the projects assigned to them: on the **Users** page, click a tester's project count in the **Projects** column and check the projects they should see. Admins always see every project. Testers that existed before project visibility was added keep access to all the projects that existed at that time.
 
-The first admin account is created when the backend starts and there are no users yet. Add these variables to the `.env` file before the first start, then sign in and create the rest of the accounts from the **Users** page:
+The account set in `ADMIN_USERNAME` is the **super admin**: an admin that is also the only account that can reset other users' passwords, and the only one that can change the super admin account itself. Other admins can still create users, make other users admins and deactivate accounts. The super admin isn't offered when assigning test runs or test cases.
+
+The super admin account is created when the backend starts if it doesn't exist yet, so add these variables to the `.env` file before the first start, then sign in and create the rest of the accounts from the **Users** page. On existing installations, the account with that username becomes the super admin on the next start.
 
 ```
 ADMIN_USERNAME=<username>
@@ -93,9 +96,17 @@ ADMIN_PASSWORD=<at least 8 characters>
 SESSION_SECRET=<long random string, e.g. the output of: openssl rand -hex 32>
 ```
 
+`ADMIN_PASSWORD` is only used to create the account. If the super admin forgets their password, start the backend once with `ADMIN_PASSWORD_RESET=true` to set it back to `ADMIN_PASSWORD`, then remove the variable so it isn't reset on every restart.
+
 `SESSION_SECRET` signs the session cookie of the client service. If it isn't set a random one is used and everyone is signed out whenever the client restarts. Sessions last 7 days. Set `COOKIE_SECURE=true` once the application is served over HTTPS.
 
-Users can change their password from their account page (click their name in the top bar). Admins can reset passwords and deactivate accounts, which signs the user out immediately.
+Users can change their password from their account page (click their name in the top bar). The super admin can reset passwords and admins can deactivate accounts, both of which sign the user out immediately.
+
+### Builds
+
+Admins register each build of the product under test from the **Current build** card of the project dashboard, or from the **Builds** section of the project's **Settings** tab, where builds can also be renamed or deleted (builds used by a test run can't be deleted). Build numbers are free text, e.g. `2.3.1 (4512)`, and the newest one is the project's current build.
+
+When creating a test run the current build is preselected. Testers pick one of the registered builds, and anyone working on the run can change it while it's open. The build is sent with the Jira issues created from the run.
 
 ### Jira integration
 
@@ -111,7 +122,7 @@ JIRA_ISSUE_TYPE=Error    # issue type name used for bugs
 
 API tokens are created at https://id.atlassian.com/manage-profile/security/api-tokens and act with the permissions of the account that created them (it needs Browse projects, Create issues and Link issues). Tokens expire, so renew them when SparkyTC reports that Jira rejected the credentials. The integration is disabled while any of the first three variables is empty.
 
--  To report a bug, mark a test case as **Fail** during a test run and click **Create bug in Jira**. The form is pre-filled from the test case: the summary from the title, the steps from the test instructions, the expected result and build number from the `Expected Result` and `Build Number` properties, and the actual result from the run notes.
+-  To report a bug, mark a test case as **Fail** during a test run and click **Create bug in Jira**. The form is pre-filled from the test case: the summary from the title, the steps from the test instructions, the expected result from the `Expected Result` property, the build number from the test run's build (or the `Build Number` property when the run has none), and the actual result from the run notes.
 -  Images and videos are **never uploaded to Jira**, so they don't use its storage quota. The issue description links to them in SparkyTC instead, and a link back to the test case is added to the issue.
 -  The links use the address you open SparkyTC with (e.g. `http://192.168.1.20:3000`). Set `SPARKYTC_PUBLIC_URL` in the client service to override it, for example when a domain is added.
 
@@ -145,7 +156,7 @@ graph TD
 
 Each project has its own Jira settings in its **Settings** tab (admins only):
 
--  **When a test case fails**: *Disabled* (no issues are created, existing ones can still be linked), *Manual* (the pre-filled form described above) or *Automatic* (saving a failed result creates the issue right away from the test case, its `Expected Result` and `Build Number` properties and the run notes; missing details are sent as "Not provided", and if Jira rejects the issue the result is still saved and the tester gets a notification).
+-  **When a test case fails**: *Disabled* (no issues are created, existing ones can still be linked), *Manual* (the pre-filled form described above) or *Automatic* (saving a failed result creates the issue right away from the test case, its `Expected Result` property, the test run's build and the run notes; missing details are sent as "Not provided", and if Jira rejects the issue the result is still saved and the tester gets a notification).
 -  **Jira project**: the key of the Jira project issues are created in. Empty uses `JIRA_PROJECT_KEY`.
 
 Before creating an issue, SparkyTC searches the Jira project for issues whose summary shares words with the new one and suggests them, so the tester can link an existing issue instead of creating a duplicate. The search uses Jira's text search and ranks results by the words both summaries have in common; it doesn't use AI.

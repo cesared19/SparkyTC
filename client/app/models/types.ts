@@ -136,6 +136,14 @@ export interface ProjectDashboard {
 	activeTestRuns: TestRunSummary[]
 	recentTestRuns: TestRunSummary[]
 	linkedJiraIssueCount: number
+	currentBuild?: ProjectBuild
+}
+
+export interface ProjectBuild {
+	buildID: string
+	buildNumber: string
+	creationDate: number
+	createdBy?: string
 }
 
 export interface TestCaseAttachment {
@@ -215,6 +223,7 @@ export interface TestRun {
 	description?: string
 	createdBy?: string
 	assignees: UserSummary[]
+	build?: ProjectBuild
 }
 
 export enum TestCaseRunStatus {
@@ -274,6 +283,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	testCaseRuns: TestCaseRun[]
 	properties: PropertyConfiguration[]
 	projectUsers: UserSummary[]
+	builds: ProjectBuild[]
 }
 
 export interface ErrorResponse extends Record<string, any> {

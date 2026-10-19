@@ -367,6 +367,17 @@ class JiraIntegrationTests {
             .content("""{"jiraFailureMode":"AUTOMATIC","jiraProjectKey":null}"""))
             .andExpect(status().isOk)
 
+        // the issue reports the build the test run is testing
+        val buildID = mockMvc.perform(post("/api/v1/workspace/projects/TEST/builds")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"buildNumber":"2.4.0 (6512)"}"""))
+            .andExpect(status().isOk)
+            .andReturn().let { objectMapper.readTree(it.response.contentAsString).get("data").get("buildID").asText() }
+        mockMvc.perform(put("/api/v1/workspace/test-runs/${getTestRuns().first().testRunID}/build")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"buildID":"$buildID"}"""))
+            .andExpect(status().isOk)
+
         val failure = mapOf("status" to "FAIL", "notes" to "A chime plays", "appBaseURL" to "http://10.0.0.5:3000")
         mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}")
             .contentType(MediaType.APPLICATION_JSON)
@@ -378,6 +389,7 @@ class JiraIntegrationTests {
         assertEquals("Steering warning", fields.get("summary").asText())
         val text = collectText(fields.get("description"))
         assertTrue(text.contains("A chime plays") && text.contains("1. Launch trainer") && text.contains("Not provided"), text)
+        assertTrue(text.contains("Build number") && text.contains("2.4.0 (6512)"), text)
 
         // saving the failure again, or after a pass, doesn't create another issue
         for (status in listOf("FAIL", "PASS", "FAIL")) {

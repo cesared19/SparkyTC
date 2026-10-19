@@ -9,6 +9,7 @@ import {
 	useNavigation,
 } from '@remix-run/react'
 import { useState } from 'react'
+import { BuildManager } from '~/components/Builds'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { ProjectShell } from '~/components/ProjectShell'
 import { Project } from '~/models/project'
@@ -16,6 +17,7 @@ import {
 	FetchResponse,
 	JiraConfiguration,
 	JiraFailureMode,
+	ProjectBuild,
 } from '~/models/types'
 import { requireAdmin } from '~/utility/Authorization.server'
 import { APIRoute } from '~/utility/Routes'
@@ -23,6 +25,7 @@ import { Tools } from '~/utility/Tools'
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { api } = await requireAdmin(request)
+	const projectShortCode = params.projectShortCode ?? ''
 	const [projects, jira] = await Promise.all([
 		api.get<FetchResponse<Project[]>>(APIRoute.projects),
 		api.get<FetchResponse<JiraConfiguration>>(APIRoute.jiraConfiguration),
@@ -33,7 +36,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
 	}
-	return { projects: projects.data, project, jira: jira.data }
+	const builds = await api.get<FetchResponse<ProjectBuild[]>>(
+		APIRoute.projectBuilds(projectShortCode)
+	)
+	return {
+		projects: projects.data,
+		project,
+		jira: jira.data,
+		builds: builds.data,
+	}
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -75,7 +86,7 @@ const MODES = [
 ]
 
 export default function ProjectSettings() {
-	const { projects, project, jira } = useLoaderData<typeof loader>()
+	const { projects, project, jira, builds } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const [mode, setMode] = useState(project.jiraFailureMode)
@@ -171,6 +182,20 @@ export default function ProjectSettings() {
 					{navigation.state !== 'idle' ? 'Saving...' : 'Save settings'}
 				</button>
 			</Form>
+
+			<section id="builds" className="mt-10 max-w-2xl space-y-3">
+				<div>
+					<h2 className="text-lg font-semibold text-gray-900">Builds</h2>
+					<p className="mt-1 text-sm text-gray-500">
+						Builds testers pick from when running tests. The current build is
+						shown on the dashboard and sent with Jira issues.
+					</p>
+				</div>
+				<BuildManager
+					projectShortCode={project.projectShortCode}
+					builds={builds}
+				/>
+			</section>
 		</ProjectShell>
 	)
 }

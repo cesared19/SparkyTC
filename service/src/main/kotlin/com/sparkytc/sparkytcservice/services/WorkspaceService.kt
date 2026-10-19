@@ -52,6 +52,7 @@ class WorkspaceService(
     private val projectAccessService: ProjectAccessService,
     private val notificationService: NotificationService,
     private val userRepository: UserRepository,
+    private val projectBuildService: ProjectBuildService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -128,6 +129,7 @@ class WorkspaceService(
             activeTestRuns = testRuns.filter { it.status in activeStatuses }.mapNotNull { summaries[it] },
             recentTestRuns = testRuns.filter { it.status !in activeStatuses }.take(5).mapNotNull { summaries[it] },
             linkedJiraIssueCount = testCases.flatMap { testCase -> testCase.jiraLinks.map { it.issueKey } }.distinct().size,
+            currentBuild = projectBuildService.currentBuild(project),
         )
     }
 
@@ -386,6 +388,7 @@ class WorkspaceService(
             title = testRun.title,
             description = testRun.description,
             createdBy = CurrentUser.get(),
+            build = testRun.buildID?.let { projectBuildService.requireBuild(project, it) },
         )
         newTestRun.assignees.addAll(projectUsersByID(project, testRun.assigneeIDs))
         testRunRepository.save(newTestRun)
@@ -533,7 +536,9 @@ class WorkspaceService(
             stepsToReproduce = testCaseRun.testInstructions ?: notProvided,
             expectedResult = propertyValue(testCaseRun.testCase, "expected result") ?: notProvided,
             actualResult = testCaseRun.notes?.takeIf { it.isNotBlank() } ?: notProvided,
-            buildNumber = propertyValue(testCaseRun.testCase, "build number") ?: notProvided,
+            buildNumber = testCaseRun.testRun.build?.buildNumber
+                ?: propertyValue(testCaseRun.testCase, "build number")
+                ?: notProvided,
             appBaseURL = appBaseURL,
         )
 
@@ -551,6 +556,18 @@ class WorkspaceService(
         return testCase.propertyValues
             .firstOrNull { it.propertyConfiguration.title.trim().lowercase() == title }
             ?.value?.takeIf { it.isNotBlank() }
+    }
+
+    @Transactional
+    fun updateTestRunBuild(testRunID: UUID, request: UpdateTestRunBuildDTO): TestRunDTO {
+        val testRun = testRunRepository.findByExternalID(testRunID)
+        requireNotNull(testRun) { "No test run found for id $testRunID" }
+        projectAccessService.requireAccess(testRun.project)
+        require(!testRun.isClosed) { "The build can't be changed once the test run is closed" }
+
+        testRun.build = request.buildID?.let { projectBuildService.requireBuild(testRun.project, it) }
+        testRunRepository.save(testRun)
+        return testRun.toDTO()
     }
 
     @Transactional

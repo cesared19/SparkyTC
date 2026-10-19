@@ -3,6 +3,7 @@ import { useLoaderData, Outlet, useOutletContext } from '@remix-run/react'
 import { APIRoute } from '~/utility/Routes'
 import type {
 	FetchResponse,
+	ProjectBuild,
 	ProjectTestCaseRunsOutletContext,
 	ProjectTestRunsOutletContext,
 	TestCaseRun,
@@ -22,25 +23,30 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Test run number is required', { status: 400 })
 	}
 
-	const [response, propertiesResponse, usersResponse] = await Promise.all([
-		api.get<FetchResponse<TestCaseRun[]>>(
-			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
-		),
-		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
-		api.get<FetchResponse<UserSummary[]>>(
-			APIRoute.projectUsers(projectShortCode)
-		),
-	])
+	const [response, propertiesResponse, usersResponse, buildsResponse] =
+		await Promise.all([
+			api.get<FetchResponse<TestCaseRun[]>>(
+				APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
+			),
+			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+			api.get<FetchResponse<UserSummary[]>>(
+				APIRoute.projectUsers(projectShortCode)
+			),
+			api.get<FetchResponse<ProjectBuild[]>>(
+				APIRoute.projectBuilds(projectShortCode)
+			),
+		])
 	return {
 		testRunNumber,
 		testCaseRuns: response.data,
 		properties: propertiesResponse.data,
 		projectUsers: usersResponse.data,
+		builds: buildsResponse.data,
 	}
 }
 
 export default function TestRunsIndex() {
-	const { testRunNumber, testCaseRuns, properties, projectUsers } =
+	const { testRunNumber, testCaseRuns, properties, projectUsers, builds } =
 		useLoaderData<typeof loader>()
 	const { project, testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
 	const testRun = testRuns.find(
@@ -56,6 +62,7 @@ export default function TestRunsIndex() {
 		testCaseRuns,
 		properties,
 		projectUsers,
+		builds,
 	}
 
 	return <Outlet context={outletContext} />
