@@ -371,6 +371,12 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.9")
                 }
                 SchemaVersion.VERSION_0_0_9 -> {
+                    // test cases used in test runs are archived instead of deleted, so the runs keep their results
+                    jdbcTemplate.execute("ALTER TABLE test_cases ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.10")
+                }
+                SchemaVersion.VERSION_0_0_10 -> {
                     break
                 }
             }

@@ -77,7 +77,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.9`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.10`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
@@ -85,6 +85,8 @@ Everyone signs in with their own account. There are two roles:
 
 -  **Tester**: create, edit and import test cases, run test runs, add images and videos, and create or link Jira issues.
 -  **Admin**: everything a tester can do in every project, plus creating projects, managing users (**Users** page), configuring properties, and deleting test cases and test runs.
+
+Deleting a test case that test runs already used archives it instead: it leaves the test case list, the test case selector and the dashboard counts, while those test runs keep its result, marked **Archived**. Test cases no test run used are deleted.
 
 Testers only see the projects assigned to them: on the **Users** page, click a tester's project count in the **Projects** column and check the projects they should see. Admins always see every project. Testers that existed before project visibility was added keep access to all the projects that existed at that time.
 

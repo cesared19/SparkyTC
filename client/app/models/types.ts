@@ -14,6 +14,8 @@ export interface TestCase {
 	createdBy?: string
 	updatedBy?: string
 	modifyDate?: number
+	// deleted while used by test runs, which keep its results
+	isArchived?: boolean
 }
 
 export interface JiraLink {

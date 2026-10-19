@@ -1,6 +1,7 @@
 package com.sparkytc.sparkytcservice.dto.testcases
 
 import com.sparkytc.sparkytcservice.dto.attachments.TestCaseAttachmentDTO
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.sparkytc.sparkytcservice.dto.jira.JiraLinkDTO
 import java.util.Date
 import java.util.UUID
@@ -18,5 +19,7 @@ data class TestCaseDTO(
     val jiraLinks: List<JiraLinkDTO> = emptyList(),
     val createdBy: String? = null,
     val updatedBy: String? = null,
-    val modifyDate: Date? = null
+    val modifyDate: Date? = null,
+    @JsonProperty("isArchived")
+    val isArchived: Boolean = false
 )

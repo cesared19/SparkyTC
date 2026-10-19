@@ -167,8 +167,16 @@ export default function TestRunDetails() {
 			header: 'ID',
 			key: 'id',
 			mobile: 'subtitle',
-			render: (testCaseRun) =>
-				Tools.testCaseDisplayCode(project, testCaseRun.testCase),
+			render: (testCaseRun) => (
+				<>
+					{Tools.testCaseDisplayCode(project, testCaseRun.testCase)}
+					{testCaseRun.testCase.isArchived && (
+						<span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+							Archived
+						</span>
+					)}
+				</>
+			),
 		},
 		{
 			header: 'Title',
