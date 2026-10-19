@@ -111,6 +111,7 @@ export interface User {
 	projectIDs?: string[]
 	notifyTestRunAssigned: boolean
 	notifyTestRunCompleted: boolean
+	isSuperAdmin: boolean
 }
 
 export interface TestRunSummary {

@@ -55,8 +55,12 @@ class User(
 
     @Column(name = "notify_test_run_completed", nullable = false)
     var notifyTestRunCompleted: Boolean = true,
+
+    // the ADMIN_USERNAME account, the only one that can reset other users' passwords
+    @Column(name = "is_super_admin", nullable = false)
+    var isSuperAdmin: Boolean = false,
 ) {
     fun toDTO(projectIDs: List<UUID>? = null): UserDTO {
-        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted)
+        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted, isSuperAdmin)
     }
 }

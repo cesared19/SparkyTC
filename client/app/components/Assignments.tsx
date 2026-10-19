@@ -17,6 +17,17 @@ export function isTestRunClosed(testRun: TestRun) {
 	)
 }
 
+/**
+ * The project users plus whoever is already assigned, so a current assignee that is no longer
+ * offered (like the super admin) still shows up and can be removed.
+ */
+function withAssigned(projectUsers: UserSummary[], assigned: UserSummary[]) {
+	const missing = assigned.filter(
+		(user) => !projectUsers.some((other) => other.userID === user.userID)
+	)
+	return [...projectUsers, ...missing]
+}
+
 interface AssigneePickerProps {
 	users: UserSummary[]
 	selectedIDs: string[]
@@ -94,7 +105,7 @@ export function TestRunAssignees({
 		return (
 			<div className="space-y-3">
 				<AssigneePicker
-					users={projectUsers}
+					users={withAssigned(projectUsers, testRun.assignees)}
 					selectedIDs={selectedIDs}
 					onChange={setSelectedIDs}
 				/>
@@ -207,7 +218,10 @@ export function TestCaseAssignment({
 
 	// the run's assignees come first when an admin picks someone
 	const runAssigneeIDs = new Set(testRun.assignees.map((user) => user.userID))
-	const options = [...projectUsers].sort(
+	const options = withAssigned(
+		projectUsers,
+		testCaseRun.assignedTo ? [testCaseRun.assignedTo] : []
+	).sort(
 		(a, b) =>
 			Number(runAssigneeIDs.has(b.userID)) -
 			Number(runAssigneeIDs.has(a.userID))

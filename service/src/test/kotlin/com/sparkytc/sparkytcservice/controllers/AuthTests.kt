@@ -13,6 +13,8 @@ import com.sparkytc.sparkytcservice.dto.testcases.CreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.testruns.CreateTestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
+import com.sparkytc.sparkytcservice.services.AuthService
+import com.sparkytc.sparkytcservice.services.SuperAdminBootstrapResult
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
@@ -59,6 +61,9 @@ class AuthTests {
 
     @Autowired
     private lateinit var adminBootstrap: AdminBootstrap
+
+    @Autowired
+    private lateinit var authService: AuthService
 
     @Autowired
     private lateinit var context: WebApplicationContext
@@ -227,20 +232,81 @@ class AuthTests {
 
     @Test
     fun `should keep at least one active admin`() {
-        val adminID = data(admin, "/api/v1/admin/users")[0].get("userID").asText()
+        val secondID = createUser("second", "Second Admin", UserRole.ADMIN)
+        val second = TestAuth.authenticatedMockMvc(context, TestAuth.login(context, objectMapper, "second", "tester-password"))
 
-        admin.perform(put("/api/v1/admin/users/$adminID")
+        second.perform(put("/api/v1/admin/users/$secondID")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(UpdateUserDTO("admin", UserRole.TESTER, true))))
+            .content(objectMapper.writeValueAsString(UpdateUserDTO("Second Admin", UserRole.TESTER, true))))
             .andExpect(status().isBadRequest)
 
-        // another admin can demote the first one
-        createUser("second", "Second Admin", UserRole.ADMIN)
-        val second = TestAuth.authenticatedMockMvc(context, TestAuth.login(context, objectMapper, "second", "tester-password"))
-        second.perform(put("/api/v1/admin/users/$adminID")
+        // another admin can demote them
+        admin.perform(put("/api/v1/admin/users/$secondID")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(UpdateUserDTO("admin", UserRole.TESTER, true))))
+            .content(objectMapper.writeValueAsString(UpdateUserDTO("Second Admin", UserRole.TESTER, true))))
             .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `only the super admin resets passwords and changes the super admin account`() {
+        val me = data(admin, "/api/v1/auth/me")
+        assertEquals(true, me.get("isSuperAdmin").asBoolean())
+        val superAdminID = me.get("userID").asText()
+        val testerID = createUser("tester", "Tester", UserRole.TESTER)
+        val secondID = createUser("second", "Second Admin", UserRole.ADMIN)
+        val second = TestAuth.authenticatedMockMvc(context, TestAuth.login(context, objectMapper, "second", "tester-password"))
+
+        // other admins manage users and make admins, but can't reset passwords
+        second.perform(put("/api/v1/admin/users/$testerID")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(UpdateUserDTO("Tester", UserRole.TESTER, true, "new-password-1"))))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Only the super admin can reset passwords"))
+        second.perform(put("/api/v1/admin/users/$testerID")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(UpdateUserDTO("Promoted", UserRole.ADMIN, true))))
+            .andExpect(status().isOk)
+        second.perform(post("/api/v1/admin/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(CreateUserDTO("third", "Third", UserRole.ADMIN, "tester-password"))))
+            .andExpect(status().isOk)
+
+        // nor touch the super admin
+        for (body in listOf(UpdateUserDTO("admin", UserRole.TESTER, true), UpdateUserDTO("admin", UserRole.ADMIN, false), UpdateUserDTO("Renamed", UserRole.ADMIN, true))) {
+            second.perform(put("/api/v1/admin/users/$superAdminID")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.message").value("Only the super admin can change the super admin account"))
+        }
+
+        admin.perform(put("/api/v1/admin/users/$secondID")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(UpdateUserDTO("Second Admin", UserRole.ADMIN, true, "new-password-1"))))
+            .andExpect(status().isOk)
+        TestAuth.login(context, objectMapper, "second", "new-password-1")
+        assertEquals(false, data(admin, "/api/v1/admin/users").first { it.get("username").asText() == "second" }.get("isSuperAdmin").asBoolean())
+    }
+
+    @Test
+    fun `the super admin follows ADMIN_USERNAME and its password can be reset on startup`() {
+        createUser("second", "Second Admin", UserRole.TESTER)
+
+        assertEquals(SuperAdminBootstrapResult.UNCHANGED, authService.bootstrapSuperAdmin("second", "", false))
+        val users = data(admin, "/api/v1/admin/users").associateBy { it.get("username").asText() }
+        assertEquals(true, users.getValue("second").get("isSuperAdmin").asBoolean())
+        assertEquals("ADMIN", users.getValue("second").get("role").asText())
+        assertEquals(false, users.getValue("admin").get("isSuperAdmin").asBoolean())
+
+        // resetting the password signs the super admin out
+        val second = TestAuth.authenticatedMockMvc(context, TestAuth.login(context, objectMapper, "second", "tester-password"))
+        assertEquals(SuperAdminBootstrapResult.PASSWORD_RESET, authService.bootstrapSuperAdmin("second", "reset-password", true))
+        second.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized)
+        TestAuth.login(context, objectMapper, "second", "reset-password")
+
+        assertEquals(SuperAdminBootstrapResult.CREATED, authService.bootstrapSuperAdmin("owner", "owner-password", false))
+        TestAuth.login(context, objectMapper, "owner", "owner-password")
+        assertEquals(listOf("owner"), data(admin, "/api/v1/admin/users").filter { it.get("isSuperAdmin").asBoolean() }.map { it.get("username").asText() })
     }
 
     @Test

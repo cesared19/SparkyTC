@@ -340,6 +340,13 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.7")
                 }
                 SchemaVersion.VERSION_0_0_7 -> {
+                    // the super admin is the ADMIN_USERNAME account, AdminBootstrap marks it on startup
+                    jdbcTemplate.execute("ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN NOT NULL DEFAULT FALSE")
+                    jdbcTemplate.execute("CREATE UNIQUE INDEX users_single_super_admin_idx ON users (is_super_admin) WHERE is_super_admin")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.8")
+                }
+                SchemaVersion.VERSION_0_0_8 -> {
                     break
                 }
             }

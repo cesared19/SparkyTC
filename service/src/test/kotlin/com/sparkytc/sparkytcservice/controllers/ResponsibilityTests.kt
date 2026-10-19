@@ -85,9 +85,10 @@ class ResponsibilityTests {
     }
 
     @Test
-    fun `project users are the admins and the testers that can see the project`() {
+    fun `project users are the admins and the testers that can see the project except the super admin`() {
+        post(admin, "/api/v1/admin/users", CreateUserDTO("lead", "Lead", UserRole.ADMIN, "tester-password"))
         val names = data(ana, "/api/v1/workspace/projects/PRJ/users").map { it.get("displayName").asText() }
-        assertEquals(listOf("admin", "Ana", "Beto"), names)
+        assertEquals(listOf("Ana", "Beto", "Lead"), names)
     }
 
     @Test
@@ -186,6 +187,31 @@ class ResponsibilityTests {
 
         put(admin, "/api/v1/notifications/read-all", null)
         assertEquals(0, data(admin, "/api/v1/notifications").get("unreadCount").asInt())
+    }
+
+    @Test
+    fun `users delete their read notifications`() {
+        createTestRun(assignees = listOf("beto"))
+        createTestRun(assignees = listOf("beto"))
+        val notifications = data(beto, "/api/v1/notifications").get("notifications").map { it.get("notificationID").asText() }
+        assertEquals(2, notifications.size)
+
+        // unread notifications and other users' notifications can't be deleted
+        beto.perform(delete("/api/v1/notifications/${notifications[0]}"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value(Matchers.containsString("Only read notifications can be deleted")))
+        put(beto, "/api/v1/notifications/${notifications[0]}/read", null)
+        ana.perform(delete("/api/v1/notifications/${notifications[0]}")).andExpect(status().isBadRequest)
+
+        beto.perform(delete("/api/v1/notifications/${notifications[0]}")).andExpect(status().isOk)
+        assertEquals(listOf(notifications[1]), data(beto, "/api/v1/notifications").get("notifications").map { it.get("notificationID").asText() })
+
+        // deleting all read notifications keeps the unread ones
+        beto.perform(delete("/api/v1/notifications/read")).andExpect(status().isOk)
+        assertEquals(1, data(beto, "/api/v1/notifications").get("notifications").size())
+        put(beto, "/api/v1/notifications/read-all", null)
+        beto.perform(delete("/api/v1/notifications/read")).andExpect(status().isOk)
+        assertEquals(0, data(beto, "/api/v1/notifications").get("notifications").size())
     }
 
     @Test

@@ -17,5 +17,7 @@ data class UserDTO(
     // only included in the admin user list
     val projectIDs: List<UUID>? = null,
     val notifyTestRunAssigned: Boolean = true,
-    val notifyTestRunCompleted: Boolean = true
+    val notifyTestRunCompleted: Boolean = true,
+    @JsonProperty("isSuperAdmin")
+    val isSuperAdmin: Boolean = false
 )

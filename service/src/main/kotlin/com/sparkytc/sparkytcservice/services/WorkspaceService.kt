@@ -611,7 +611,10 @@ class WorkspaceService(
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found" }
         projectAccessService.requireAccess(project)
-        return projectAccessService.projectUsers(project).map { UserSummaryDTO(it.externalID, it.displayName) }
+        // the super admin isn't offered when assigning test runs or test cases
+        return projectAccessService.projectUsers(project)
+            .filter { !it.isSuperAdmin }
+            .map { UserSummaryDTO(it.externalID, it.displayName) }
     }
 
     @Transactional

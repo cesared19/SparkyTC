@@ -155,6 +155,14 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/notifications/read-all`
 	}
 
+	static notification(notificationID: string) {
+		return `${this.baseAPIURL}/api/v1/notifications/${notificationID}`
+	}
+
+	static get notificationsRead() {
+		return `${this.baseAPIURL}/api/v1/notifications/read`
+	}
+
 	static get notificationPreferences() {
 		return `${this.baseAPIURL}/api/v1/auth/preferences/notifications`
 	}

@@ -7,6 +7,6 @@ data class UpdateUserDTO(
     val role: UserRole,
     @JsonProperty("isActive")
     val isActive: Boolean,
-    // when set, resets the user's password
+    // when set, resets the user's password, only the super admin can do this
     val password: String? = null
 )

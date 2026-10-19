@@ -43,7 +43,7 @@ export default function TopNavigation({ user }: TopNavigationProps) {
 					>
 						{user.displayName}
 						<span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-							{isAdmin ? 'Admin' : 'Tester'}
+							{user.isSuperAdmin ? 'Super admin' : isAdmin ? 'Admin' : 'Tester'}
 						</span>
 					</Link>
 					<Form method="post" action={Route.logout}>

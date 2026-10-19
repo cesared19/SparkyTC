@@ -51,6 +51,21 @@ export function NotificationBell() {
 	const data = listFetcher.data
 	const unreadCount = data?.unreadCount ?? 0
 
+	// hide deleted notifications while the request is in flight
+	const pending =
+		actionFetcher.state === 'idle'
+			? undefined
+			: (actionFetcher.json as Record<string, string> | undefined)
+	const notifications = (data?.notifications ?? []).filter(
+		(notification) =>
+			!(
+				(pending?.intent === 'deleteRead' && notification.isRead) ||
+				(pending?.intent === 'delete' &&
+					pending.notificationID === notification.notificationID)
+			)
+	)
+	const hasRead = notifications.some((notification) => notification.isRead)
+
 	const submit = (body: Record<string, string>) =>
 		actionFetcher.submit(body, {
 			method: 'post',
@@ -104,25 +119,39 @@ export function NotificationBell() {
 						<span className="text-sm font-semibold text-gray-900">
 							Notifications
 						</span>
-						{unreadCount > 0 && (
-							<button
-								type="button"
-								onClick={() => submit({ intent: 'readAll' })}
-								className="text-xs font-medium text-brand-600 hover:text-brand-700"
-							>
-								Mark all as read
-							</button>
-						)}
+						<div className="flex items-center gap-3">
+							{unreadCount > 0 && (
+								<button
+									type="button"
+									onClick={() => submit({ intent: 'readAll' })}
+									className="text-xs font-medium text-brand-600 hover:text-brand-700"
+								>
+									Mark all as read
+								</button>
+							)}
+							{hasRead && (
+								<button
+									type="button"
+									onClick={() => submit({ intent: 'deleteRead' })}
+									className="text-xs font-medium text-gray-600 hover:text-gray-900"
+								>
+									Clear read
+								</button>
+							)}
+						</div>
 					</div>
 					<ul className="max-h-96 divide-y divide-gray-200 overflow-auto">
-						{(data?.notifications ?? []).map((notification) => (
-							<li key={notification.notificationID}>
+						{notifications.map((notification) => (
+							<li
+								key={notification.notificationID}
+								className={`flex items-start hover:bg-gray-50 ${
+									notification.isRead ? '' : 'bg-brand-50'
+								}`}
+							>
 								<button
 									type="button"
 									onClick={() => open(notification)}
-									className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-gray-50 ${
-										notification.isRead ? '' : 'bg-brand-50'
-									}`}
+									className="flex min-w-0 flex-1 gap-3 py-3 pl-4 pr-2 text-left"
 								>
 									<span
 										className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
@@ -142,9 +171,38 @@ export function NotificationBell() {
 										</span>
 									</span>
 								</button>
+								{notification.isRead && (
+									<button
+										type="button"
+										onClick={() =>
+											submit({
+												intent: 'delete',
+												notificationID: notification.notificationID,
+											})
+										}
+										aria-label={`Delete notification: ${notification.title}`}
+										title="Delete"
+										className="mr-2 mt-2.5 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+									>
+										<svg
+											className="h-4 w-4"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											strokeWidth="2"
+											aria-hidden="true"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M6 18L18 6M6 6l12 12"
+											/>
+										</svg>
+									</button>
+								)}
 							</li>
 						))}
-						{data && data.notifications.length === 0 && (
+						{data && notifications.length === 0 && (
 							<li className="px-4 py-6 text-center text-sm text-gray-500">
 								No notifications yet
 							</li>
