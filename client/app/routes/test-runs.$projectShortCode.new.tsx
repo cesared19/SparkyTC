@@ -103,15 +103,16 @@ export default function NewTestRun() {
 			day: '2-digit',
 		})
 		.replace(/\//g, '-')
-	const defaultTitle = `${todayDateString} Test Run`
+	// kept in state so they survive switching to the test case selector and back
+	const [title, setTitle] = useState(`${todayDateString} Test Run`)
+	const [description, setDescription] = useState('')
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 
-		const formData = new FormData(event.currentTarget)
 		const jsonData: CreateTestRun = {
-			title: formData.get('title') as string,
-			description: formData.get('description') as string | undefined,
+			title,
+			description: description || undefined,
 			testCaseIDs: selectedTestCases.map((tc) => tc.testCaseID),
 			assigneeIDs,
 			buildID: buildID || null,
@@ -162,7 +163,8 @@ export default function NewTestRun() {
 									name="title"
 									id="title"
 									required
-									defaultValue={defaultTitle}
+									value={title}
+									onChange={(event) => setTitle(event.target.value)}
 									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 								/>
 							</div>
@@ -177,6 +179,8 @@ export default function NewTestRun() {
 								<textarea
 									name="description"
 									id="description"
+									value={description}
+									onChange={(event) => setDescription(event.target.value)}
 									rows={4}
 									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 								/>

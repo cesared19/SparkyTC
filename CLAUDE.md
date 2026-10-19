@@ -1,6 +1,6 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.0.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.1.0 está en `main`.
 
 **Idioma:** comunícate con el usuario en español.
 
@@ -43,4 +43,4 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Versión en curso
 
-- **1.1.0** (rama `claude/v1.1.0`) — hechos: borrar notificaciones leídas, super admin, ocultar super admin al asignar, builds en dashboard/test runs/Jira, espacio y tipo de issue de Jira por proyecto elegidos de listas. Landing page: no se cambia por ahora; el usuario mandará los pasos del bug de carga junto con otra lista de issues.
+- **1.2.0** (rama `claude/v1.2.0`) — hechos: el título y la descripción de un test run nuevo se perdían al elegir test cases (el formulario se desmontaba al abrir el selector); ahora viven en estado de React. Pendiente: el usuario mandará los pasos del bug de carga de la landing page.
