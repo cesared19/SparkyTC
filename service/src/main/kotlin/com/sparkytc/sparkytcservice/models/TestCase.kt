@@ -48,6 +48,10 @@ class TestCase(
     @JoinColumn(name = "updated_by_id")
     var updatedBy: User? = null,
 
+    // deleted while used by test runs: hidden from the project, kept for the runs' results
+    @Column(name = "is_archived", nullable = false)
+    var isArchived: Boolean = false,
+
     @OneToMany(mappedBy = "testCase")
     val propertyValues: List<TestCasePropertyValue> = emptyList(),
 
@@ -66,6 +70,6 @@ class TestCase(
             propertyValueMap[propertyValue.propertyConfiguration.externalID] = propertyValue.value
         }
 
-        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate)
+        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate, isArchived)
     }
 }

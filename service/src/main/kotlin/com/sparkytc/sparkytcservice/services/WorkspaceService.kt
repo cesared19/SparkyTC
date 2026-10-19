@@ -92,7 +92,7 @@ class WorkspaceService(
         requireNotNull(project) { "No project found" }
         projectAccessService.requireAccess(project)
 
-        val testCases = testCaseRepository.findByProjectOrderByTestCaseNumberAsc(project)
+        val testCases = testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project)
         val propertyBreakdowns = propertyConfigurationRepository.findAll()
             .filter { it.propertyType == PropertyConfigurationType.SINGLE_SELECT_LIST }
             .sortedBy { it.id }
@@ -140,7 +140,7 @@ class WorkspaceService(
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found" }
         projectAccessService.requireAccess(project)
-        val testCases = testCaseRepository.findByProjectOrderByTestCaseNumberAsc(project)
+        val testCases = testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project)
         return testCases.map { it.toDTO() }
     }
 
@@ -258,6 +258,13 @@ class WorkspaceService(
         val testCase = testCaseRepository.findByExternalID(testCaseID)
         requireNotNull(testCase) { "No test case found with id $testCaseID" }
         projectAccessService.requireAccess(testCase.project)
+
+        // test runs keep their results, so a test case they use is archived instead
+        if (testCaseRunRepository.existsByTestCase(testCase)) {
+            testCase.isArchived = true
+            testCaseRepository.save(testCase)
+            return
+        }
 
         // delete all references to this test case from test case property values
         testCasePropertyValueRepository.deleteAllByTestCase(testCase)
@@ -389,7 +396,7 @@ class WorkspaceService(
         for (testCaseID in testRun.testCaseIDs) {
             val testCaseModel = testCaseRepository.findByExternalID(testCaseID)
             requireNotNull(testCaseModel) { "No test case found for id $testCaseID" }
-            require(testCaseModel.project.id == project.id) { "No test case found for id $testCaseID" }
+            require(testCaseModel.project.id == project.id && !testCaseModel.isArchived) { "No test case found for id $testCaseID" }
             val newTestCaseRun = TestCaseRun(
                 testRun = newTestRun,
                 testCase = testCaseModel,

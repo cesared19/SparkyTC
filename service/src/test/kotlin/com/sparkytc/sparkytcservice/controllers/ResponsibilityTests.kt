@@ -301,6 +301,34 @@ class ResponsibilityTests {
         assertEquals(0.0, noBuildCounts.get("passRate").asDouble())
     }
 
+    @Test
+    fun `deleting a test case used by a test run archives it and keeps the run's results`() {
+        val (used, unused) = testCaseIDs()
+        post(admin, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Run", null, listOf(used)))
+        val testCaseRunID = testCaseRunIDs().single()
+        put(admin, "/api/v1/workspace/test-case-runs/$testCaseRunID", UpdateTestCaseRunDTO(TestCaseRunStatus.FAIL, null))
+
+        admin.perform(delete("/api/v1/workspace/test-cases/$used")).andExpect(status().isOk)
+        admin.perform(delete("/api/v1/workspace/test-cases/$unused")).andExpect(status().isOk)
+
+        // both leave the project, the used one stays in the run with its result
+        assertEquals(0, data(ana, "/api/v1/workspace/test-cases/PRJ").size())
+        assertEquals(0, data(ana, "/api/v1/workspace/projects/PRJ/dashboard").get("testCaseCount").asInt())
+        val testCaseRun = testCaseRuns().single()
+        assertEquals("FAIL", testCaseRun.get("status").asText())
+        assertEquals(true, testCaseRun.get("testCase").get("isArchived").asBoolean())
+        assertEquals(1, data(ana, "/api/v1/workspace/projects/PRJ/build-results")[0].get("counts").get("failed").asInt())
+
+        expectError(admin, post("/api/v1/workspace/test-runs/PRJ"), CreateTestRunDTO("Again", null, listOf(used)), "No test case found")
+
+        // the archived test case keeps its number, only the deleted one's is free again
+        val values = data(admin, "/api/v1/workspace/properties")
+            .filter { it.get("isRequired").asBoolean() }
+            .associate { UUID.fromString(it.get("propertyConfigurationID").asText()) to it.get("defaultValue").asText() }
+        post(admin, "/api/v1/workspace/test-cases/PRJ", CreateTestCaseDTO("New", null, null, values))
+        assertEquals(listOf(2L), data(ana, "/api/v1/workspace/test-cases/PRJ").map { it.get("testCaseNumber").asLong() })
+    }
+
     private fun createTestRun(assignees: List<String>, creator: MockMvc = admin) {
         post(creator, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Run", null, testCaseIDs(), assignees.map { UUID.fromString(userIDs[it]) }))
     }

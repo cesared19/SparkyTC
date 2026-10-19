@@ -204,15 +204,27 @@ function TestCaseRunView({
 					<h1 className="text-2xl font-semibold text-gray-900">
 						{testCaseRun.title}
 					</h1>
-					<Link
-						to={Route.viewTestCase(
-							project.projectShortCode,
-							testCaseRun.testCase.testCaseNumber
-						)}
-						className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
-					>
-						View {Tools.testCaseDisplayCode(project, testCaseRun.testCase)}
-					</Link>
+					{testCaseRun.testCase.isArchived ? (
+						<span
+							className="text-sm text-gray-500"
+							title="The test case was deleted from the project, this run keeps its result"
+						>
+							{Tools.testCaseDisplayCode(project, testCaseRun.testCase)}{' '}
+							<span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+								Archived
+							</span>
+						</span>
+					) : (
+						<Link
+							to={Route.viewTestCase(
+								project.projectShortCode,
+								testCaseRun.testCase.testCaseNumber
+							)}
+							className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
+						>
+							View {Tools.testCaseDisplayCode(project, testCaseRun.testCase)}
+						</Link>
+					)}
 				</div>
 				<p className="mt-2 text-gray-600">Test Case Run Details</p>
 			</div>
@@ -546,19 +558,22 @@ function TestCaseRunDetailsEditor({
 				</p>
 			</div>
 
-			<label className="flex items-start gap-2 text-sm text-gray-700">
-				<input
-					type="checkbox"
-					name="applyToTestCase"
-					className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-				/>
-				<span>
-					Also update the original test case
-					<span className="block text-xs text-gray-500">
-						When unchecked, the changes only apply to this test run
+			{/* an archived test case is no longer part of the project */}
+			{!testCaseRun.testCase.isArchived && (
+				<label className="flex items-start gap-2 text-sm text-gray-700">
+					<input
+						type="checkbox"
+						name="applyToTestCase"
+						className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+					/>
+					<span>
+						Also update the original test case
+						<span className="block text-xs text-gray-500">
+							When unchecked, the changes only apply to this test run
+						</span>
 					</span>
-				</span>
-			</label>
+				</label>
+			)}
 
 			<div className="flex justify-end gap-3">
 				<button

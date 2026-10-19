@@ -68,7 +68,11 @@ export default function EditTestCase() {
 	}
 
 	async function handleDelete() {
-		if (confirm('Are you sure you want to delete this test case?')) {
+		if (
+			confirm(
+				'Are you sure you want to delete this test case? If it was used in test runs it is archived instead, and those runs keep its results.'
+			)
+		) {
 			submit(
 				{ testCaseID: testCase.testCaseID },
 				{ method: 'DELETE', encType: 'application/json' }
