@@ -32,8 +32,9 @@ interface JiraIssuesPanelProps {
 	editable?: boolean
 	createIssue?: CreateIssueOptions
 	jiraFailureMode?: JiraFailureMode
-	// the project's Jira project, when it doesn't use the default one
+	// the project's Jira project and issue type, when it doesn't use the default ones
 	jiraProjectKey?: string
+	jiraIssueType?: string
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -53,6 +54,7 @@ export function JiraIssuesPanel({
 	createIssue,
 	jiraFailureMode = JiraFailureMode.manual,
 	jiraProjectKey,
+	jiraIssueType,
 }: JiraIssuesPanelProps) {
 	const issuesFetcher = useFetcher<JiraIssuesResponse | ErrorResponse>()
 	const linkFetcher = useFetcher<ActionResponse>()
@@ -203,7 +205,9 @@ export function JiraIssuesPanel({
 						type="text"
 						value={issueInput}
 						onChange={(event) => setIssueInput(event.target.value)}
-						placeholder={`Link existing issue, e.g. ${configuration?.projectKey}-123 or its URL`}
+						placeholder={`Link existing issue, e.g. ${
+							jiraProjectKey ?? configuration?.projectKey
+						}-123 or its URL`}
 						aria-label="Jira issue key or URL"
 						className="min-w-[16rem] flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
@@ -252,8 +256,8 @@ export function JiraIssuesPanel({
 
 			{isEnabled && createIssue && createDefaults && configuration && (
 				<CreateJiraIssueForm
-					configuration={configuration}
 					projectKey={jiraProjectKey ?? configuration.projectKey}
+					issueType={jiraIssueType ?? configuration.issueType}
 					linkedKeys={issueKeys}
 					onLinkExisting={(issueKey) => {
 						linkIssue(issueKey)
@@ -273,8 +277,8 @@ export function JiraIssuesPanel({
 }
 
 interface CreateJiraIssueFormProps {
-	configuration: JiraConfiguration
 	projectKey?: string
+	issueType?: string
 	linkedKeys: string[]
 	onLinkExisting: (issueKey: string) => void
 	testCaseRunID: string
@@ -284,8 +288,8 @@ interface CreateJiraIssueFormProps {
 }
 
 function CreateJiraIssueForm({
-	configuration,
 	projectKey,
+	issueType,
 	linkedKeys,
 	onLinkExisting,
 	testCaseRunID,
@@ -364,7 +368,7 @@ function CreateJiraIssueForm({
 		>
 			<div>
 				<h3 className="text-base font-semibold text-gray-900">
-					New {configuration.issueType} in {projectKey}
+					New {issueType} in {projectKey}
 				</h3>
 				<p className="mt-1 text-xs text-gray-500">
 					Images and videos are not uploaded to Jira, the issue links to them in

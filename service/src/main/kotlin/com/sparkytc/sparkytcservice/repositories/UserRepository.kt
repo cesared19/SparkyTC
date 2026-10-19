@@ -13,4 +13,6 @@ interface UserRepository : JpaRepository<User, Long> {
     fun findAllByOrderByUsernameAsc(): List<User>
 
     fun countByRoleAndIsActiveTrue(role: UserRole): Long
+
+    fun findByIsSuperAdminTrue(): User?
 }

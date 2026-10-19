@@ -8,6 +8,7 @@ export interface Project {
 	description?: string
 	jiraFailureMode: JiraFailureMode
 	jiraProjectKey?: string
+	jiraIssueType?: string
 }
 
 export interface NewProject extends Record<string, any> {

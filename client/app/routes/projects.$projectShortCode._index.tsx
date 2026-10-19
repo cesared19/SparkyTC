@@ -1,5 +1,6 @@
 import { type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
+import { CurrentBuildCard } from '~/components/Builds'
 import { DateDisplay } from '~/components/DateDisplay'
 import { ProjectShell } from '~/components/ProjectShell'
 import { RunProgressBar } from '~/components/RunProgressBar'
@@ -68,6 +69,14 @@ export default function ProjectDashboardPage() {
 					<StatTile
 						label="Linked Jira issues"
 						value={dashboard.linkedJiraIssueCount}
+					/>
+				</section>
+
+				<section aria-label="Build">
+					<CurrentBuildCard
+						key={dashboard.currentBuild?.buildID}
+						projectShortCode={project.projectShortCode}
+						build={dashboard.currentBuild}
 					/>
 				</section>
 

@@ -39,6 +39,17 @@ export interface JiraConfiguration {
 	issueType?: string
 }
 
+// a Jira project, called a space in newer Jira Cloud sites
+export interface JiraSpace {
+	key: string
+	name: string
+}
+
+export interface JiraIssueType {
+	id: string
+	name: string
+}
+
 export interface CreateJiraIssue extends Record<string, any> {
 	summary: string
 	stepsToReproduce: string
@@ -111,6 +122,7 @@ export interface User {
 	projectIDs?: string[]
 	notifyTestRunAssigned: boolean
 	notifyTestRunCompleted: boolean
+	isSuperAdmin: boolean
 }
 
 export interface TestRunSummary {
@@ -135,6 +147,14 @@ export interface ProjectDashboard {
 	activeTestRuns: TestRunSummary[]
 	recentTestRuns: TestRunSummary[]
 	linkedJiraIssueCount: number
+	currentBuild?: ProjectBuild
+}
+
+export interface ProjectBuild {
+	buildID: string
+	buildNumber: string
+	creationDate: number
+	createdBy?: string
 }
 
 export interface TestCaseAttachment {
@@ -214,6 +234,7 @@ export interface TestRun {
 	description?: string
 	createdBy?: string
 	assignees: UserSummary[]
+	build?: ProjectBuild
 }
 
 export enum TestCaseRunStatus {
@@ -273,6 +294,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	testCaseRuns: TestCaseRun[]
 	properties: PropertyConfiguration[]
 	projectUsers: UserSummary[]
+	builds: ProjectBuild[]
 }
 
 export interface ErrorResponse extends Record<string, any> {

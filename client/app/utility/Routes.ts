@@ -31,6 +31,14 @@ export class Route {
 		return '/assignments'
 	}
 
+	static get builds() {
+		return '/builds'
+	}
+
+	static jiraIssueTypes(projectKey: string) {
+		return `/jira-issue-types?${new URLSearchParams({ projectKey }).toString()}`
+	}
+
 	static get notifications() {
 		return '/notifications'
 	}
@@ -128,6 +136,18 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/settings`
 	}
 
+	static projectBuilds(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/builds`
+	}
+
+	static build(buildID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/builds/${buildID}`
+	}
+
+	static testRunBuild(testRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}/build`
+	}
+
 	static testRunAssignees(testRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}/assignees`
 	}
@@ -153,6 +173,14 @@ export class APIRoute {
 
 	static get notificationsReadAll() {
 		return `${this.baseAPIURL}/api/v1/notifications/read-all`
+	}
+
+	static notification(notificationID: string) {
+		return `${this.baseAPIURL}/api/v1/notifications/${notificationID}`
+	}
+
+	static get notificationsRead() {
+		return `${this.baseAPIURL}/api/v1/notifications/read`
 	}
 
 	static get notificationPreferences() {
@@ -193,6 +221,18 @@ export class APIRoute {
 
 	static get jiraConfiguration() {
 		return `${this.baseAPIURL}/api/v1/workspace/jira/configuration`
+	}
+
+	static get jiraSpaces() {
+		return `${this.baseAPIURL}/api/v1/workspace/jira/projects`
+	}
+
+	static jiraIssueTypes(projectKey: string) {
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/jira/projects/${encodeURIComponent(
+			projectKey
+		)}/issue-types`
 	}
 
 	static jiraIssues(issueKeys: string[]) {

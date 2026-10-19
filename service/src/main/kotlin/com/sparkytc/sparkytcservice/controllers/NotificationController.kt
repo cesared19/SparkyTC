@@ -31,5 +31,17 @@ class NotificationController(
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
+    @DeleteMapping("/read")
+    fun deleteAllRead(): ResponseEntity<Any> {
+        notificationService.deleteAllRead(currentUser())
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @DeleteMapping("/{notificationID}")
+    fun deleteNotification(@PathVariable notificationID: UUID): ResponseEntity<Any> {
+        notificationService.deleteNotification(currentUser(), notificationID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
     private fun currentUser() = requireNotNull(CurrentUser.get()) { "Not signed in" }
 }

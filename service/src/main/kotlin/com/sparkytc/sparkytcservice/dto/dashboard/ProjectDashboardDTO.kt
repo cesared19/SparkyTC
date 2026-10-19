@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.dto.dashboard
 
+import com.sparkytc.sparkytcservice.dto.builds.ProjectBuildDTO
 import com.sparkytc.sparkytcservice.dto.projects.WorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.dto.testruns.TestRunStatus
@@ -15,6 +16,7 @@ data class ProjectDashboardDTO(
     val activeTestRuns: List<TestRunSummaryDTO>,
     val recentTestRuns: List<TestRunSummaryDTO>,
     val linkedJiraIssueCount: Int,
+    val currentBuild: ProjectBuildDTO? = null,
 )
 
 data class PropertyBreakdownDTO(

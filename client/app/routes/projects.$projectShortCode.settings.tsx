@@ -5,10 +5,12 @@ import {
 import {
 	Form,
 	useActionData,
+	useFetcher,
 	useLoaderData,
 	useNavigation,
 } from '@remix-run/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { BuildManager } from '~/components/Builds'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { ProjectShell } from '~/components/ProjectShell'
 import { Project } from '~/models/project'
@@ -16,13 +18,17 @@ import {
 	FetchResponse,
 	JiraConfiguration,
 	JiraFailureMode,
+	JiraIssueType,
+	JiraSpace,
+	ProjectBuild,
 } from '~/models/types'
 import { requireAdmin } from '~/utility/Authorization.server'
-import { APIRoute } from '~/utility/Routes'
+import { APIRoute, Route } from '~/utility/Routes'
 import { Tools } from '~/utility/Tools'
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { api } = await requireAdmin(request)
+	const projectShortCode = params.projectShortCode ?? ''
 	const [projects, jira] = await Promise.all([
 		api.get<FetchResponse<Project[]>>(APIRoute.projects),
 		api.get<FetchResponse<JiraConfiguration>>(APIRoute.jiraConfiguration),
@@ -33,7 +39,44 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
 	}
-	return { projects: projects.data, project, jira: jira.data }
+	const builds = await api.get<FetchResponse<ProjectBuild[]>>(
+		APIRoute.projectBuilds(projectShortCode)
+	)
+
+	// the spaces and issue types are listed from Jira, falling back to typing them
+	let spaces: JiraSpace[] | null = null
+	let spacesError: string | undefined
+	let issueTypes: JiraIssueType[] | null = null
+	if (jira.data.isEnabled) {
+		try {
+			spaces = (await api.get<FetchResponse<JiraSpace[]>>(APIRoute.jiraSpaces))
+				.data
+		} catch (error) {
+			spacesError = Tools.mapErrorToResponse(error).message
+		}
+		const spaceKey = project.jiraProjectKey ?? jira.data.projectKey
+		if (spaces && spaceKey) {
+			try {
+				issueTypes = (
+					await api.get<FetchResponse<JiraIssueType[]>>(
+						APIRoute.jiraIssueTypes(spaceKey)
+					)
+				).data
+			} catch {
+				issueTypes = null
+			}
+		}
+	}
+
+	return {
+		projects: projects.data,
+		project,
+		jira: jira.data,
+		builds: builds.data,
+		spaces,
+		spacesError,
+		issueTypes,
+	}
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -45,6 +88,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				jiraFailureMode: formData.get('jiraFailureMode'),
 				jiraProjectKey:
 					String(formData.get('jiraProjectKey') ?? '').trim() || null,
+				jiraIssueType:
+					String(formData.get('jiraIssueType') ?? '').trim() || null,
 			},
 		})
 		return { ok: true as const }
@@ -75,7 +120,8 @@ const MODES = [
 ]
 
 export default function ProjectSettings() {
-	const { projects, project, jira } = useLoaderData<typeof loader>()
+	const { projects, project, jira, builds, spaces, spacesError, issueTypes } =
+		useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const [mode, setMode] = useState(project.jiraFailureMode)
@@ -138,13 +184,134 @@ export default function ProjectSettings() {
 					))}
 				</fieldset>
 
+				<JiraTargetFields
+					key={`${project.jiraProjectKey}-${project.jiraIssueType}`}
+					project={project}
+					jira={jira}
+					spaces={spaces}
+					spacesError={spacesError}
+					initialIssueTypes={issueTypes}
+				/>
+
+				<button
+					type="submit"
+					disabled={navigation.state !== 'idle'}
+					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+				>
+					{navigation.state !== 'idle' ? 'Saving...' : 'Save settings'}
+				</button>
+			</Form>
+
+			<section id="builds" className="mt-10 max-w-2xl space-y-3">
 				<div>
-					<label
-						htmlFor="jiraProjectKey"
-						className="block text-sm font-medium text-gray-900"
+					<h2 className="text-lg font-semibold text-gray-900">Builds</h2>
+					<p className="mt-1 text-sm text-gray-500">
+						Builds testers pick from when running tests. The current build is
+						shown on the dashboard and sent with Jira issues.
+					</p>
+				</div>
+				<BuildManager
+					projectShortCode={project.projectShortCode}
+					builds={builds}
+				/>
+			</section>
+		</ProjectShell>
+	)
+}
+
+const selectClassName =
+	'mt-1 block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60'
+
+/**
+ * The Jira space and issue type bugs from this project are created in, picked from lists when
+ * Jira can be reached, or typed when it can't.
+ */
+function JiraTargetFields({
+	project,
+	jira,
+	spaces,
+	spacesError,
+	initialIssueTypes,
+}: {
+	project: Project
+	jira: JiraConfiguration
+	spaces: JiraSpace[] | null
+	spacesError?: string
+	initialIssueTypes: JiraIssueType[] | null
+}) {
+	const [spaceKey, setSpaceKey] = useState(project.jiraProjectKey ?? '')
+	const [issueType, setIssueType] = useState(project.jiraIssueType ?? '')
+	const typesFetcher = useFetcher<{
+		issueTypes: JiraIssueType[]
+		message?: string
+	}>()
+	const isLoadingTypes = typesFetcher.state !== 'idle'
+	const issueTypes = typesFetcher.data
+		? typesFetcher.data.issueTypes
+		: initialIssueTypes
+	const issueTypesError = typesFetcher.data?.message
+
+	// keep the issue type only if the newly picked space has it
+	useEffect(() => {
+		const loaded = typesFetcher.data?.issueTypes
+		if (loaded && !loaded.some((type) => type.name === issueType)) {
+			setIssueType('')
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [typesFetcher.data])
+
+	const pickSpace = (key: string) => {
+		setSpaceKey(key)
+		const target = key || jira.projectKey
+		if (target) typesFetcher.load(Route.jiraIssueTypes(target))
+	}
+
+	const defaultSpace = spaces?.find((space) => space.key === jira.projectKey)
+	const savedSpaceMissing =
+		spaces && spaceKey && !spaces.some((space) => space.key === spaceKey)
+	const savedTypeMissing =
+		issueTypes && issueType && !issueTypes.some((t) => t.name === issueType)
+
+	return (
+		<>
+			{spacesError && (
+				<p className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+					Couldn&apos;t list the Jira spaces, type the key instead.{' '}
+					{spacesError}
+				</p>
+			)}
+
+			<div>
+				<label
+					htmlFor="jiraProjectKey"
+					className="block text-sm font-medium text-gray-900"
+				>
+					Jira space
+				</label>
+				{spaces ? (
+					<select
+						id="jiraProjectKey"
+						name="jiraProjectKey"
+						value={spaceKey}
+						onChange={(event) => pickSpace(event.target.value)}
+						className={selectClassName}
 					>
-						Jira project
-					</label>
+						<option value="">
+							Default:{' '}
+							{defaultSpace
+								? `${defaultSpace.name} (${defaultSpace.key})`
+								: jira.projectKey}
+						</option>
+						{savedSpaceMissing && (
+							<option value={spaceKey}>{spaceKey} (not found in Jira)</option>
+						)}
+						{spaces.map((space) => (
+							<option key={space.key} value={space.key}>
+								{space.name} ({space.key})
+							</option>
+						))}
+					</select>
+				) : (
 					<input
 						id="jiraProjectKey"
 						name="jiraProjectKey"
@@ -156,21 +323,65 @@ export default function ProjectSettings() {
 						}}
 						className="mt-1 block w-48 rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					/>
-					<p className="mt-1 text-xs text-gray-500">
-						Key of the Jira project issues from this project are created in.
-						Leave it empty to use the default (
-						{jira.projectKey ?? 'JIRA_PROJECT_KEY'}).
-					</p>
-				</div>
+				)}
+				<p className="mt-1 text-xs text-gray-500">
+					Space (Jira project) issues from this project are created in. The
+					default is set with JIRA_PROJECT_KEY ({jira.projectKey ?? 'not set'}
+					).
+				</p>
+			</div>
 
-				<button
-					type="submit"
-					disabled={navigation.state !== 'idle'}
-					className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+			<div>
+				<label
+					htmlFor="jiraIssueType"
+					className="block text-sm font-medium text-gray-900"
 				>
-					{navigation.state !== 'idle' ? 'Saving...' : 'Save settings'}
-				</button>
-			</Form>
-		</ProjectShell>
+					Issue type
+				</label>
+				{spaces && issueTypes ? (
+					<select
+						id="jiraIssueType"
+						name="jiraIssueType"
+						value={issueType}
+						disabled={isLoadingTypes}
+						onChange={(event) => setIssueType(event.target.value)}
+						className={selectClassName}
+					>
+						<option value="">
+							Default: {jira.issueType}
+							{issueTypes.some((type) => type.name === jira.issueType)
+								? ''
+								: ' (not available in this space)'}
+						</option>
+						{savedTypeMissing && (
+							<option value={issueType}>
+								{issueType} (not available in this space)
+							</option>
+						)}
+						{issueTypes.map((type) => (
+							<option key={type.id} value={type.name}>
+								{type.name}
+							</option>
+						))}
+					</select>
+				) : (
+					<input
+						id="jiraIssueType"
+						name="jiraIssueType"
+						defaultValue={project.jiraIssueType ?? ''}
+						placeholder={jira.issueType ?? 'Bug'}
+						className="mt-1 block w-48 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+					/>
+				)}
+				{issueTypesError && (
+					<p className="mt-1 text-xs text-red-600">{issueTypesError}</p>
+				)}
+				<p className="mt-1 text-xs text-gray-500">
+					Type of the issues created for failures. The default is set with
+					JIRA_ISSUE_TYPE ({jira.issueType ?? 'not set'}) and must exist in the
+					chosen space.
+				</p>
+			</div>
+		</>
 	)
 }

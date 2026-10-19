@@ -340,6 +340,31 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.7")
                 }
                 SchemaVersion.VERSION_0_0_7 -> {
+                    // the super admin is the ADMIN_USERNAME account, AdminBootstrap marks it on startup
+                    jdbcTemplate.execute("ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN NOT NULL DEFAULT FALSE")
+                    jdbcTemplate.execute("CREATE UNIQUE INDEX users_single_super_admin_idx ON users (is_super_admin) WHERE is_super_admin")
+
+                    // builds registered per project, test runs record the build they test
+                    jdbcTemplate.execute("""
+                        CREATE TABLE project_builds (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            build_number TEXT NOT NULL,
+                            created_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE UNIQUE INDEX project_builds_number_idx ON project_builds (project_id, LOWER(build_number))")
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN build_id BIGINT REFERENCES project_builds(id)")
+
+                    // per-project jira issue type
+                    jdbcTemplate.execute("ALTER TABLE workspace_projects ADD COLUMN jira_issue_type TEXT")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.8")
+                }
+                SchemaVersion.VERSION_0_0_8 -> {
                     break
                 }
             }

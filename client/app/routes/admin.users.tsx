@@ -67,7 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 const inputClassName =
-	'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
+	'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60'
 
 function RoleSelect({
 	defaultValue,
@@ -91,6 +91,7 @@ function RoleSelect({
 
 export default function Users() {
 	const { users, projects } = useLoaderData<typeof loader>()
+	const currentUser = useCurrentUser()
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const createFormRef = useRef<HTMLFormElement>(null)
@@ -110,7 +111,8 @@ export default function Users() {
 						Testers can create, import and run test cases and report bugs to
 						Jira in the projects assigned to them. Admins see every project and
 						can also create projects, manage users and properties, and delete
-						test cases and test runs.
+						test cases and test runs. Only the super admin, the account set in
+						ADMIN_USERNAME, can reset other users&apos; passwords.
 					</p>
 				</div>
 
@@ -124,7 +126,7 @@ export default function Users() {
 									'Role',
 									'Projects',
 									'Active',
-									'Reset password',
+									...(currentUser?.isSuperAdmin ? ['Reset password'] : []),
 									'Created',
 									'',
 								].map((header) => (
@@ -307,6 +309,8 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 	const error =
 		fetcher.data && 'message' in fetcher.data ? fetcher.data.message : undefined
 	const formID = `user-${user.userID}`
+	// only the super admin changes the super admin account
+	const isLocked = user.isSuperAdmin && !currentUser?.isSuperAdmin
 
 	useEffect(() => {
 		if (fetcher.state === 'idle' && fetcher.data && 'ok' in fetcher.data) {
@@ -320,6 +324,11 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 				{user.username}
 				{user.userID === currentUser?.userID && (
 					<span className="ml-2 text-xs text-gray-500">(you)</span>
+				)}
+				{user.isSuperAdmin && (
+					<span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+						Super admin
+					</span>
 				)}
 				<fetcher.Form
 					id={formID}
@@ -337,6 +346,7 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 					name="displayName"
 					defaultValue={user.displayName}
 					aria-label={`Display name for ${user.username}`}
+					disabled={isLocked}
 					onChange={() => setIsDirty(true)}
 					className={inputClassName}
 				/>
@@ -347,6 +357,7 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 					name="role"
 					defaultValue={user.role}
 					aria-label={`Role for ${user.username}`}
+					disabled={isLocked}
 					onChange={() => setIsDirty(true)}
 					className={inputClassName}
 				>
@@ -364,22 +375,25 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 					name="isActive"
 					defaultChecked={user.isActive}
 					aria-label={`${user.username} is active`}
+					disabled={isLocked}
 					onChange={() => setIsDirty(true)}
 					className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
 				/>
 			</td>
-			<td className="px-3 py-2">
-				<input
-					form={formID}
-					type="password"
-					name="password"
-					placeholder="New password"
-					autoComplete="new-password"
-					aria-label={`New password for ${user.username}`}
-					onChange={() => setIsDirty(true)}
-					className={inputClassName}
-				/>
-			</td>
+			{currentUser?.isSuperAdmin && (
+				<td className="px-3 py-2">
+					<input
+						form={formID}
+						type="password"
+						name="password"
+						placeholder="New password"
+						autoComplete="new-password"
+						aria-label={`New password for ${user.username}`}
+						onChange={() => setIsDirty(true)}
+						className={inputClassName}
+					/>
+				</td>
+			)}
 			<td className="px-3 py-2 whitespace-nowrap">
 				<DateDisplay date={user.creationDate} />
 			</td>
@@ -387,6 +401,7 @@ function UserRow({ user, projects }: { user: User; projects: Project[] }) {
 				<button
 					type="submit"
 					form={formID}
+					hidden={isLocked}
 					disabled={!isDirty || fetcher.state !== 'idle'}
 					className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
 				>

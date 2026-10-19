@@ -2,12 +2,14 @@ package com.sparkytc.sparkytcservice.controllers
 
 import com.sparkytc.sparkytcservice.auth.AdminOnly
 import com.sparkytc.sparkytcservice.dto.*
+import com.sparkytc.sparkytcservice.dto.builds.SaveProjectBuildDTO
 import com.sparkytc.sparkytcservice.dto.documents.TestRunExportType
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.projects.UpdateProjectSettingsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunAssigneeDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunAssigneesDTO
+import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunBuildDTO
 import com.sparkytc.sparkytcservice.dto.projects.CreateWorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.properties.CreatePropertyConfigurationDTO
 import com.sparkytc.sparkytcservice.dto.properties.UpdatePropertyConfigurationDTO
@@ -18,6 +20,7 @@ import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
 import com.sparkytc.sparkytcservice.services.JiraService
+import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.Resource
@@ -43,6 +46,7 @@ import java.util.UUID
 class WorkspaceController(
     private val workspaceService: WorkspaceService,
     private val jiraService: JiraService,
+    private val projectBuildService: ProjectBuildService,
 ) {
 
     @GetMapping("/projects")
@@ -67,6 +71,35 @@ class WorkspaceController(
     @PutMapping("/projects/{projectShortCode}/settings")
     fun updateProjectSettings(@PathVariable projectShortCode: String, @RequestBody request: UpdateProjectSettingsDTO): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.updateProjectSettings(projectShortCode, request)))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/builds")
+    fun retrieveBuilds(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = projectBuildService.retrieveBuilds(projectShortCode)))
+    }
+
+    @AdminOnly
+    @PostMapping("/projects/{projectShortCode}/builds")
+    fun createBuild(@PathVariable projectShortCode: String, @RequestBody request: SaveProjectBuildDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = projectBuildService.createBuild(projectShortCode, request)))
+    }
+
+    @AdminOnly
+    @PutMapping("/builds/{buildID}")
+    fun updateBuild(@PathVariable buildID: UUID, @RequestBody request: SaveProjectBuildDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = projectBuildService.updateBuild(buildID, request)))
+    }
+
+    @AdminOnly
+    @DeleteMapping("/builds/{buildID}")
+    fun deleteBuild(@PathVariable buildID: UUID): ResponseEntity<Any> {
+        projectBuildService.deleteBuild(buildID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PutMapping("/test-runs/{testRunID}/build")
+    fun updateTestRunBuild(@PathVariable testRunID: UUID, @RequestBody request: UpdateTestRunBuildDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.updateTestRunBuild(testRunID, request)))
     }
 
     @AdminOnly
@@ -226,6 +259,18 @@ class WorkspaceController(
     @GetMapping("/jira/configuration")
     fun retrieveJiraConfiguration(): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = jiraService.configuration()))
+    }
+
+    @AdminOnly
+    @GetMapping("/jira/projects")
+    fun retrieveJiraProjects(): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = jiraService.listProjects()))
+    }
+
+    @AdminOnly
+    @GetMapping("/jira/projects/{projectKey}/issue-types")
+    fun retrieveJiraIssueTypes(@PathVariable projectKey: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = jiraService.listIssueTypes(projectKey)))
     }
 
     @GetMapping("/jira/issues")

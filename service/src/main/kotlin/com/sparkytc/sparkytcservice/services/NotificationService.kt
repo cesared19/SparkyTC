@@ -38,6 +38,19 @@ class NotificationService(
         notificationRepository.markAllRead(user)
     }
 
+    @Transactional
+    fun deleteNotification(user: User, notificationID: UUID) {
+        val notification = notificationRepository.findByExternalIDAndUser(notificationID, user)
+        requireNotNull(notification) { "No notification found with id $notificationID" }
+        require(notification.isRead) { "Only read notifications can be deleted" }
+        notificationRepository.delete(notification)
+    }
+
+    @Transactional
+    fun deleteAllRead(user: User) {
+        notificationRepository.deleteAllRead(user)
+    }
+
     /** Notifies users who were just assigned to a test run, skipping whoever made the change. */
     fun notifyTestRunAssigned(testRun: TestRun, users: Collection<User>, actor: User?) {
         for (user in users) {

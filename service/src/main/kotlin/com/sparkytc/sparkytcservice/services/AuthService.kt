@@ -164,6 +164,8 @@ class AuthService(
     fun updateUser(actor: User, userID: UUID, request: UpdateUserDTO): UserDTO {
         val user = userRepository.findByExternalID(userID)
         requireNotNull(user) { "No user found with id $userID" }
+        require(!user.isSuperAdmin || user.id == actor.id) { "Only the super admin can change the super admin account" }
+        require(request.password.isNullOrEmpty() || actor.isSuperAdmin) { "Only the super admin can reset passwords" }
         require(request.displayName.isNotBlank()) { "Display name is required" }
 
         val losesAdmin = user.role == UserRole.ADMIN && user.isActive && (request.role != UserRole.ADMIN || !request.isActive)
@@ -189,13 +191,39 @@ class AuthService(
         return user.toDTO()
     }
 
-    /** Creates the first admin account when there are no users yet. Returns true when an account was created. */
+    /**
+     * Makes the ADMIN_USERNAME account the super admin, creating it when it doesn't exist yet. The password is
+     * only used to create the account, or to reset it when resetPassword is set.
+     */
     @Transactional
-    fun bootstrapAdmin(username: String, password: String): Boolean {
-        if (userRepository.count() > 0) return false
+    fun bootstrapSuperAdmin(username: String, password: String, resetPassword: Boolean): SuperAdminBootstrapResult {
+        var user = userRepository.findByUsernameIgnoreCase(username.trim())
+        val result = when {
+            user == null -> {
+                require(password.isNotBlank()) { "ADMIN_PASSWORD is required to create the super admin account" }
+                createUser(CreateUserDTO(username = username, displayName = username.trim(), role = UserRole.ADMIN, password = password))
+                user = userRepository.findByUsernameIgnoreCase(username.trim())!!
+                SuperAdminBootstrapResult.CREATED
+            }
+            resetPassword && password.isNotBlank() -> {
+                validatePassword(password)
+                user.passwordHash = passwordEncoder.encode(password)
+                userSessionRepository.deleteAllByUser(user)
+                SuperAdminBootstrapResult.PASSWORD_RESET
+            }
+            else -> SuperAdminBootstrapResult.UNCHANGED
+        }
 
-        createUser(CreateUserDTO(username = username, displayName = username, role = UserRole.ADMIN, password = password))
-        return true
+        // there is only one super admin, it moves when ADMIN_USERNAME changes
+        userRepository.findByIsSuperAdminTrue()?.takeIf { it.id != user.id }?.let {
+            it.isSuperAdmin = false
+            userRepository.saveAndFlush(it)
+        }
+        user.isSuperAdmin = true
+        user.role = UserRole.ADMIN
+        user.isActive = true
+        userRepository.save(user)
+        return result
     }
 
     fun hasUsers(): Boolean = userRepository.count() > 0
@@ -214,4 +242,10 @@ class AuthService(
         const val SESSION_DURATION_MILLIS = 7L * 24 * 60 * 60 * 1000
         private val USERNAME_PATTERN = Regex("^[A-Za-z0-9._-]{3,50}$")
     }
+}
+
+enum class SuperAdminBootstrapResult {
+    CREATED,
+    PASSWORD_RESET,
+    UNCHANGED
 }

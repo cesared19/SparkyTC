@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.repositories
 
+import com.sparkytc.sparkytcservice.models.ProjectBuild
 import com.sparkytc.sparkytcservice.models.TestRun
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import org.springframework.data.jpa.repository.JpaRepository
@@ -13,4 +14,6 @@ interface TestRunRepository : JpaRepository<TestRun, Long> {
     fun findTopByProjectOrderByTestRunNumberDesc(project: WorkspaceProject): TestRun?
 
     fun findByProjectAndTestRunNumber(project: WorkspaceProject, testRunNumber: Long): TestRun?
+
+    fun existsByBuild(build: ProjectBuild): Boolean
 }

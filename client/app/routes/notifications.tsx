@@ -23,6 +23,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			await api.put(APIRoute.notificationRead(notificationID))
 		} else if (intent === 'readAll') {
 			await api.put(APIRoute.notificationsReadAll)
+		} else if (intent === 'delete') {
+			await api.delete(APIRoute.notification(notificationID))
+		} else if (intent === 'deleteRead') {
+			await api.delete(APIRoute.notificationsRead)
 		} else {
 			throw 'Invalid request'
 		}

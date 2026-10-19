@@ -54,12 +54,17 @@ class TestRun (
         inverseJoinColumns = [JoinColumn(name = "user_id")]
     )
     val assignees: MutableSet<User> = mutableSetOf(),
+
+    // the build being tested
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "build_id")
+    var build: ProjectBuild? = null,
 ) {
     val isClosed: Boolean
         get() = status == TestRunStatus.COMPLETE || status == TestRunStatus.ABORT
 
     fun toDTO(): TestRunDTO {
         val assigneeSummaries = assignees.sortedBy { it.displayName.lowercase() }.map { UserSummaryDTO(it.externalID, it.displayName) }
-        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries)
+        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries, build?.toDTO())
     }
 }

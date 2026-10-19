@@ -14,6 +14,7 @@ import type {
 	ErrorResponse,
 	FetchResponse,
 	ProjectTestRunsOutletContext,
+	ProjectBuild,
 	PropertyConfiguration,
 	TestCase,
 	TestRun,
@@ -21,6 +22,7 @@ import type {
 } from '~/models/types'
 import TestCaseSelector from '~/components/TestCaseSelector'
 import { AssigneePicker } from '~/components/Assignments'
+import { BuildSelect } from '~/components/Builds'
 import { Route } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '../utility/Tools'
@@ -31,6 +33,7 @@ interface CreateTestRun extends Record<string, any> {
 	description?: string
 	testCaseIDs: string[]
 	assigneeIDs: string[]
+	buildID: string | null
 }
 
 export async function loader({ request, params }: ActionFunctionArgs) {
@@ -40,7 +43,7 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		throw new Response('Project short code is required', { status: 400 })
 	}
 
-	const [properties, testCases, projectUsers] = await Promise.all([
+	const [properties, testCases, projectUsers, builds] = await Promise.all([
 		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
 		api.get<FetchResponse<TestCase[]>>(
 			APIRoute.projectTestCases(projectShortCode)
@@ -48,12 +51,16 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		api.get<FetchResponse<UserSummary[]>>(
 			APIRoute.projectUsers(projectShortCode)
 		),
+		api.get<FetchResponse<ProjectBuild[]>>(
+			APIRoute.projectBuilds(projectShortCode)
+		),
 	])
 
 	return {
 		properties: properties.data,
 		testCases: testCases.data,
 		projectUsers: projectUsers.data,
+		builds: builds.data,
 	}
 }
 
@@ -77,8 +84,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function NewTestRun() {
 	const navigate = useNavigate()
-	const { properties, testCases, projectUsers } = useLoaderData<typeof loader>()
+	const { properties, testCases, projectUsers, builds } =
+		useLoaderData<typeof loader>()
 	const [assigneeIDs, setAssigneeIDs] = useState<string[]>([])
+	// the current build is preselected
+	const [buildID, setBuildID] = useState(builds[0]?.buildID ?? '')
 	const { project } = useOutletContext<ProjectTestRunsOutletContext>()
 	const actionData = useActionData<ErrorResponse>()
 
@@ -104,6 +114,7 @@ export default function NewTestRun() {
 			description: formData.get('description') as string | undefined,
 			testCaseIDs: selectedTestCases.map((tc) => tc.testCaseID),
 			assigneeIDs,
+			buildID: buildID || null,
 		}
 
 		submit(jsonData, {
@@ -169,6 +180,28 @@ export default function NewTestRun() {
 									rows={4}
 									className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 								/>
+							</div>
+
+							<div>
+								<label
+									htmlFor="buildID"
+									className="block text-sm font-medium text-gray-700"
+								>
+									Build
+								</label>
+								<div className="mt-1">
+									<BuildSelect
+										id="buildID"
+										builds={builds}
+										value={buildID}
+										onChange={setBuildID}
+									/>
+								</div>
+								<p className="mt-1 text-xs text-gray-500">
+									{builds.length === 0
+										? 'No builds registered yet. An admin registers them from the project dashboard.'
+										: 'The build being tested. It can be changed while the run is open.'}
+								</p>
 							</div>
 						</div>
 					</div>

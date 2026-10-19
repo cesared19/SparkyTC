@@ -2,6 +2,8 @@ package com.sparkytc.sparkytcservice.services
 
 import com.sparkytc.sparkytcservice.dto.jira.JiraConfigurationDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueDTO
+import com.sparkytc.sparkytcservice.dto.jira.JiraIssueTypeDTO
+import com.sparkytc.sparkytcservice.dto.jira.JiraProjectDTO
 import com.sparkytc.sparkytcservice.dto.jira.SimilarJiraIssueDTO
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -69,14 +71,18 @@ class JiraService(
     val defaultProjectKey: String
         get() = projectKey
 
-    /** Creates an issue in the given project (or the default one) and returns its key. */
-    fun createIssue(summary: String, description: Map<String, Any>, targetProjectKey: String? = null): String {
+    /** The issue type used when a SparkyTC project doesn't choose one. */
+    val defaultIssueType: String
+        get() = issueType
+
+    /** Creates an issue in the given project and issue type (or the default ones) and returns its key. */
+    fun createIssue(summary: String, description: Map<String, Any>, targetProjectKey: String? = null, targetIssueType: String? = null): String {
         requireEnabled()
 
         val body = mapOf(
             "fields" to mapOf(
                 "project" to mapOf("key" to (targetProjectKey ?: projectKey)),
-                "issuetype" to mapOf("name" to issueType),
+                "issuetype" to mapOf("name" to (targetIssueType ?: issueType)),
                 "summary" to summary,
                 "description" to description,
             )
@@ -123,6 +129,50 @@ class JiraService(
                 .retrieve()
                 .toBodilessEntity()
         }
+    }
+
+    /** The Jira projects (spaces) the account can see, sorted by name. */
+    fun listProjects(): List<JiraProjectDTO> {
+        requireEnabled()
+
+        val projects = mutableListOf<JiraProjectDTO>()
+        var startAt = 0
+        while (true) {
+            val response = call("list Jira projects") {
+                restClient.get()
+                    .uri("/rest/api/3/project/search?orderBy=name&maxResults={max}&startAt={start}", PAGE_SIZE, startAt)
+                    .retrieve()
+                    .body(JsonNode::class.java)
+            }
+            val values = response?.get("values")?.toList().orEmpty()
+            values.mapNotNullTo(projects) { project ->
+                val key = project.get("key")?.asText() ?: return@mapNotNullTo null
+                JiraProjectDTO(key, project.get("name")?.asText() ?: key)
+            }
+            startAt += values.size
+            if (values.isEmpty() || response?.get("isLast")?.asBoolean() != false || projects.size >= MAX_PROJECTS) break
+        }
+        return projects
+    }
+
+    /** The issue types that can be created in a Jira project, without subtasks. */
+    fun listIssueTypes(targetProjectKey: String): List<JiraIssueTypeDTO> {
+        requireEnabled()
+
+        val response = call("list the issue types of Jira project $targetProjectKey") {
+            restClient.get()
+                .uri("/rest/api/3/issue/createmeta/{key}/issuetypes?maxResults={max}", targetProjectKey, PAGE_SIZE)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        // older sites name the list "values"
+        val issueTypes = (response?.get("issueTypes") ?: response?.get("values"))?.toList().orEmpty()
+        return issueTypes
+            .filter { it.get("subtask")?.asBoolean() != true }
+            .mapNotNull { issueType ->
+                val name = issueType.get("name")?.asText() ?: return@mapNotNull null
+                JiraIssueTypeDTO(issueType.get("id")?.asText() ?: name, name)
+            }
     }
 
     /**
@@ -241,6 +291,8 @@ class JiraService(
         private const val MAX_SEARCH_WORDS = 8
         private const val SIMILAR_CANDIDATES = 30
         private const val MINIMUM_SIMILARITY = 0.2
+        private const val PAGE_SIZE = 100
+        private const val MAX_PROJECTS = 1000
 
         // common words that say nothing about what an issue is about, in english and spanish
         private val STOP_WORDS = setOf(

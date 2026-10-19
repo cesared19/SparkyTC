@@ -10,5 +10,6 @@ data class WorkspaceProjectDTO(
     val projectShortCode: String,
     val description: String?,
     val jiraFailureMode: JiraFailureMode = JiraFailureMode.MANUAL,
-    val jiraProjectKey: String? = null
+    val jiraProjectKey: String? = null,
+    val jiraIssueType: String? = null
 )

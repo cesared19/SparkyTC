@@ -10,6 +10,7 @@ import {
 } from '@remix-run/react'
 import { APIRoute, Route } from '~/utility/Routes'
 import {
+	ProjectBuild,
 	ProjectTestCaseRunsOutletContext,
 	TestCaseRunStatus,
 	ErrorResponse,
@@ -33,6 +34,7 @@ import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 import { publicBaseURL } from '~/utility/PublicURL.server'
 import { TestCaseAssignment } from '~/components/Assignments'
+import { TestRunBuild } from '~/components/Builds'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 
 interface UpdateTestCaseRun extends Record<string, any> {
@@ -100,7 +102,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestCaseRunDetails() {
 	const params = useParams()
-	const { project, testRun, testCaseRuns, properties, projectUsers } =
+	const { project, testRun, testCaseRuns, properties, projectUsers, builds } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 	const testCaseNumber = Number(params.testCaseNumber)
 	if (!testCaseNumber) {
@@ -122,6 +124,7 @@ export default function TestCaseRunDetails() {
 			testCaseRun={testCaseRun}
 			properties={properties}
 			projectUsers={projectUsers}
+			builds={builds}
 		/>
 	)
 }
@@ -132,6 +135,7 @@ interface TestCaseRunViewProps {
 	testCaseRun: TestCaseRun
 	properties: PropertyConfiguration[]
 	projectUsers: UserSummary[]
+	builds: ProjectBuild[]
 }
 
 function propertyValue(
@@ -153,6 +157,7 @@ function TestCaseRunView({
 	testCaseRun,
 	properties,
 	projectUsers,
+	builds,
 }: TestCaseRunViewProps) {
 	const actionData = useActionData<ErrorResponse>()
 	const currentUser = useCurrentUser()
@@ -231,6 +236,14 @@ function TestCaseRunView({
 							case, so you can't record its result.
 						</p>
 					)}
+				</section>
+
+				<section>
+					<h2 className="mb-2 text-xl font-semibold text-gray-900">Build</h2>
+					<TestRunBuild testRun={testRun} builds={builds} />
+					<p className="mt-1 text-xs text-gray-500">
+						Applies to the whole test run.
+					</p>
 				</section>
 
 				<section>
@@ -371,6 +384,7 @@ function TestCaseRunView({
 						editable
 						jiraFailureMode={project.jiraFailureMode}
 						jiraProjectKey={project.jiraProjectKey}
+						jiraIssueType={project.jiraIssueType}
 						createIssue={{
 							testCaseRunID: testCaseRun.testCaseRunID,
 							isFailed: selectedStatus === TestCaseRunStatus.fail,
@@ -389,6 +403,7 @@ function TestCaseRunView({
 										'',
 									actualResult: notes ?? '',
 									buildNumber:
+										testRun.build?.buildNumber ??
 										propertyValue(testCaseRun, properties, 'build number') ??
 										'',
 								}
