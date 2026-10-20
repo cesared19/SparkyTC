@@ -18,6 +18,7 @@ import {
 	TestCaseRun,
 	UpdateTestCaseRunDetails,
 	CreateJiraIssue,
+	JiraIssueTransition,
 	JiraLink,
 	PropertyConfiguration,
 	TestRun,
@@ -32,6 +33,7 @@ import { ErrorMessage } from '../components/ErrorMessage'
 import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
+import { JiraResultTransitions } from '~/components/JiraResultTransitions'
 import { publicBaseURL } from '~/utility/PublicURL.server'
 import { TestCaseAssignment } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
@@ -41,6 +43,11 @@ import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 interface UpdateTestCaseRun extends Record<string, any> {
 	status: TestCaseRunStatus
 	notes?: string
+	jiraTransitions?: JiraIssueTransition[]
+}
+
+interface UpdateTestCaseRunResult {
+	jiraTransitionErrors?: string[]
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -76,9 +83,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		}
 
 		// the public URL lets automatically created Jira issues link back to SparkyTC
-		await api.put<void>(APIRoute.testCaseRun(testCaseRunID), {
-			body: { ...testCaseRunUpdate, appBaseURL: publicBaseURL(request) },
-		})
+		const result = await api.put<FetchResponse<UpdateTestCaseRunResult>>(
+			APIRoute.testCaseRun(testCaseRunID),
+			{ body: { ...testCaseRunUpdate, appBaseURL: publicBaseURL(request) } }
+		)
+		// the result is saved, the tester stays to see what Jira refused
+		const jiraErrors = result.data?.jiraTransitionErrors ?? []
+		if (jiraErrors.length > 0) {
+			return {
+				message: `The result was saved, but Jira wasn't fully updated. ${jiraErrors.join(
+					' '
+				)}`,
+			}
+		}
 
 		const nextTestCaseRun = await api.get<
 			FetchResponse<TestCaseRun | undefined>
@@ -174,6 +191,10 @@ function TestCaseRunView({
 	const [selectedStatus, setSelectedStatus] = useState<TestCaseRunStatus>(
 		testCaseRun.status
 	)
+	// undefined while a checked issue has no transition chosen
+	const [jiraTransitions, setJiraTransitions] = useState<
+		JiraIssueTransition[] | undefined
+	>([])
 
 	const handleSave = () => {
 		const form = document.getElementById('testCaseForm') as HTMLFormElement
@@ -184,6 +205,9 @@ function TestCaseRunView({
 			status: selectedStatus,
 			notes,
 			...(minutes > 0 ? { manualSeconds: Math.round(minutes * 60) } : {}),
+			...(jiraTransitions && jiraTransitions.length > 0
+				? { jiraTransitions }
+				: {}),
 		}
 
 		fetcher.submit(
@@ -316,6 +340,14 @@ function TestCaseRunView({
 							Skip
 						</button>
 					</fieldset>
+					<JiraResultTransitions
+						testCaseRunID={testCaseRun.testCaseRunID}
+						testCaseID={testCaseRun.testCase.testCaseID}
+						links={testCaseRun.testCase.jiraLinks ?? []}
+						status={selectedStatus}
+						disabled={isLocked}
+						onChange={setJiraTransitions}
+					/>
 				</section>
 
 				<section>
@@ -484,7 +516,12 @@ function TestCaseRunView({
 					<button
 						type="button"
 						onClick={handleSave}
-						disabled={isLocked}
+						disabled={isLocked || !jiraTransitions || fetcher.state !== 'idle'}
+						title={
+							jiraTransitions
+								? undefined
+								: 'Choose a transition for each Jira issue to update'
+						}
 						className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						Save Changes

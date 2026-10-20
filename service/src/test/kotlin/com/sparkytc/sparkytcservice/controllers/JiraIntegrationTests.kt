@@ -102,7 +102,21 @@ class JiraIntegrationTests {
                             {"key":"SCRUM-52","fields":{"summary":"Steering wheel lock limit warning sound plays","status":{"name":"In Progress","statusCategory":{"key":"indeterminate"}}}}
                         ]}"""
                     exchange.requestMethod == "GET" && path == "/rest/api/3/issue/SCRUM-7" ->
-                        200 to """{"key":"SCRUM-7","fields":{"summary":"Existing bug","status":{"name":"In Progress","statusCategory":{"key":"indeterminate"}}}}"""
+                        200 to """{"key":"SCRUM-7","fields":{"summary":"Existing bug","status":{"name":"In Progress","statusCategory":{"key":"indeterminate"}},"assignee":{"accountId":"acc-dev","displayName":"Dev Jira"}}}"""
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/issue/SCRUM-7/transitions" ->
+                        200 to """{"transitions":[
+                            {"id":"11","name":"Back to To Do","to":{"name":"To Do","statusCategory":{"key":"new"}}},
+                            {"id":"31","name":"Done","to":{"name":"Done","statusCategory":{"key":"done"}}}
+                        ]}"""
+                    exchange.requestMethod == "POST" && path == "/rest/api/3/issue/SCRUM-7/transitions" -> 200 to "{}"
+                    exchange.requestMethod == "POST" && path == "/rest/api/3/issue/SCRUM-7/comment" -> 201 to """{"id":"1"}"""
+                    exchange.requestMethod == "PUT" && path == "/rest/api/3/issue/SCRUM-7/assignee" ->
+                        if (body.contains("acc-blocked")) 400 to """{"errorMessages":["User 'acc-blocked' cannot be assigned issues."],"errors":{}}""" else 200 to "{}"
+                    exchange.requestMethod == "GET" && path == "/rest/api/3/user/assignable/search" && query.contains("issueKey=SCRUM-7") ->
+                        200 to """[
+                            {"accountId":"acc-dev","displayName":"Dev Jira","accountType":"atlassian","active":true},
+                            {"accountId":"app-1","displayName":"Automation for Jira","accountType":"app","active":true}
+                        ]"""
                     else -> 404 to """{"errorMessages":["Issue does not exist or you do not have permission to see it."],"errors":{}}"""
                 }
 
@@ -561,6 +575,88 @@ class JiraIntegrationTests {
         assertEquals("FAIL", readData<List<TestCaseRunDTO>>(get("/api/v1/workspace/test-case-runs/TEST/1")).first().status.name)
         val notifications = objectMapper.readTree(mockMvc.perform(get("/api/v1/notifications")).andReturn().response.contentAsString).get("data")
         assertEquals("JIRA_ISSUE_FAILED", notifications.get("notifications")[0].get("type").asText())
+    }
+
+    @Test
+    fun `a pass can close a linked issue, commenting who closed it with a link to the evidence`() {
+        val testCaseRun = createTestCaseRun()
+        linkExistingIssue()
+
+        mockMvc.perform(get("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issues/SCRUM-7/transitions"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data[1].transitionID").value("31"))
+            .andExpect(jsonPath("$.data[1].toStatus").value("Done"))
+            .andExpect(jsonPath("$.data[1].toStatusCategory").value("done"))
+        mockMvc.perform(get("/api/v1/workspace/jira/issues").param("keys", "SCRUM-7"))
+            .andExpect(jsonPath("$.data[0].assigneeName").value("Dev Jira"))
+        requests.clear()
+
+        mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"status":"PASS","notes":"Fixed in this build","appBaseURL":"http://192.168.1.20:3000",
+                "jiraTransitions":[{"issueKey":"SCRUM-7","transitionID":"31"}]}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraTransitionErrors").isEmpty)
+
+        val transition = requests.single { it.method == "POST" && it.path == "/rest/api/3/issue/SCRUM-7/transitions" }
+        assertEquals("31", objectMapper.readTree(transition.body).get("transition").get("id").asText())
+        val comment = objectMapper.readTree(requests.single { it.path == "/rest/api/3/issue/SCRUM-7/comment" }.body).get("body")
+        val text = collectText(comment)
+        assertTrue(text.contains("Closed by") && text.contains("(moved to Done)") && text.contains("TEST-1") && text.contains("passed in test run #1"), text)
+        assertTrue(text.contains("Notes: Fixed in this build"), text)
+        assertEquals(listOf("http://192.168.1.20:3000/test-runs/TEST/1/1"), collectLinks(comment))
+        assertTrue(requests.none { it.path.endsWith("/assignee") })
+        assertEquals("PASS", readData<List<TestCaseRunDTO>>(get("/api/v1/workspace/test-case-runs/TEST/1")).first().status.name)
+    }
+
+    @Test
+    fun `a fail can reopen a linked issue and assign it, keeping the result when jira refuses`() {
+        val testCaseRun = createTestCaseRun()
+        linkExistingIssue()
+        fun saveResult(body: String) = mockMvc.perform(put("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body))
+
+        mockMvc.perform(get("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issues/SCRUM-7/assignable-users").param("query", "dev"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.length()").value(1))
+            .andExpect(jsonPath("$.data[0].accountID").value("acc-dev"))
+        requests.clear()
+
+        saveResult("""{"status":"FAIL","notes":null,"jiraTransitions":[{"issueKey":"SCRUM-7","transitionID":"11","assigneeAccountID":"acc-dev"}]}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraTransitionErrors").isEmpty)
+        val assignee = requests.single { it.method == "PUT" && it.path == "/rest/api/3/issue/SCRUM-7/assignee" }
+        assertEquals("acc-dev", objectMapper.readTree(assignee.body).get("accountId").asText())
+        val text = collectText(objectMapper.readTree(requests.single { it.path.endsWith("/comment") }.body).get("body"))
+        assertTrue(text.contains("Reopened by") && text.contains("(moved to To Do)") && text.contains("failed"), text)
+
+        // jira errors are reported, the result is saved anyway
+        saveResult("""{"status":"FAIL","notes":null,"jiraTransitions":[{"issueKey":"SCRUM-7","transitionID":"11","assigneeAccountID":"acc-blocked"}]}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraTransitionErrors[0]").value(Matchers.containsString("cannot be assigned")))
+        saveResult("""{"status":"PASS","notes":null,"jiraTransitions":[{"issueKey":"SCRUM-7","transitionID":"99"}]}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jiraTransitionErrors[0]").value(Matchers.containsString("no longer available")))
+        assertEquals("PASS", readData<List<TestCaseRunDTO>>(get("/api/v1/workspace/test-case-runs/TEST/1")).first().status.name)
+
+        // only linked issues, and only on a pass or a fail
+        requests.clear()
+        saveResult("""{"status":"FAIL","notes":null,"jiraTransitions":[{"issueKey":"SCRUM-8","transitionID":"11"}]}""")
+            .andExpect(status().isBadRequest)
+        saveResult("""{"status":"SKIP","notes":null,"jiraTransitions":[{"issueKey":"SCRUM-7","transitionID":"11"}]}""")
+            .andExpect(status().isBadRequest)
+        mockMvc.perform(get("/api/v1/workspace/test-case-runs/${testCaseRun.testCaseRunID}/jira-issues/SCRUM-8/transitions"))
+            .andExpect(status().isBadRequest)
+        assertTrue(requests.isEmpty())
+        assertEquals("PASS", readData<List<TestCaseRunDTO>>(get("/api/v1/workspace/test-case-runs/TEST/1")).first().status.name)
+    }
+
+    private fun linkExistingIssue() {
+        mockMvc.perform(post("/api/v1/workspace/test-cases/${getTestCases().first().testCaseID}/jira-links")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(LinkJiraIssueDTO(issue = "SCRUM-7", appBaseURL = null))))
+            .andExpect(status().isOk)
     }
 
     private fun collectText(node: JsonNode): String {

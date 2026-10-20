@@ -43,12 +43,11 @@ View the progress of your test run and see the results of each test case.
 ### Additional Features
 
 -  Custom property configuration for test cases
--  Export test plan and test run results to document
 -  Batch import of test cases from a `.csv` file (see below)
 -  Images and videos attached to test cases, visible while executing a test run
 -  Links inside test case descriptions, instructions and properties are clickable and open in a new tab
 -  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
--  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status (see below)
+-  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status, and close or reopen them when recording a result (see below)
 -  User accounts with Tester and Admin roles, and a record of who created, updated and executed each test case (see below)
 -  Home dashboard per project with test case and test run summaries, and a default project opened after signing in
 -  Per-project visibility: admins choose which projects each tester can see
@@ -140,6 +139,7 @@ API tokens are created at https://id.atlassian.com/manage-profile/security/api-t
 
 -  To report a bug, mark a test case as **Fail** during a test run and click **Create bug in Jira**. The form is pre-filled from the test case: the summary from the title, the steps from the test instructions, the expected result from the `Expected Result` property, the build number from the test run's build (or the `Build Number` property when the run has none), and the actual result from the run notes.
 -  Images and videos are **never uploaded to Jira**, so they don't use its storage quota. The issue description links to them in SparkyTC instead, and a link back to the test case is added to the issue.
+-  When recording a **Pass**, the tester can close the linked issues that aren't done; when recording a **Fail**, they can reopen the linked issues that are done and optionally assign them to someone else so they find out (see below).
 -  The links use the address you open SparkyTC with (e.g. `http://192.168.1.20:3000`). Set `SPARKYTC_PUBLIC_URL` in the client service to override it, for example when a domain is added.
 
 ## Architecture Overview
@@ -188,6 +188,16 @@ Bugs are created with the shared Jira account, and Jira's **Reporter** is set to
 -  Jira's history still shows the shared account as the one that created the issue.
 
 Before creating an issue, SparkyTC searches the Jira project for issues whose summary shares words with the new one and suggests them, so the tester can link an existing issue instead of creating a duplicate. The search uses Jira's text search and ranks results by the words both summaries have in common; it doesn't use AI.
+
+#### Closing and reopening linked issues
+
+While recording a result, the test case run page lists the linked issues that can change with it:
+
+-  **Pass**: each linked issue that isn't done gets a **Close in Jira** checkbox. The tester chooses the transition from the ones Jira offers for the issue, with *Done* preselected.
+-  **Fail**: each linked issue that is done gets a **Reopen in Jira** checkbox, with *To Do* preselected, and its assignee can be changed so that person is notified by Jira.
+-  Nothing is changed unless the box is checked. On save, SparkyTC moves the issue and adds a comment, posted by the shared account, saying who closed or reopened it, the test case, test run and build, the run notes, and a link to the test case run in SparkyTC with its evidence.
+-  The result is saved even if Jira refuses the change (e.g. the issue moved in the meantime); the tester stays on the page and sees what failed.
+-  The shared account needs the **Transition issues**, **Add comments** and **Assign issues** permissions in the space, and the people offered as assignees are those Jira allows to be assigned the issue.
 
 ### Prerequisites
 

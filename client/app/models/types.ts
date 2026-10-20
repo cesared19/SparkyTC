@@ -32,6 +32,22 @@ export interface JiraIssue {
 	status?: string
 	statusCategory?: 'new' | 'indeterminate' | 'done' | string
 	error?: string
+	assigneeAccountID?: string
+	assigneeName?: string
+}
+
+export interface JiraTransition {
+	transitionID: string
+	name: string
+	toStatus?: string
+	toStatusCategory?: string
+}
+
+// a linked issue to close on a pass or reopen on a fail
+export interface JiraIssueTransition {
+	issueKey: string
+	transitionID: string
+	assigneeAccountID?: string
 }
 
 export interface JiraConfiguration {

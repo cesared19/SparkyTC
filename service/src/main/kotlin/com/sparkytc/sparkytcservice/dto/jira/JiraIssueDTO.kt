@@ -7,5 +7,7 @@ data class JiraIssueDTO(
     val status: String?,
     // jira status category key: "new", "indeterminate" or "done"
     val statusCategory: String?,
-    val error: String? = null
+    val error: String? = null,
+    val assigneeAccountID: String? = null,
+    val assigneeName: String? = null,
 )

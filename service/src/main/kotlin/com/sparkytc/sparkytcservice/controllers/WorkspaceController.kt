@@ -305,6 +305,16 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveJiraIssues(issueKeys)))
     }
 
+    @GetMapping("/test-case-runs/{testCaseRunID}/jira-issues/{issueKey}/transitions")
+    fun retrieveJiraTransitions(@PathVariable testCaseRunID: UUID, @PathVariable issueKey: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.listJiraTransitions(testCaseRunID, issueKey)))
+    }
+
+    @GetMapping("/test-case-runs/{testCaseRunID}/jira-issues/{issueKey}/assignable-users")
+    fun searchAssignableJiraUsers(@PathVariable testCaseRunID: UUID, @PathVariable issueKey: String, @RequestParam("query") query: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.searchAssignableJiraUsers(testCaseRunID, issueKey, query)))
+    }
+
     @PostMapping("/test-case-runs/{testCaseRunID}/jira-issue")
     fun createJiraIssue(@PathVariable testCaseRunID: UUID, @RequestBody request: CreateJiraIssueDTO): ResponseEntity<Any> {
         val link = workspaceService.createJiraIssue(testCaseRunID, request)

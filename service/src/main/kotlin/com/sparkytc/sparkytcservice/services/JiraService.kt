@@ -4,6 +4,7 @@ import com.sparkytc.sparkytcservice.dto.jira.JiraConfigurationDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueTypeDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraProjectDTO
+import com.sparkytc.sparkytcservice.dto.jira.JiraTransitionDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraUserDTO
 import com.sparkytc.sparkytcservice.dto.jira.SimilarJiraIssueDTO
 import com.fasterxml.jackson.databind.JsonNode
@@ -163,6 +164,80 @@ class JiraService(
         return response?.let { toJiraUser(it) } ?: throw IllegalArgumentException("Jira did not return the user")
     }
 
+    /** Users who can be assigned the issue, matching a name or email. */
+    fun searchAssignableUsers(issueKey: String, query: String): List<JiraUserDTO> {
+        requireEnabled()
+
+        val response = call("search the users who can be assigned $issueKey") {
+            restClient.get()
+                .uri("/rest/api/3/user/assignable/search?issueKey={key}&query={query}&maxResults={max}", issueKey, query, USER_SEARCH_LIMIT)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        return response?.toList().orEmpty()
+            .filter { it.get("accountType")?.asText() == "atlassian" && it.get("active")?.asBoolean() != false }
+            .mapNotNull { toJiraUser(it) }
+    }
+
+    /** The transitions the shared account can make on the issue from its current status. */
+    fun listTransitions(issueKey: String): List<JiraTransitionDTO> {
+        requireEnabled()
+
+        val response = call("list the transitions of $issueKey") {
+            restClient.get()
+                .uri("/rest/api/3/issue/{key}/transitions", issueKey)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        return response?.get("transitions")?.toList().orEmpty().mapNotNull { transition ->
+            val id = transition.get("id")?.asText() ?: return@mapNotNull null
+            val target = transition.get("to")
+            JiraTransitionDTO(
+                transitionID = id,
+                name = transition.get("name")?.asText() ?: id,
+                toStatus = target?.get("name")?.asText(),
+                toStatusCategory = target?.get("statusCategory")?.get("key")?.asText(),
+            )
+        }
+    }
+
+    fun transitionIssue(issueKey: String, transitionID: String) {
+        requireEnabled()
+        call("move $issueKey to the chosen status") {
+            restClient.post()
+                .uri("/rest/api/3/issue/{key}/transitions", issueKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mapOf("transition" to mapOf("id" to transitionID)))
+                .retrieve()
+                .toBodilessEntity()
+        }
+    }
+
+    fun assignIssue(issueKey: String, accountID: String) {
+        requireEnabled()
+        call("assign $issueKey") {
+            restClient.put()
+                .uri("/rest/api/3/issue/{key}/assignee", issueKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mapOf("accountId" to accountID))
+                .retrieve()
+                .toBodilessEntity()
+        }
+    }
+
+    /** Adds a comment to the issue, posted by the shared account. */
+    fun addComment(issueKey: String, body: Map<String, Any>) {
+        requireEnabled()
+        call("comment on $issueKey") {
+            restClient.post()
+                .uri("/rest/api/3/issue/{key}/comment", issueKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mapOf("body" to body))
+                .retrieve()
+                .toBodilessEntity()
+        }
+    }
+
     /** Whether the shared account can set the reporter of the issues it creates in the project. */
     fun canModifyReporter(targetProjectKey: String): Boolean {
         requireEnabled()
@@ -311,7 +386,7 @@ class JiraService(
 
         val response = call("retrieve Jira issue $issueKey") {
             restClient.get()
-                .uri("/rest/api/3/issue/{key}?fields=summary,status", issueKey)
+                .uri("/rest/api/3/issue/{key}?fields=summary,status,assignee", issueKey)
                 .retrieve()
                 .body(JsonNode::class.java)
         }
@@ -324,6 +399,8 @@ class JiraService(
             summary = fields?.get("summary")?.asText(),
             status = status?.get("name")?.asText(),
             statusCategory = status?.get("statusCategory")?.get("key")?.asText(),
+            assigneeAccountID = fields?.get("assignee")?.get("accountId")?.asText(),
+            assigneeName = fields?.get("assignee")?.get("displayName")?.asText(),
         )
     }
 
