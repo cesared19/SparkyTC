@@ -20,5 +20,7 @@ data class TestCaseRunDTO(
     val assignedTo: UserSummaryDTO? = null,
     // time spent on the test case so far, counting running timers up to now
     val timeSeconds: Long = 0,
-    val runningTimers: List<RunningTimerDTO> = emptyList()
+    val runningTimers: List<RunningTimerDTO> = emptyList(),
+    // when the current result was recorded
+    val executedAt: Date? = null,
 )

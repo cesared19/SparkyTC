@@ -60,6 +60,10 @@ class TestCaseRun(
     @JoinColumn(name = "assigned_to_id")
     var assignedTo: User? = null,
 
+    // when the current result was recorded, empty while pending
+    @Column(name = "executed_at")
+    var executedAt: Date? = null,
+
     // the time testers spent on it, when the test run tracks time
     @OneToMany(mappedBy = "testCaseRun", fetch = FetchType.LAZY)
     val timeEntries: List<TimeEntry> = emptyList(),
@@ -71,6 +75,7 @@ class TestCaseRun(
             executedBy?.displayName, assignedTo?.let { UserSummaryDTO(it.externalID, it.displayName) },
             timeSeconds = timeEntries.sumOf { it.seconds(now) },
             runningTimers = timeEntries.filter { it.isRunning }.map { RunningTimerDTO(it.user?.externalID, it.user?.displayName, it.startedAt) },
+            executedAt = executedAt,
         )
     }
 }

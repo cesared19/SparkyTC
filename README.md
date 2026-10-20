@@ -57,6 +57,7 @@ View the progress of your test run and see the results of each test case.
 -  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and pick the Jira space and issue type from lists; similar existing issues are suggested before creating a new one
 -  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
 -  Build results: the dashboard charts the current build's results after each of its test runs as stacked bars (passed, failed, skipped and pending), and the **Builds** tab compares the results of every build
+-  Test run report: download a `.zip` with a visual summary image (pass rate, failures, progress, results by status, progress by day, time spent and Jira bugs) and a PDF of the executed test cases with their results, comments and images (see below)
 -  Optional time tracking per test run: testers time each test case with a start/pause button or type how long it took, the run shows the total and a breakdown by day, and the dashboard shows the time spent on the current build (see below)
 -  Works on phones and tablets: the menu and project list fold away, and tables become cards
 
@@ -113,6 +114,15 @@ Admins register each build of the product under test from the **Current build** 
 Each build's results count the latest executed result of each test case across the build's test runs, so a failure fixed in a later run counts as passed. Pass and fail rates are over the executed test cases (passed, failed and skipped). The dashboard charts the current build after each of its test runs, and the **Builds** tab lists every build with its rates, its test runs and a chart comparing builds.
 
 When creating a test run the current build is preselected.
+
+### Test run report
+
+The **Download report** button on a test run page downloads `<PROJECT>-test-run-<number>-report.zip`, a folder with two files generated in the browser, in English:
+
+-  **summary.png**: the run's title, project, build and dates; tiles with the pass rate (over executed test cases), failures and progress; the results by status; the results recorded per day; the time spent (when the run tracks time); and the Jira issues linked to its test cases with their current status.
+-  **test-cases.pdf**: every executed test case with its result, who recorded it and when, its comments (the run notes), its linked Jira issues and its images, embedded. Videos and other files are listed as links to SparkyTC. Test cases not executed yet are listed at the end.
+
+The progress by day uses when each result was recorded, saved since 1.5.0; results recorded before use their last modification.
 
 ### Time tracking
 

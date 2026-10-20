@@ -347,6 +347,8 @@ export interface TestCaseRun {
 	// time spent so far, counting running timers up to when it was loaded
 	timeSeconds: number
 	runningTimers: RunningTimer[]
+	// when the current result was recorded
+	executedAt?: number
 }
 
 export interface UpdateTestCaseRunDetails extends Record<string, any> {

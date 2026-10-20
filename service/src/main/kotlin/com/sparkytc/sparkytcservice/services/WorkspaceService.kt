@@ -506,6 +506,7 @@ class WorkspaceService(
         testCaseRun.status = updateDTO.status
         testCaseRun.notes = updateDTO.notes
         testCaseRun.executedBy = actor
+        testCaseRun.executedAt = if (updateDTO.status == TestCaseRunStatus.PENDING) null else Date()
         if (testCaseRun.assignedTo == null) {
             testCaseRun.assignedTo = actor
         }
