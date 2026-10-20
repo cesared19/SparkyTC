@@ -2,6 +2,7 @@ import { Link, useFetcher } from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
 import { isTestRunClosed } from '~/components/Assignments'
 import { DateDisplay } from '~/components/DateDisplay'
+import { formatDuration } from '~/components/TimeTracking'
 import { ErrorResponse, ProjectBuild, TestRun } from '~/models/types'
 import { useIsAdmin } from '~/utility/CurrentUser'
 import { Route } from '~/utility/Routes'
@@ -79,32 +80,52 @@ function NewBuildForm({ projectShortCode }: { projectShortCode: string }) {
 export function CurrentBuildCard({
 	projectShortCode,
 	build,
+	timeSeconds,
 }: {
 	projectShortCode: string
 	build?: ProjectBuild
+	// time spent on the build's test runs that track time
+	timeSeconds?: number
 }) {
 	const isAdmin = useIsAdmin()
 
 	return (
 		<div className="rounded-lg border border-gray-200 bg-white p-4">
 			<div className="flex flex-wrap items-start justify-between gap-4">
-				<div className="min-w-0">
-					<div className="text-sm font-medium text-gray-500">Current build</div>
-					{build ? (
-						<>
-							<div className="mt-1 break-all text-2xl font-semibold text-gray-900">
-								{build.buildNumber}
+				<div className="flex min-w-0 flex-wrap gap-x-10 gap-y-4">
+					<div className="min-w-0">
+						<div className="text-sm font-medium text-gray-500">
+							Current build
+						</div>
+						{build ? (
+							<>
+								<div className="mt-1 break-all text-2xl font-semibold text-gray-900">
+									{build.buildNumber}
+								</div>
+								<div className="mt-1 text-xs text-gray-500">
+									Registered {build.createdBy ? `by ${build.createdBy} ` : ''}
+									on <DateDisplay date={build.creationDate} />
+								</div>
+							</>
+						) : (
+							<p className="mt-1 text-sm text-gray-500">
+								No builds registered yet.
+								{!isAdmin && ' An admin registers the build being tested.'}
+							</p>
+						)}
+					</div>
+					{build && timeSeconds !== undefined && timeSeconds !== null && (
+						<div>
+							<div className="text-sm font-medium text-gray-500">
+								Time spent testing
+							</div>
+							<div className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">
+								{formatDuration(timeSeconds)}
 							</div>
 							<div className="mt-1 text-xs text-gray-500">
-								Registered {build.createdBy ? `by ${build.createdBy} ` : ''}
-								on <DateDisplay date={build.creationDate} />
+								Test runs of this build that track time
 							</div>
-						</>
-					) : (
-						<p className="mt-1 text-sm text-gray-500">
-							No builds registered yet.
-							{!isAdmin && ' An admin registers the build being tested.'}
-						</p>
+						</div>
 					)}
 				</div>
 				{isAdmin && (

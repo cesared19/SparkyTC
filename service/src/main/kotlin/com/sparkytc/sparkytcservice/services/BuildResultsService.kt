@@ -24,6 +24,7 @@ class BuildResultsService(
     private val testRunRepository: TestRunRepository,
     private val testCaseRunRepository: TestCaseRunRepository,
     private val projectAccessService: ProjectAccessService,
+    private val timeTrackingService: TimeTrackingService,
 ) {
     /** Every build of the project, newest first, followed by the test runs without a build when there are any. */
     @Transactional
@@ -38,6 +39,18 @@ class BuildResultsService(
         }
         val withoutBuild = runsByBuild[null]?.let { listOf(results(null, it)) }.orEmpty()
         return builds + withoutBuild
+    }
+
+    /** Time spent on the current build's test runs that track time, null when none does. */
+    @Transactional
+    fun currentBuildTime(project: WorkspaceProject): Long? {
+        val build = projectBuildRepository.findTopByProjectOrderByIdDesc(project) ?: return null
+        return time(testRunRepository.findAllByProject(project).filter { it.build?.id == build.id })
+    }
+
+    private fun time(testRuns: List<TestRun>): Long? {
+        val totals = timeTrackingService.totals(testRuns)
+        return if (totals.isEmpty()) null else totals.values.sum()
     }
 
     /** How the project's current build evolved over its test runs. */
@@ -74,6 +87,7 @@ class BuildResultsService(
             // newest first, like the test runs list
             testRuns = runs.reversed().map { (testRun, testCaseRuns) -> summary(testRun, testCaseRuns) },
             timeline = timeline,
+            timeSeconds = time(runs.map { it.first }),
         )
     }
 

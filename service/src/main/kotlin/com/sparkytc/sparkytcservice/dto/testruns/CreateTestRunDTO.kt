@@ -8,4 +8,5 @@ data class CreateTestRunDTO(
     val testCaseIDs: List<UUID>,
     val assigneeIDs: List<UUID> = emptyList(),
     val buildID: UUID? = null,
+    val trackTime: Boolean = false,
 )

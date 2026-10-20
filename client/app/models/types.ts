@@ -162,6 +162,7 @@ export interface ProjectDashboard {
 	linkedJiraIssueCount: number
 	currentBuild?: ProjectBuild
 	currentBuildTimeline: BuildTimelinePoint[]
+	currentBuildTimeSeconds?: number
 }
 
 // latest executed result of each test case on a build; rates are over pass, fail and skip
@@ -190,6 +191,7 @@ export interface BuildResults {
 	counts: BuildResultCounts
 	testRuns: TestRunSummary[]
 	timeline: BuildTimelinePoint[]
+	timeSeconds?: number
 }
 
 export interface ProjectBuild {
@@ -277,6 +279,35 @@ export interface TestRun {
 	createdBy?: string
 	assignees: UserSummary[]
 	build?: ProjectBuild
+	trackTime: boolean
+	// total set by an admin, replacing the tracked time
+	timeOverrideSeconds?: number
+}
+
+export interface RunningTimer {
+	userID?: string
+	displayName?: string
+	startedAt: number
+}
+
+export interface TimeEntry {
+	timeEntryID: string
+	testCaseRunID: string
+	testCaseNumber: number
+	testCaseTitle: string
+	user?: string
+	startedAt: number
+	endedAt?: number
+	seconds: number
+	isManual: boolean
+}
+
+export interface TestRunTime {
+	trackTime: boolean
+	trackedSeconds: number
+	overrideSeconds?: number
+	totalSeconds: number
+	entries: TimeEntry[]
 }
 
 export enum TestCaseRunStatus {
@@ -297,6 +328,9 @@ export interface TestCaseRun {
 	notes?: string
 	executedBy?: string
 	assignedTo?: UserSummary
+	// time spent so far, counting running timers up to when it was loaded
+	timeSeconds: number
+	runningTimers: RunningTimer[]
 }
 
 export interface UpdateTestCaseRunDetails extends Record<string, any> {
@@ -337,6 +371,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	properties: PropertyConfiguration[]
 	projectUsers: UserSummary[]
 	builds: ProjectBuild[]
+	time: TestRunTime
 }
 
 export interface ErrorResponse extends Record<string, any> {

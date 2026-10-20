@@ -59,12 +59,20 @@ class TestRun (
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "build_id")
     var build: ProjectBuild? = null,
+
+    // whether testers time the test cases they run
+    @Column(name = "track_time", nullable = false)
+    var trackTime: Boolean = false,
+
+    // total time set by an admin once the run was closed, replacing the tracked time
+    @Column(name = "time_override_seconds")
+    var timeOverrideSeconds: Long? = null,
 ) {
     val isClosed: Boolean
         get() = status == TestRunStatus.COMPLETE || status == TestRunStatus.ABORT
 
     fun toDTO(): TestRunDTO {
         val assigneeSummaries = assignees.sortedBy { it.displayName.lowercase() }.map { UserSummaryDTO(it.externalID, it.displayName) }
-        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries, build?.toDTO())
+        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries, build?.toDTO(), trackTime, timeOverrideSeconds)
     }
 }

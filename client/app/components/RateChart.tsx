@@ -13,25 +13,37 @@ export interface RatePoint {
 // drawn at the container's width so the text keeps its size on phones and wide screens
 const DEFAULT_WIDTH = 640
 const HEIGHT = 220
-const PADDING = { top: 12, right: 72, bottom: 28, left: 40 }
+const PADDING = { top: 20, right: 12, bottom: 28, left: 40 }
 const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom
 const GRID_STEPS = [0, 0.25, 0.5, 0.75, 1]
-// fewer x labels than points once they would collide
+const MAX_BAR_WIDTH = 24
+// the surface gap between stacked segments
+const SEGMENT_GAP = 2
+const CORNER_RADIUS = 4
+// fewer x labels than bars once they would collide
 const MIN_X_LABEL_SPACING = 64
 
-const SERIES = [
+// bottom to top; the pending part on top shows how much of the build is left
+const SEGMENTS = [
 	{
-		key: 'passRate' as const,
-		label: 'Pass rate',
+		key: 'passed' as const,
+		label: 'Passed',
 		color: 'rgb(var(--color-chart-pass))',
-		dash: undefined,
 	},
 	{
-		key: 'failRate' as const,
-		label: 'Fail rate',
+		key: 'failed' as const,
+		label: 'Failed',
 		color: 'rgb(var(--color-chart-fail))',
-		// dashed with square markers, so the two lines don't rely on red and green alone
-		dash: '6 4',
+	},
+	{
+		key: 'skipped' as const,
+		label: 'Skipped',
+		color: 'rgb(var(--color-chart-skip))',
+	},
+	{
+		key: 'pending' as const,
+		label: 'Pending',
+		color: 'rgb(var(--color-gray-300))',
 	},
 ]
 
@@ -41,52 +53,17 @@ export function formatRate(rate?: number | null) {
 		: `${Math.round(rate * 100)}%`
 }
 
-function Marker({
-	seriesKey,
-	x,
-	y,
-	color,
-}: {
-	seriesKey: 'passRate' | 'failRate'
-	x: number
-	y: number
-	color: string
-}) {
-	// a surface ring keeps overlapping markers apart
-	const ring = { stroke: 'rgb(var(--color-surface))', strokeWidth: 2 }
-	return seriesKey === 'passRate' ? (
-		<circle cx={x} cy={y} r={4.5} fill={color} {...ring} />
-	) : (
-		<rect
-			x={x - 4.5}
-			y={y - 4.5}
-			width={9}
-			height={9}
-			rx={1.5}
-			fill={color}
-			{...ring}
-		/>
-	)
-}
-
-function RateLegend() {
+function Legend() {
 	return (
 		<div className="flex flex-wrap gap-4 text-xs text-gray-600">
-			{SERIES.map((series) => (
-				<span key={series.key} className="inline-flex items-center gap-1.5">
-					<svg width="22" height="10" aria-hidden="true">
-						<line
-							x1="1"
-							x2="21"
-							y1="5"
-							y2="5"
-							stroke={series.color}
-							strokeWidth="2"
-							strokeDasharray={series.dash}
-						/>
-						<Marker seriesKey={series.key} x={11} y={5} color={series.color} />
-					</svg>
-					{series.label}
+			{SEGMENTS.map((segment) => (
+				<span key={segment.key} className="inline-flex items-center gap-1.5">
+					<span
+						className="h-2.5 w-2.5 rounded-sm"
+						style={{ backgroundColor: segment.color }}
+						aria-hidden="true"
+					/>
+					{segment.label}
 				</span>
 			))}
 		</div>
@@ -97,7 +74,26 @@ function countsSummary(counts: BuildResultCounts) {
 	return `${counts.passed} passed · ${counts.failed} failed · ${counts.skipped} skipped · ${counts.pending} pending`
 }
 
-/** Pass and fail rate over a sequence of points, such as the test runs of a build or the builds of a project. */
+const TOOLTIP_WIDTH = 224
+
+/** Beside the hovered bar, on the side with more room, without leaving the chart. */
+function tooltipLeft(x: number, width: number) {
+	const left = x > width / 2 ? x - 16 - TOOLTIP_WIDTH : x + 16
+	return Math.max(0, Math.min(left, width - TOOLTIP_WIDTH))
+}
+
+/** A rectangle with rounded top corners, for the top segment of a bar. */
+function roundedTop(x: number, y: number, width: number, height: number) {
+	const r = Math.min(CORNER_RADIUS, width / 2, height)
+	return `M${x},${y + height} V${y + r} Q${x},${y} ${x + r},${y} H${
+		x + width - r
+	} Q${x + width},${y} ${x + width},${y + r} V${y + height} Z`
+}
+
+/**
+ * Results over a sequence of points, such as the test runs of a build or the builds of a project. Each
+ * bar stacks the passed, failed, skipped and pending test cases, so it shows both quality and progress.
+ */
 export function RateChart({
 	points,
 	firstColumn,
@@ -121,25 +117,17 @@ export function RateChart({
 	}, [])
 
 	const plotWidth = width - PADDING.left - PADDING.right
-
-	const x = (index: number) =>
-		PADDING.left +
-		(points.length === 1
-			? plotWidth / 2
-			: (index / (points.length - 1)) * plotWidth)
-	const y = (rate: number) => PADDING.top + (1 - rate) * PLOT_HEIGHT
-	const labelEvery = Math.max(
-		1,
-		Math.ceil((points.length * MIN_X_LABEL_SPACING) / plotWidth)
-	)
-	const columnWidth =
-		points.length === 1 ? plotWidth : plotWidth / (points.length - 1)
+	const band = plotWidth / points.length
+	const barWidth = Math.min(MAX_BAR_WIDTH, band * 0.6)
+	const center = (index: number) => PADDING.left + band * (index + 0.5)
+	const y = (share: number) => PADDING.top + (1 - share) * PLOT_HEIGHT
+	const labelEvery = Math.max(1, Math.ceil(MIN_X_LABEL_SPACING / band))
 	const last = points[points.length - 1]
 	const hoveredPoint = hovered === null ? undefined : points[hovered]
 
 	return (
 		<div className="space-y-2">
-			<RateLegend />
+			<Legend />
 			<div className="relative" ref={containerRef}>
 				<svg
 					viewBox={`0 0 ${width} ${HEIGHT}`}
@@ -176,101 +164,82 @@ export function RateChart({
 						</g>
 					))}
 
-					{points.map((point, index) =>
-						index % labelEvery === 0 || index === points.length - 1 ? (
-							<text
-								key={point.id}
-								x={x(index)}
-								y={HEIGHT - 8}
-								textAnchor="middle"
-								className="fill-gray-500 text-[11px]"
-							>
-								{point.label}
-							</text>
-						) : null
-					)}
-
-					{hovered !== null && (
-						<line
-							x1={x(hovered)}
-							x2={x(hovered)}
-							y1={PADDING.top}
-							y2={PADDING.top + PLOT_HEIGHT}
-							stroke="rgb(var(--color-gray-400))"
-							strokeWidth="1"
-						/>
-					)}
-
-					{SERIES.map((series) => {
-						const defined = points
-							.map((point, index) => ({
-								index,
-								rate: point.counts[series.key],
-							}))
-							.filter(
-								(entry): entry is { index: number; rate: number } =>
-									entry.rate !== null && entry.rate !== undefined
-							)
+					{points.map((point, index) => {
+						const total = point.counts.testCaseCount
+						const segments = SEGMENTS.map((segment) => ({
+							...segment,
+							value: point.counts[segment.key],
+						})).filter((segment) => segment.value > 0)
+						let below = 0
+						const x = center(index) - barWidth / 2
 						return (
-							<g key={series.key}>
-								<polyline
-									points={defined
-										.map((entry) => `${x(entry.index)},${y(entry.rate)}`)
-										.join(' ')}
-									fill="none"
-									stroke={series.color}
-									strokeWidth="2"
-									strokeDasharray={series.dash}
-									strokeLinejoin="round"
-								/>
-								{defined.map((entry) => (
-									<Marker
-										key={entry.index}
-										seriesKey={series.key}
-										x={x(entry.index)}
-										y={y(entry.rate)}
-										color={series.color}
-									/>
-								))}
+							<g
+								key={point.id}
+								opacity={hovered === null || hovered === index ? 1 : 0.55}
+							>
+								{total > 0 &&
+									segments.map((segment, segmentIndex) => {
+										const bottom = y(below / total)
+										below += segment.value
+										const top = y(below / total)
+										// the gap comes off the top of every segment except the last
+										const isTop = segmentIndex === segments.length - 1
+										const height = Math.max(
+											0,
+											bottom - top - (isTop ? 0 : SEGMENT_GAP)
+										)
+										const segmentTop = isTop ? top : top + SEGMENT_GAP
+										return isTop ? (
+											<path
+												key={segment.key}
+												d={roundedTop(x, segmentTop, barWidth, height)}
+												fill={segment.color}
+											/>
+										) : (
+											<rect
+												key={segment.key}
+												x={x}
+												y={segmentTop}
+												width={barWidth}
+												height={height}
+												fill={segment.color}
+											/>
+										)
+									})}
+								{(index % labelEvery === 0 || index === points.length - 1) && (
+									<text
+										x={center(index)}
+										y={HEIGHT - 8}
+										textAnchor="middle"
+										className="fill-gray-500 text-[11px]"
+									>
+										{point.label}
+									</text>
+								)}
 							</g>
 						)
 					})}
 
-					{/* direct labels on the latest point */}
-					{SERIES.map((series) => {
-						const rate = last.counts[series.key]
-						if (rate === null || rate === undefined) return null
-						const other =
-							last.counts[
-								series.key === 'passRate' ? 'failRate' : 'passRate'
-							] ?? -1
-						// keep the two labels apart when the rates are close
-						const nudge =
-							Math.abs(rate - other) < 0.12 ? (rate >= other ? -8 : 8) : 0
-						return (
-							<text
-								key={series.key}
-								x={x(points.length - 1) + 10}
-								y={y(rate) + nudge}
-								dominantBaseline="middle"
-								className="fill-gray-700 text-[11px] font-medium"
-							>
-								{series.label.split(' ')[0]} {formatRate(rate)}
-							</text>
-						)
-					})}
+					{/* the latest pass rate above its bar */}
+					<text
+						x={center(points.length - 1)}
+						y={PADDING.top - 6}
+						textAnchor="middle"
+						className="fill-gray-700 text-[11px] font-medium"
+					>
+						{formatRate(last.counts.passRate)} pass
+					</text>
 
-					{/* hover targets wider than the marks */}
+					{/* hover targets wider than the bars */}
 					{points.map((point, index) => (
 						<rect
 							key={point.id}
-							x={x(index) - columnWidth / 2}
+							x={center(index) - band / 2}
 							y={PADDING.top}
-							width={columnWidth}
+							width={band}
 							height={PLOT_HEIGHT}
 							fill="transparent"
 							onMouseEnter={() => setHovered(index)}
-							onFocus={() => setHovered(index)}
 						/>
 					))}
 				</svg>
@@ -278,13 +247,7 @@ export function RateChart({
 				{hoveredPoint && hovered !== null && (
 					<div
 						className="pointer-events-none absolute top-0 z-10 w-56 rounded-md border border-gray-200 bg-white p-2 text-xs shadow-lg"
-						style={{
-							left: `${(x(hovered) / width) * 100}%`,
-							transform:
-								x(hovered) > width / 2
-									? 'translateX(calc(-100% - 12px))'
-									: 'translateX(12px)',
-						}}
+						style={{ left: tooltipLeft(center(hovered), width) }}
 					>
 						<div className="font-medium text-gray-900">
 							{hoveredPoint.title}

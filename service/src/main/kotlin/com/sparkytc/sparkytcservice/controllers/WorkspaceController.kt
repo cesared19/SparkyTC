@@ -21,7 +21,9 @@ import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
 import com.sparkytc.sparkytcservice.services.BuildResultsService
+import com.sparkytc.sparkytcservice.dto.time.UpdateTestRunTimeDTO
 import com.sparkytc.sparkytcservice.services.JiraService
+import com.sparkytc.sparkytcservice.services.TimeTrackingService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
 import org.springframework.core.io.ByteArrayResource
@@ -50,6 +52,7 @@ class WorkspaceController(
     private val jiraService: JiraService,
     private val projectBuildService: ProjectBuildService,
     private val buildResultsService: BuildResultsService,
+    private val timeTrackingService: TimeTrackingService,
 ) {
 
     @GetMapping("/projects")
@@ -103,6 +106,27 @@ class WorkspaceController(
     fun deleteBuild(@PathVariable buildID: UUID): ResponseEntity<Any> {
         projectBuildService.deleteBuild(buildID)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PostMapping("/test-case-runs/{testCaseRunID}/timer/start")
+    fun startTimer(@PathVariable testCaseRunID: UUID): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = timeTrackingService.startTimer(testCaseRunID)))
+    }
+
+    @PostMapping("/test-case-runs/{testCaseRunID}/timer/pause")
+    fun pauseTimer(@PathVariable testCaseRunID: UUID): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = timeTrackingService.pauseTimer(testCaseRunID)))
+    }
+
+    @GetMapping("/test-runs/{testRunID}/time")
+    fun retrieveTestRunTime(@PathVariable testRunID: UUID): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = timeTrackingService.retrieveTestRunTime(testRunID)))
+    }
+
+    @AdminOnly
+    @PutMapping("/test-runs/{testRunID}/time")
+    fun updateTestRunTime(@PathVariable testRunID: UUID, @RequestBody request: UpdateTestRunTimeDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = timeTrackingService.updateTestRunTime(testRunID, request)))
     }
 
     @PutMapping("/test-runs/{testRunID}/build")

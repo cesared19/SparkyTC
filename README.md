@@ -57,7 +57,8 @@ View the progress of your test run and see the results of each test case.
 -  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page; read notifications can be deleted one by one or all at once with **Clear read**
 -  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and pick the Jira space and issue type from lists; similar existing issues are suggested before creating a new one
 -  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
--  Build results: the dashboard charts the current build's pass and fail rate after each of its test runs, and the **Builds** tab compares the results of every build
+-  Build results: the dashboard charts the current build's results after each of its test runs as stacked bars (passed, failed, skipped and pending), and the **Builds** tab compares the results of every build
+-  Optional time tracking per test run: testers time each test case with a start/pause button or type how long it took, the run shows the total and a breakdown by day, and the dashboard shows the time spent on the current build (see below)
 -  Works on phones and tablets: the menu and project list fold away, and tables become cards
 
 ### Importing test cases from CSV
@@ -77,7 +78,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.10`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.11`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
 
 ### User accounts
 
@@ -112,7 +113,16 @@ Admins register each build of the product under test from the **Current build** 
 
 Each build's results count the latest executed result of each test case across the build's test runs, so a failure fixed in a later run counts as passed. Pass and fail rates are over the executed test cases (passed, failed and skipped). The dashboard charts the current build after each of its test runs, and the **Builds** tab lists every build with its rates, its test runs and a chart comparing builds.
 
-When creating a test run the current build is preselected. Testers pick one of the registered builds, and anyone working on the run can change it while it's open. The build is sent with the Jira issues created from the run.
+When creating a test run the current build is preselected.
+
+### Time tracking
+
+Check **Track time spent testing** when creating a test run (or later in **Edit Test Run**) to time its test cases:
+
+-  On a test case of the run, **Start timer** starts counting the time; it can be paused and resumed as often as needed. The timer is stored on the server, so it keeps running when the tester changes page or closes the browser, and each tester has one running timer at a time: starting another test case's timer pauses the previous one. Recording the result stops the timer.
+-  If the timer wasn't used for a test case, the tester can type how many minutes testing took when recording the result.
+-  The test run page shows the total time, a breakdown by day and the time of each test case. Once the run is complete or aborted, admins can **Edit total**, which replaces the tracked time (and hides its breakdown) until they choose **Use tracked time**.
+-  The dashboard shows the time spent on the current build's test runs that track time, and the **Builds** tab shows it for each build. Testers pick one of the registered builds, and anyone working on the run can change it while it's open. The build is sent with the Jira issues created from the run.
 
 ### Jira integration
 

@@ -3,6 +3,7 @@ import { Link, useLoaderData } from '@remix-run/react'
 import { DateDisplay } from '~/components/DateDisplay'
 import { ProjectShell } from '~/components/ProjectShell'
 import { formatRate, RateChart } from '~/components/RateChart'
+import { formatDuration } from '~/components/TimeTracking'
 import { RunProgressBar } from '~/components/RunProgressBar'
 import { TestRunStatusBadge } from '~/components/TestRunStatusBadge'
 import { Project } from '~/models/project'
@@ -45,7 +46,7 @@ export default function ProjectBuilds() {
 	const { projects, project, builds } = useLoaderData<typeof loader>()
 	// oldest build first, like a timeline
 	const chartPoints = builds
-		.filter((results) => results.build && results.counts.executed > 0)
+		.filter((results) => results.build && results.counts.testCaseCount > 0)
 		.reverse()
 		.map((results) => ({
 			id: results.build?.buildID ?? 'none',
@@ -69,7 +70,7 @@ export default function ProjectBuilds() {
 				{chartPoints.length > 1 && (
 					<section className="rounded-lg border border-gray-200 bg-white p-4">
 						<h3 className="mb-3 text-sm font-semibold text-gray-900">
-							Pass and fail rate by build
+							Results by build
 						</h3>
 						<RateChart firstColumn="Build" points={chartPoints} />
 					</section>
@@ -131,7 +132,7 @@ function BuildCard({
 						)}
 					</p>
 				</div>
-				<dl className="flex gap-6 text-right">
+				<dl className="flex flex-wrap gap-6 text-right">
 					<div>
 						<dt className="text-xs text-gray-500">Pass rate</dt>
 						<dd className="text-xl font-semibold tabular-nums text-gray-900">
@@ -144,6 +145,15 @@ function BuildCard({
 							{formatRate(counts.failRate)}
 						</dd>
 					</div>
+					{results.timeSeconds !== undefined &&
+						results.timeSeconds !== null && (
+							<div>
+								<dt className="text-xs text-gray-500">Time spent</dt>
+								<dd className="text-xl font-semibold tabular-nums text-gray-900">
+									{formatDuration(results.timeSeconds)}
+								</dd>
+							</div>
+						)}
 				</dl>
 			</div>
 
