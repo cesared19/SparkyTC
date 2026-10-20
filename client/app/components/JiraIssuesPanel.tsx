@@ -12,6 +12,7 @@ import {
 import { useCurrentUser } from '~/utility/CurrentUser'
 import { Route } from '~/utility/Routes'
 import { ErrorMessage } from './ErrorMessage'
+import { jiraIssuesFetcherKey } from './JiraResultTransitions'
 
 interface JiraIssuesResponse {
 	configuration: JiraConfiguration
@@ -57,7 +58,10 @@ export function JiraIssuesPanel({
 	jiraProjectKey,
 	jiraIssueType,
 }: JiraIssuesPanelProps) {
-	const issuesFetcher = useFetcher<JiraIssuesResponse | ErrorResponse>()
+	// shared with JiraResultTransitions, which offers to close or reopen these issues
+	const issuesFetcher = useFetcher<JiraIssuesResponse | ErrorResponse>({
+		key: jiraIssuesFetcherKey(testCaseID),
+	})
 	const linkFetcher = useFetcher<ActionResponse>()
 	const unlinkFetcher = useFetcher<ActionResponse>()
 	const [issueInput, setIssueInput] = useState('')

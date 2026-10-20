@@ -18,11 +18,10 @@ import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '../components/DateDisplay'
 import { requireAPI } from '~/utility/API.server'
-import { useState } from 'react'
-import { ExportModal } from '~/components/ExportModal'
 import { useIsAdmin } from '~/utility/CurrentUser'
 import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
+import { TestRunReportButton } from '~/components/TestRunReportButton'
 import { formatDuration, TestRunTimeSection } from '~/components/TimeTracking'
 import { TestCaseRunStatus } from '~/models/types'
 
@@ -53,7 +52,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function TestRunDetails() {
-	const [showExportModal, setShowExportModal] = useState(false)
 	const { project, testRun, testCaseRuns, projectUsers, builds, time } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 
@@ -89,11 +87,6 @@ export default function TestRunDetails() {
 			},
 		}
 
-		const exportItem: ActionMenuItem = {
-			label: 'Export options',
-			action: () => setShowExportModal(true),
-		}
-
 		switch (testRun.status) {
 			case TestRunStatus.pending:
 			case TestRunStatus.inProgress:
@@ -121,7 +114,6 @@ export default function TestRunDetails() {
 						},
 					},
 					editItem,
-					exportItem,
 					deleteItem,
 				]
 			case TestRunStatus.abort:
@@ -149,13 +141,12 @@ export default function TestRunDetails() {
 						},
 					},
 					editItem,
-					exportItem,
 					deleteItem,
 				]
 			case TestRunStatus.complete:
-				return [editItem, exportItem, deleteItem]
+				return [editItem, deleteItem]
 			default:
-				return [editItem, exportItem, deleteItem]
+				return [editItem, deleteItem]
 		}
 	})()
 	// deleting test runs is restricted to admins
@@ -287,7 +278,15 @@ export default function TestRunDetails() {
 						</div>
 					)}
 				</div>
-				<ActionMenu items={menuItems} label="Test Run Settings" />
+				<div className="flex items-start gap-2 self-end sm:self-start">
+					<TestRunReportButton
+						project={project}
+						testRun={testRun}
+						testCaseRuns={testCaseRuns}
+						time={time}
+					/>
+					<ActionMenu items={menuItems} label="Test Run Settings" />
+				</div>
 			</div>
 
 			<h3 className="text-lg font-medium text-gray-900 mb-4">Test Cases</h3>
@@ -300,10 +299,6 @@ export default function TestRunDetails() {
 				onRowClick={(testCaseRun) =>
 					navigate(testCaseRun.testCase.testCaseNumber.toString())
 				}
-			/>
-			<ExportModal
-				isOpen={showExportModal}
-				onClose={() => setShowExportModal(false)}
 			/>
 		</div>
 	)

@@ -3,7 +3,6 @@ package com.sparkytc.sparkytcservice.controllers
 import com.sparkytc.sparkytcservice.auth.AdminOnly
 import com.sparkytc.sparkytcservice.dto.*
 import com.sparkytc.sparkytcservice.dto.builds.SaveProjectBuildDTO
-import com.sparkytc.sparkytcservice.dto.documents.TestRunExportType
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraReporterPermissionDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
@@ -267,16 +266,6 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = testCaseRuns))
     }
 
-    @PostMapping("/test-runs/{projectShortCode}/{testRunNumber}/export", produces = [MediaType.APPLICATION_OCTET_STREAM_VALUE])
-    fun generateDocx(@PathVariable projectShortCode: String, @PathVariable testRunNumber: Long, @RequestParam("type") exportType: TestRunExportType): ResponseEntity<ByteArray> {
-        val documentDTO = workspaceService.exportTestRunAsDocx(projectShortCode, testRunNumber, exportType)
-
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, """attachment; filename="${documentDTO.fileName}"""")
-            .contentType(MediaType("application", "vnd.openxmlformats-officedocument.wordprocessingml.document"))
-            .body(documentDTO.data)
-    }
-
     @GetMapping("/test-case-runs/{testCaseRunID}/next")
     fun retrieveNextTestCaseRun(@PathVariable testCaseRunID: UUID): ResponseEntity<Any> {
         val testCaseRun = workspaceService.retrieveNextTestCaseRun(testCaseRunID)
@@ -314,6 +303,16 @@ class WorkspaceController(
     @GetMapping("/jira/issues")
     fun retrieveJiraIssues(@RequestParam("keys") issueKeys: List<String>): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveJiraIssues(issueKeys)))
+    }
+
+    @GetMapping("/test-case-runs/{testCaseRunID}/jira-issues/{issueKey}/transitions")
+    fun retrieveJiraTransitions(@PathVariable testCaseRunID: UUID, @PathVariable issueKey: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.listJiraTransitions(testCaseRunID, issueKey)))
+    }
+
+    @GetMapping("/test-case-runs/{testCaseRunID}/jira-issues/{issueKey}/assignable-users")
+    fun searchAssignableJiraUsers(@PathVariable testCaseRunID: UUID, @PathVariable issueKey: String, @RequestParam("query") query: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.searchAssignableJiraUsers(testCaseRunID, issueKey, query)))
     }
 
     @PostMapping("/test-case-runs/{testCaseRunID}/jira-issue")

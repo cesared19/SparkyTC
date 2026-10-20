@@ -76,6 +76,21 @@ export class Route {
 		return `/test-case-attachments/${testCaseID}`
 	}
 
+	static jiraTransitions(testCaseRunID: string, issueKey: string) {
+		return `/jira-transitions?${new URLSearchParams({
+			testCaseRunID,
+			issueKey,
+		}).toString()}`
+	}
+
+	static jiraAssignees(testCaseRunID: string, issueKey: string, query: string) {
+		return `/jira-assignees?${new URLSearchParams({
+			testCaseRunID,
+			issueKey,
+			query,
+		}).toString()}`
+	}
+
 	static jiraIssues(issueKeys: string[]) {
 		const params = new URLSearchParams()
 		issueKeys.forEach((key) => params.append('keys', key))
@@ -301,6 +316,26 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/jira-links/${linkID}`
 	}
 
+	static jiraTransitions(testCaseRunID: string, issueKey: string) {
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issues/${encodeURIComponent(
+			issueKey
+		)}/transitions`
+	}
+
+	static jiraAssignableUsers(
+		testCaseRunID: string,
+		issueKey: string,
+		query: string
+	) {
+		return `${
+			this.baseAPIURL
+		}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issues/${encodeURIComponent(
+			issueKey
+		)}/assignable-users?${new URLSearchParams({ query }).toString()}`
+	}
+
 	static createJiraIssue(testCaseRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issue`
 	}
@@ -311,10 +346,6 @@ export class APIRoute {
 
 	static testRun(testRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}`
-	}
-
-	static exportTestRun(projectShortCode: string, testRunNumber: number) {
-		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${projectShortCode}/${testRunNumber}/export`
 	}
 
 	static projectTestCaseRuns(projectShortCode: string, testRunNumber: number) {

@@ -44,9 +44,8 @@ export async function createUserSession(token: string, redirectTo: string) {
 // one shows a blank page, e.g. when the session expires while the notification bell refreshes.
 // Add new resource routes here.
 const RESOURCE_ROUTES = [
-	/^\/(assignments|builds|jira-issue-types|jira-issues|jira-similar|jira-users|logout|notifications|preferences)$/,
+	/^\/(assignments|builds|jira-assignees|jira-issue-types|jira-issues|jira-similar|jira-transitions|jira-users|logout|notifications|preferences|timers)$/,
 	/^\/(attachments|jira-links|test-case-attachments|test-case-jira-links)\//,
-	/^\/test-runs\/[^/]+\/[^/]+\/export$/,
 ]
 
 function isPagePath(path: string) {

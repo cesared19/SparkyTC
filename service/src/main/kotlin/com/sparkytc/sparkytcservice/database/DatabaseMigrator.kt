@@ -397,6 +397,14 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.11")
                 }
                 SchemaVersion.VERSION_0_0_11 -> {
+                    // when each result was recorded, for the progress by day of the test run report; results recorded
+                    // before this version use their last modification
+                    jdbcTemplate.execute("ALTER TABLE test_case_runs ADD COLUMN executed_at TIMESTAMP")
+                    jdbcTemplate.execute("UPDATE test_case_runs SET executed_at = modify_date WHERE status <> 'PENDING'")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.12")
+                }
+                SchemaVersion.VERSION_0_0_12 -> {
                     break
                 }
             }

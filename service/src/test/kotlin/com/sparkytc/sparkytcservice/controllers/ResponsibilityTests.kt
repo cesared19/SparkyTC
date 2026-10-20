@@ -137,6 +137,9 @@ class ResponsibilityTests {
         val secondRun = testCaseRuns()[1]
         assertEquals("Beto", secondRun.get("assignedTo").get("displayName").asText())
         assertEquals("Beto", secondRun.get("executedBy").asText())
+        // when it was recorded, for the progress by day of the report; pending results have none
+        assertTrue(secondRun.get("executedAt").isNumber || secondRun.get("executedAt").isTextual, secondRun.toString())
+        assertTrue(testCaseRuns()[0].get("executedAt")?.isNull ?: true)
 
         // ana gives her test case back, then an admin reassigns it to beto
         put(ana, "/api/v1/workspace/test-case-runs/$first/assignee", mapOf("userID" to null))
