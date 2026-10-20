@@ -36,4 +36,6 @@ data class BuildResultsDTO(
     val counts: BuildResultCountsDTO,
     val testRuns: List<TestRunSummaryDTO>,
     val timeline: List<BuildTimelinePointDTO>,
+    // time spent on the build's test runs that track time, null when none does
+    val timeSeconds: Long? = null,
 )

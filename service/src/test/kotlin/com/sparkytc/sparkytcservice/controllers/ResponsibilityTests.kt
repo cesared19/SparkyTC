@@ -30,6 +30,7 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @Testcontainers
@@ -327,6 +328,67 @@ class ResponsibilityTests {
             .associate { UUID.fromString(it.get("propertyConfigurationID").asText()) to it.get("defaultValue").asText() }
         post(admin, "/api/v1/workspace/test-cases/PRJ", CreateTestCaseDTO("New", null, null, values))
         assertEquals(listOf(2L), data(ana, "/api/v1/workspace/test-cases/PRJ").map { it.get("testCaseNumber").asLong() })
+    }
+
+    @Test
+    fun `testers time the test cases of runs that track time`() {
+        val buildID = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "2.0")).get("data").get("buildID").asText()
+        val (first, second) = testCaseIDs()
+        post(admin, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Timed", null, listOf(first, second), emptyList(), UUID.fromString(buildID), trackTime = true))
+        val testRun = data(ana, "/api/v1/workspace/test-runs/PRJ")[0]
+        assertEquals(true, testRun.get("trackTime").asBoolean())
+        val testRunID = testRun.get("testRunID").asText()
+        val (firstRun, secondRun) = testCaseRunIDs()
+
+        // starting a timer takes the test case, and starting another one pauses the first
+        val started = post(ana, "/api/v1/workspace/test-case-runs/$firstRun/timer/start", emptyMap<String, String>()).get("data")
+        assertEquals("Ana", started.get("assignedTo").get("displayName").asText())
+        assertEquals(listOf("Ana"), started.get("runningTimers").map { it.get("displayName").asText() })
+        post(ana, "/api/v1/workspace/test-case-runs/$secondRun/timer/start", emptyMap<String, String>())
+        assertEquals(listOf(0, 1), testCaseRuns().map { it.get("runningTimers").size() })
+        expectError(beto, post("/api/v1/workspace/test-case-runs/$secondRun/timer/start"), emptyMap<String, String>(), "This test case is assigned to Ana")
+
+        Thread.sleep(1100)
+        val paused = post(ana, "/api/v1/workspace/test-case-runs/$secondRun/timer/pause", emptyMap<String, String>()).get("data")
+        assertEquals(0, paused.get("runningTimers").size())
+        assertTrue(paused.get("timeSeconds").asLong() >= 1)
+
+        // time typed in when recording the result only counts when the timer wasn't used
+        put(ana, "/api/v1/workspace/test-case-runs/$secondRun", UpdateTestCaseRunDTO(TestCaseRunStatus.PASS, null, manualSeconds = 600))
+        val secondSeconds = testCaseRuns()[1].get("timeSeconds").asLong()
+        assertTrue(secondSeconds in 1..10, "timer time kept, got $secondSeconds")
+
+        // recording the result stops the timer; the first test case was paused when the second started
+        post(ana, "/api/v1/workspace/test-case-runs/$firstRun/timer/start", emptyMap<String, String>())
+        expectError(admin, put("/api/v1/workspace/test-runs/$testRunID/time"), mapOf("totalSeconds" to 60), "can only be changed once the test run is complete")
+        put(ana, "/api/v1/workspace/test-case-runs/$firstRun", UpdateTestCaseRunDTO(TestCaseRunStatus.FAIL, null))
+        assertEquals(0, testCaseRuns()[0].get("runningTimers").size())
+
+        val time = data(ana, "/api/v1/workspace/test-runs/$testRunID/time")
+        val tracked = time.get("trackedSeconds").asLong()
+        assertEquals(tracked, time.get("totalSeconds").asLong())
+        assertEquals(tracked, time.get("entries").sumOf { it.get("seconds").asLong() })
+        assertEquals(3, time.get("entries").size())
+        assertEquals(tracked, data(ana, "/api/v1/workspace/projects/PRJ/dashboard").get("currentBuildTimeSeconds").asLong())
+
+        // once complete, an admin replaces the total, which the build adds up
+        ana.perform(put("/api/v1/workspace/test-runs/$testRunID/time").contentType(MediaType.APPLICATION_JSON).content("""{"totalSeconds":3600}"""))
+            .andExpect(status().isForbidden)
+        put(admin, "/api/v1/workspace/test-runs/$testRunID/time", mapOf("totalSeconds" to 3600))
+        assertEquals(3600, data(ana, "/api/v1/workspace/test-runs/$testRunID/time").get("totalSeconds").asLong())
+        assertEquals(3600, data(ana, "/api/v1/workspace/projects/PRJ/build-results")[0].get("timeSeconds").asLong())
+        put(admin, "/api/v1/workspace/test-runs/$testRunID/time", mapOf("totalSeconds" to null))
+        assertEquals(tracked, data(ana, "/api/v1/workspace/test-runs/$testRunID/time").get("totalSeconds").asLong())
+
+        // a test run that doesn't track time takes the typed time when it's switched on
+        post(admin, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Untimed", null, listOf(first), emptyList(), UUID.fromString(buildID)))
+        val untimedRun = data(admin, "/api/v1/workspace/test-case-runs/PRJ/2")[0].get("testCaseRunID").asText()
+        expectError(ana, post("/api/v1/workspace/test-case-runs/$untimedRun/timer/start"), emptyMap<String, String>(), "doesn't track time")
+        val untimedID = data(admin, "/api/v1/workspace/test-runs/PRJ").first { it.get("title").asText() == "Untimed" }.get("testRunID").asText()
+        put(admin, "/api/v1/workspace/test-runs/$untimedID", UpdateTestRunDTO("Untimed", null, TestRunStatus.PENDING, trackTime = true))
+        put(ana, "/api/v1/workspace/test-case-runs/$untimedRun", UpdateTestCaseRunDTO(TestCaseRunStatus.PASS, null, manualSeconds = 600))
+        assertEquals(600, data(ana, "/api/v1/workspace/test-runs/$untimedID/time").get("totalSeconds").asLong())
+        assertEquals(tracked + 600, data(ana, "/api/v1/workspace/projects/PRJ/dashboard").get("currentBuildTimeSeconds").asLong())
     }
 
     private fun createTestRun(assignees: List<String>, creator: MockMvc = admin) {

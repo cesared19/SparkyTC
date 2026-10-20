@@ -3,6 +3,7 @@ package com.sparkytc.sparkytcservice.models
 import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
+import com.sparkytc.sparkytcservice.dto.time.RunningTimerDTO
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
@@ -58,8 +59,18 @@ class TestCaseRun(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to_id")
     var assignedTo: User? = null,
+
+    // the time testers spent on it, when the test run tracks time
+    @OneToMany(mappedBy = "testCaseRun", fetch = FetchType.LAZY)
+    val timeEntries: List<TimeEntry> = emptyList(),
 ) {
     fun toDTO(): TestCaseRunDTO {
-        return TestCaseRunDTO(externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes, executedBy?.displayName, assignedTo?.let { UserSummaryDTO(it.externalID, it.displayName) })
+        val now = Date()
+        return TestCaseRunDTO(
+            externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes,
+            executedBy?.displayName, assignedTo?.let { UserSummaryDTO(it.externalID, it.displayName) },
+            timeSeconds = timeEntries.sumOf { it.seconds(now) },
+            runningTimers = timeEntries.filter { it.isRunning }.map { RunningTimerDTO(it.user?.externalID, it.user?.displayName, it.startedAt) },
+        )
     }
 }

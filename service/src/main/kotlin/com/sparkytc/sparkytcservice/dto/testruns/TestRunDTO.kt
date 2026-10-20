@@ -14,5 +14,7 @@ data class TestRunDTO(
     val description: String?,
     val createdBy: String? = null,
     val assignees: List<UserSummaryDTO> = emptyList(),
-    val build: ProjectBuildDTO? = null
+    val build: ProjectBuildDTO? = null,
+    val trackTime: Boolean = false,
+    val timeOverrideSeconds: Long? = null
 )

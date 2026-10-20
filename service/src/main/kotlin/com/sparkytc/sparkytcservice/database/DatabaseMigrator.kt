@@ -377,6 +377,26 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.10")
                 }
                 SchemaVersion.VERSION_0_0_10 -> {
+                    // optional time tracking per test run
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN track_time BOOLEAN NOT NULL DEFAULT FALSE, ADD COLUMN time_override_seconds BIGINT")
+                    jdbcTemplate.execute("""
+                        CREATE TABLE time_entries (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            test_case_run_id BIGINT NOT NULL REFERENCES test_case_runs(id) ON DELETE CASCADE,
+                            user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                            started_at TIMESTAMP NOT NULL,
+                            ended_at TIMESTAMP,
+                            is_manual BOOLEAN NOT NULL DEFAULT FALSE
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX time_entries_test_case_run_idx ON time_entries (test_case_run_id)")
+                    jdbcTemplate.execute("CREATE INDEX time_entries_running_idx ON time_entries (user_id) WHERE ended_at IS NULL")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.11")
+                }
+                SchemaVersion.VERSION_0_0_11 -> {
                     break
                 }
             }

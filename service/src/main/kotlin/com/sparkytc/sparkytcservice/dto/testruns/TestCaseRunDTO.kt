@@ -2,6 +2,7 @@ package com.sparkytc.sparkytcservice.dto.testruns
 
 import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.testcases.TestCaseDTO
+import com.sparkytc.sparkytcservice.dto.time.RunningTimerDTO
 import com.sparkytc.sparkytcservice.models.TestCaseRun
 import java.util.Date
 import java.util.UUID
@@ -16,5 +17,8 @@ data class TestCaseRunDTO(
     val testInstructions: String?,
     val notes: String?,
     val executedBy: String? = null,
-    val assignedTo: UserSummaryDTO? = null
+    val assignedTo: UserSummaryDTO? = null,
+    // time spent on the test case so far, counting running timers up to now
+    val timeSeconds: Long = 0,
+    val runningTimers: List<RunningTimerDTO> = emptyList()
 )

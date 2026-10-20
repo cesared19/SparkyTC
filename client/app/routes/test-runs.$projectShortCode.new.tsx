@@ -34,6 +34,7 @@ interface CreateTestRun extends Record<string, any> {
 	testCaseIDs: string[]
 	assigneeIDs: string[]
 	buildID: string | null
+	trackTime: boolean
 }
 
 export async function loader({ request, params }: ActionFunctionArgs) {
@@ -89,6 +90,7 @@ export default function NewTestRun() {
 	const [assigneeIDs, setAssigneeIDs] = useState<string[]>([])
 	// the current build is preselected
 	const [buildID, setBuildID] = useState(builds[0]?.buildID ?? '')
+	const [trackTime, setTrackTime] = useState(false)
 	const { project } = useOutletContext<ProjectTestRunsOutletContext>()
 	const actionData = useActionData<ErrorResponse>()
 
@@ -116,6 +118,7 @@ export default function NewTestRun() {
 			testCaseIDs: selectedTestCases.map((tc) => tc.testCaseID),
 			assigneeIDs,
 			buildID: buildID || null,
+			trackTime,
 		}
 
 		submit(jsonData, {
@@ -208,6 +211,24 @@ export default function NewTestRun() {
 								</p>
 							</div>
 						</div>
+					</div>
+
+					<div className="max-w-2xl">
+						<label className="flex items-start gap-2 text-sm text-gray-700">
+							<input
+								type="checkbox"
+								checked={trackTime}
+								onChange={(event) => setTrackTime(event.target.checked)}
+								className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+							/>
+							<span>
+								Track time spent testing
+								<span className="block text-xs text-gray-500">
+									Testers time each test case with a start and pause button, or
+									type how long it took when recording the result.
+								</span>
+							</span>
+						</label>
 					</div>
 
 					<div className="space-y-3">

@@ -51,6 +51,10 @@ export class Route {
 		return '/jira-users'
 	}
 
+	static get timers() {
+		return '/timers'
+	}
+
 	static get notifications() {
 		return '/notifications'
 	}
@@ -158,6 +162,14 @@ export class APIRoute {
 
 	static build(buildID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/builds/${buildID}`
+	}
+
+	static timer(testCaseRunID: string, action: 'start' | 'pause') {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/timer/${action}`
+	}
+
+	static testRunTime(testRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}/time`
 	}
 
 	static testRunBuild(testRunID: string) {

@@ -23,6 +23,7 @@ import { ExportModal } from '~/components/ExportModal'
 import { useIsAdmin } from '~/utility/CurrentUser'
 import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
+import { formatDuration, TestRunTimeSection } from '~/components/TimeTracking'
 import { TestCaseRunStatus } from '~/models/types'
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -53,7 +54,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TestRunDetails() {
 	const [showExportModal, setShowExportModal] = useState(false)
-	const { project, testRun, testCaseRuns, projectUsers, builds } =
+	const { project, testRun, testCaseRuns, projectUsers, builds, time } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 
 	const navigate = useNavigate()
@@ -162,6 +163,21 @@ export default function TestRunDetails() {
 		? allMenuItems
 		: allMenuItems.filter((item) => item.label !== 'Delete test run')
 
+	const timeColumn: Column<TestCaseRun> = {
+		header: 'Time',
+		key: 'time',
+		render: (testCaseRun: TestCaseRun) => (
+			<span className="text-sm tabular-nums text-gray-700">
+				{testCaseRun.timeSeconds > 0
+					? formatDuration(testCaseRun.timeSeconds)
+					: '-'}
+				{testCaseRun.runningTimers.length > 0 && (
+					<span className="ml-1 text-xs text-brand-600">running</span>
+				)}
+			</span>
+		),
+	}
+
 	const columns: Column<TestCaseRun>[] = [
 		{
 			header: 'ID',
@@ -203,6 +219,7 @@ export default function TestRunDetails() {
 				/>
 			),
 		},
+		...(testRun.trackTime ? [timeColumn] : []),
 		{
 			header: 'Completed by',
 			key: 'completedBy',
@@ -261,6 +278,14 @@ export default function TestRunDetails() {
 							</p>
 						</div>
 					</div>
+					{testRun.trackTime && (
+						<div className="mt-4">
+							<h3 className="text-lg font-medium text-gray-900 mb-1">
+								Time spent
+							</h3>
+							<TestRunTimeSection testRun={testRun} time={time} />
+						</div>
+					)}
 				</div>
 				<ActionMenu items={menuItems} label="Test Run Settings" />
 			</div>

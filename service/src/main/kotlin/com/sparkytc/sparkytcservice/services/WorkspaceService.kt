@@ -54,6 +54,7 @@ class WorkspaceService(
     private val userRepository: UserRepository,
     private val projectBuildService: ProjectBuildService,
     private val buildResultsService: BuildResultsService,
+    private val timeTrackingService: TimeTrackingService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -122,6 +123,7 @@ class WorkspaceService(
             linkedJiraIssueCount = testCases.flatMap { testCase -> testCase.jiraLinks.map { it.issueKey } }.distinct().size,
             currentBuild = projectBuildService.currentBuild(project),
             currentBuildTimeline = buildResultsService.currentBuildTimeline(project),
+            currentBuildTimeSeconds = buildResultsService.currentBuildTime(project),
         )
     }
 
@@ -388,6 +390,7 @@ class WorkspaceService(
             description = testRun.description,
             createdBy = CurrentUser.get(),
             build = testRun.buildID?.let { projectBuildService.requireBuild(project, it) },
+            trackTime = testRun.trackTime,
         )
         newTestRun.assignees.addAll(projectUsersByID(project, testRun.assigneeIDs))
         testRunRepository.save(newTestRun)
@@ -420,6 +423,7 @@ class WorkspaceService(
         testRun.title = updateDTO.title
         testRun.description = updateDTO.description
         testRun.status = updateDTO.status
+        updateDTO.trackTime?.let { testRun.trackTime = it }
 
         testRunRepository.save(testRun)
         if (!wasComplete && testRun.status == TestRunStatus.COMPLETE) {
@@ -502,6 +506,9 @@ class WorkspaceService(
             testCaseRun.assignedTo = actor
         }
         testCaseRunRepository.save(testCaseRun)
+        if (updateDTO.status != TestCaseRunStatus.PENDING) {
+            timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
+        }
 
         val testRun = testCaseRun.testRun
         val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)

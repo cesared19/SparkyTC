@@ -20,6 +20,8 @@ data class ProjectDashboardDTO(
     val currentBuild: ProjectBuildDTO? = null,
     // the current build after each of its test runs
     val currentBuildTimeline: List<BuildTimelinePointDTO> = emptyList(),
+    // time spent on the current build's test runs that track time, null when none does
+    val currentBuildTimeSeconds: Long? = null,
 )
 
 data class PropertyBreakdownDTO(

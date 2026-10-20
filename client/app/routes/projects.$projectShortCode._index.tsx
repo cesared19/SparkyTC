@@ -78,6 +78,7 @@ export default function ProjectDashboardPage() {
 						key={dashboard.currentBuild?.buildID}
 						projectShortCode={project.projectShortCode}
 						build={dashboard.currentBuild}
+						timeSeconds={dashboard.currentBuildTimeSeconds}
 					/>
 					{dashboard.currentBuild && (
 						<div className="rounded-lg border border-gray-200 bg-white p-4">

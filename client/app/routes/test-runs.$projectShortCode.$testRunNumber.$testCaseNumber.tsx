@@ -35,6 +35,7 @@ import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 import { publicBaseURL } from '~/utility/PublicURL.server'
 import { TestCaseAssignment } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
+import { TestCaseTimer } from '~/components/TimeTracking'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 
 interface UpdateTestCaseRun extends Record<string, any> {
@@ -178,9 +179,11 @@ function TestCaseRunView({
 		const form = document.getElementById('testCaseForm') as HTMLFormElement
 		const notes = new FormData(form).get('notes') as string
 
+		const minutes = Number(new FormData(form).get('manualMinutes') || 0)
 		const testCaseRunUpdate: UpdateTestCaseRun = {
 			status: selectedStatus,
 			notes,
+			...(minutes > 0 ? { manualSeconds: Math.round(minutes * 60) } : {}),
 		}
 
 		fetcher.submit(
@@ -257,6 +260,19 @@ function TestCaseRunView({
 						Applies to the whole test run.
 					</p>
 				</section>
+
+				{testRun.trackTime && (
+					<section>
+						<h2 className="mb-2 text-xl font-semibold text-gray-900">
+							Time spent
+						</h2>
+						<TestCaseTimer
+							testRun={testRun}
+							testCaseRun={testCaseRun}
+							isLocked={isLocked}
+						/>
+					</section>
+				)}
 
 				<section>
 					<div className="flex justify-between items-center mb-4">
@@ -434,6 +450,34 @@ function TestCaseRunView({
 							placeholder="Enter any notes or observations about this test case run"
 						/>
 					</section>
+					{/* if the timer wasn't used, the time can be typed in with the result */}
+					{testRun.trackTime &&
+						testCaseRun.timeSeconds === 0 &&
+						testCaseRun.runningTimers.length === 0 &&
+						selectedStatus !== TestCaseRunStatus.pending && (
+							<section className="mt-4">
+								<label
+									htmlFor="manualMinutes"
+									className="block text-sm font-medium text-gray-700"
+								>
+									Time spent in minutes (optional)
+								</label>
+								<input
+									id="manualMinutes"
+									name="manualMinutes"
+									type="number"
+									min={0}
+									max={1440}
+									step={1}
+									placeholder="e.g. 15"
+									className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+								/>
+								<p className="mt-1 text-xs text-gray-500">
+									The timer wasn&apos;t used for this test case. Add how long
+									testing took, if you know.
+								</p>
+							</section>
+						)}
 				</form>
 
 				<div className="flex justify-end">
