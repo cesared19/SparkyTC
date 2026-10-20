@@ -18,8 +18,6 @@ import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '../components/DateDisplay'
 import { requireAPI } from '~/utility/API.server'
-import { useState } from 'react'
-import { ExportModal } from '~/components/ExportModal'
 import { useIsAdmin } from '~/utility/CurrentUser'
 import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
@@ -53,7 +51,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function TestRunDetails() {
-	const [showExportModal, setShowExportModal] = useState(false)
 	const { project, testRun, testCaseRuns, projectUsers, builds, time } =
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 
@@ -89,11 +86,6 @@ export default function TestRunDetails() {
 			},
 		}
 
-		const exportItem: ActionMenuItem = {
-			label: 'Export options',
-			action: () => setShowExportModal(true),
-		}
-
 		switch (testRun.status) {
 			case TestRunStatus.pending:
 			case TestRunStatus.inProgress:
@@ -121,7 +113,6 @@ export default function TestRunDetails() {
 						},
 					},
 					editItem,
-					exportItem,
 					deleteItem,
 				]
 			case TestRunStatus.abort:
@@ -149,13 +140,12 @@ export default function TestRunDetails() {
 						},
 					},
 					editItem,
-					exportItem,
 					deleteItem,
 				]
 			case TestRunStatus.complete:
-				return [editItem, exportItem, deleteItem]
+				return [editItem, deleteItem]
 			default:
-				return [editItem, exportItem, deleteItem]
+				return [editItem, deleteItem]
 		}
 	})()
 	// deleting test runs is restricted to admins
@@ -300,10 +290,6 @@ export default function TestRunDetails() {
 				onRowClick={(testCaseRun) =>
 					navigate(testCaseRun.testCase.testCaseNumber.toString())
 				}
-			/>
-			<ExportModal
-				isOpen={showExportModal}
-				onClose={() => setShowExportModal(false)}
 			/>
 		</div>
 	)

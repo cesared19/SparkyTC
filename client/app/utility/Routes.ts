@@ -313,10 +313,6 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}`
 	}
 
-	static exportTestRun(projectShortCode: string, testRunNumber: number) {
-		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${projectShortCode}/${testRunNumber}/export`
-	}
-
 	static projectTestCaseRuns(projectShortCode: string, testRunNumber: number) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${projectShortCode}/${testRunNumber}`
 	}

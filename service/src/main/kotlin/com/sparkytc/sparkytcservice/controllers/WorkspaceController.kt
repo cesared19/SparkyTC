@@ -3,7 +3,6 @@ package com.sparkytc.sparkytcservice.controllers
 import com.sparkytc.sparkytcservice.auth.AdminOnly
 import com.sparkytc.sparkytcservice.dto.*
 import com.sparkytc.sparkytcservice.dto.builds.SaveProjectBuildDTO
-import com.sparkytc.sparkytcservice.dto.documents.TestRunExportType
 import com.sparkytc.sparkytcservice.dto.jira.CreateJiraIssueDTO
 import com.sparkytc.sparkytcservice.dto.jira.JiraReporterPermissionDTO
 import com.sparkytc.sparkytcservice.dto.jira.LinkJiraIssueDTO
@@ -265,16 +264,6 @@ class WorkspaceController(
     fun retrieveTestCaseRuns(@PathVariable projectShortCode: String, @PathVariable testRunNumber: Long): ResponseEntity<Any> {
         val testCaseRuns = workspaceService.retrieveTestCaseRuns(projectShortCode, testRunNumber)
         return ResponseEntity.ok(DataResponse(data = testCaseRuns))
-    }
-
-    @PostMapping("/test-runs/{projectShortCode}/{testRunNumber}/export", produces = [MediaType.APPLICATION_OCTET_STREAM_VALUE])
-    fun generateDocx(@PathVariable projectShortCode: String, @PathVariable testRunNumber: Long, @RequestParam("type") exportType: TestRunExportType): ResponseEntity<ByteArray> {
-        val documentDTO = workspaceService.exportTestRunAsDocx(projectShortCode, testRunNumber, exportType)
-
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, """attachment; filename="${documentDTO.fileName}"""")
-            .contentType(MediaType("application", "vnd.openxmlformats-officedocument.wordprocessingml.document"))
-            .body(documentDTO.data)
     }
 
     @GetMapping("/test-case-runs/{testCaseRunID}/next")
