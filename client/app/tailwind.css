@@ -21,6 +21,7 @@
 	/* chart lines for pass and fail rates, checked for color vision deficiencies against the surface */
 	--color-chart-pass: 21 128 61;
 	--color-chart-fail: 248 113 113;
+	--color-chart-skip: 161 98 7;
 
 	/* brand: crimson from the logo (#c01c37) */
 	--color-brand-50: 253 242 244;
@@ -59,6 +60,7 @@
 
 	--color-chart-pass: 22 163 74;
 	--color-chart-fail: 185 28 28;
+	--color-chart-skip: 217 119 6;
 
 	/* brand: buttons keep the logo crimson, text and tints are lightened for contrast */
 	--color-brand-50: 72 18 30;

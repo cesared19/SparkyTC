@@ -83,8 +83,7 @@ export default function ProjectDashboardPage() {
 						<div className="rounded-lg border border-gray-200 bg-white p-4">
 							<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
 								<h2 className="text-sm font-semibold text-gray-900">
-									Pass and fail rate on build{' '}
-									{dashboard.currentBuild.buildNumber}
+									Results on build {dashboard.currentBuild.buildNumber}
 								</h2>
 								<Link
 									to={Route.viewProjectBuilds(project.projectShortCode)}
@@ -100,9 +99,9 @@ export default function ProjectDashboardPage() {
 							) : (
 								<>
 									<p className="mb-3 text-xs text-gray-500">
-										After each test run, counting the latest result of each test
-										case. Rates are over the executed test cases (passed, failed
-										and skipped).
+										Test cases of the build after each test run, counting the
+										latest result of each one. Pass and fail rates are over the
+										executed test cases (passed, failed and skipped).
 									</p>
 									<RateChart
 										firstColumn="Test run"

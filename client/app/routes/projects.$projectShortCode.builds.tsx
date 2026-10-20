@@ -45,7 +45,7 @@ export default function ProjectBuilds() {
 	const { projects, project, builds } = useLoaderData<typeof loader>()
 	// oldest build first, like a timeline
 	const chartPoints = builds
-		.filter((results) => results.build && results.counts.executed > 0)
+		.filter((results) => results.build && results.counts.testCaseCount > 0)
 		.reverse()
 		.map((results) => ({
 			id: results.build?.buildID ?? 'none',
@@ -69,7 +69,7 @@ export default function ProjectBuilds() {
 				{chartPoints.length > 1 && (
 					<section className="rounded-lg border border-gray-200 bg-white p-4">
 						<h3 className="mb-3 text-sm font-semibold text-gray-900">
-							Pass and fail rate by build
+							Results by build
 						</h3>
 						<RateChart firstColumn="Build" points={chartPoints} />
 					</section>
