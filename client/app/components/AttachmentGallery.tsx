@@ -7,9 +7,17 @@ import { ErrorMessage } from './ErrorMessage'
 const ACCEPTED_FILE_TYPES = 'image/*,video/*'
 
 interface AttachmentGalleryProps {
-	testCaseID: string
 	attachments: TestCaseAttachment[]
+	// where new files are uploaded, the test case's attachments unless set
+	testCaseID?: string
+	uploadAction?: string
+	// adding files; deleting them too unless canDelete says otherwise
 	editable?: boolean
+	canDelete?: boolean
+	// smaller previews, e.g. for the evidence of a result
+	compact?: boolean
+	emptyMessage?: string
+	uploadLabel?: string
 }
 
 function formatFileSize(bytes: number) {
@@ -29,7 +37,12 @@ function isVideo(attachment: TestCaseAttachment) {
 export function AttachmentGallery({
 	testCaseID,
 	attachments,
+	uploadAction,
 	editable = false,
+	canDelete = editable,
+	compact = false,
+	emptyMessage = 'No images or videos attached',
+	uploadLabel = 'Add images or videos',
 }: AttachmentGalleryProps) {
 	const uploadFetcher = useFetcher<ErrorResponse | { ok: true }>()
 	const deleteFetcher = useFetcher<ErrorResponse | { ok: true }>()
@@ -71,7 +84,7 @@ export function AttachmentGallery({
 		}
 		uploadFetcher.submit(formData, {
 			method: 'post',
-			action: Route.testCaseAttachments(testCaseID),
+			action: uploadAction ?? Route.testCaseAttachments(testCaseID ?? ''),
 			encType: 'multipart/form-data',
 		})
 	}
@@ -99,9 +112,15 @@ export function AttachmentGallery({
 			{error && <ErrorMessage message={error} />}
 
 			{visibleAttachments.length === 0 ? (
-				<p className="text-sm text-gray-500">No images or videos attached</p>
+				<p className="text-sm text-gray-500">{emptyMessage}</p>
 			) : (
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				<div
+					className={
+						compact
+							? 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'
+							: 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+					}
+				>
 					{visibleAttachments.map((attachment) => {
 						const src = Route.attachment(attachment.attachmentID)
 						return (
@@ -109,7 +128,11 @@ export function AttachmentGallery({
 								key={attachment.attachmentID}
 								className="overflow-hidden rounded-md border border-gray-200 bg-white"
 							>
-								<div className="flex h-48 items-center justify-center bg-gray-50">
+								<div
+									className={`flex items-center justify-center bg-gray-50 ${
+										compact ? 'h-28' : 'h-48'
+									}`}
+								>
 									{isImage(attachment) ? (
 										<button
 											type="button"
@@ -154,8 +177,10 @@ export function AttachmentGallery({
 										{attachment.fileName}
 									</a>
 									<span className="flex shrink-0 items-center gap-2">
-										<span>{formatFileSize(attachment.fileSize)}</span>
-										{editable && (
+										{!compact && (
+											<span>{formatFileSize(attachment.fileSize)}</span>
+										)}
+										{canDelete && (
 											<button
 												type="button"
 												onClick={() => handleDelete(attachment)}
@@ -179,7 +204,7 @@ export function AttachmentGallery({
 							isUploading ? 'pointer-events-none opacity-50' : ''
 						}`}
 					>
-						{isUploading ? 'Uploading...' : 'Add images or videos'}
+						{isUploading ? 'Uploading...' : uploadLabel}
 						<input
 							ref={fileInputRef}
 							type="file"

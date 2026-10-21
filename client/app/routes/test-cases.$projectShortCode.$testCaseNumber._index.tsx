@@ -5,6 +5,7 @@ import { DateDisplay } from '~/components/DateDisplay'
 import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
+import { TestCaseHistory } from '~/components/TestCaseResults'
 
 export default function TestCaseDetails() {
 	const { project, testCase, propertyValues } =
@@ -127,6 +128,19 @@ export default function TestCaseDetails() {
 						testCaseID={testCase.testCaseID}
 						attachments={testCase.attachments ?? []}
 						editable
+					/>
+				</div>
+
+				<div id="history">
+					<h3 className="text-xl font-semibold text-gray-900 mb-2">History</h3>
+					<p className="mb-3 text-xs text-gray-500">
+						Every result recorded for this test case in the project&apos;s test
+						runs, newest first.
+					</p>
+					<TestCaseHistory
+						testCaseID={testCase.testCaseID}
+						projectShortCode={project.projectShortCode}
+						testCaseNumber={testCase.testCaseNumber}
 					/>
 				</div>
 			</div>

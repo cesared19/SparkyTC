@@ -1,6 +1,7 @@
 import { Project } from '~/models/project'
 import {
 	JiraIssue,
+	TestCaseAttachment,
 	TestCaseRun,
 	TestCaseRunStatus,
 	TestRun,
@@ -942,6 +943,54 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 		return width
 	}
 
+	// an image is embedded when asked, anything else is a link to SparkyTC
+	const writeAttachment = async (
+		attachment: TestCaseAttachment,
+		embed: boolean
+	) => {
+		const url = `${origin}${Route.attachment(attachment.attachmentID)}`
+		if (embed && attachment.contentType.startsWith('image/')) {
+			const image = await loadImage(attachment.attachmentID)
+			if (image) {
+				const scale = Math.min(
+					(contentWidth - 12) / image.width,
+					320 / image.height,
+					1
+				)
+				const width = image.width * scale
+				const height = image.height * scale
+				ensureSpace(height + 18)
+				doc.addImage(image.data, 'JPEG', PDF_MARGIN + 12, y, width, height)
+				doc.setDrawColor(...hex(COLORS.border))
+				doc.rect(PDF_MARGIN + 12, y, width, height)
+				y += height + 4
+				paragraph(attachment.fileName, {
+					size: 8,
+					color: COLORS.muted,
+					indent: 12,
+					gap: 6,
+				})
+				return
+			}
+		}
+		ensureSpace(14)
+		doc.setFont('helvetica', 'normal')
+		doc.setFontSize(9)
+		setColor(COLORS.brand)
+		const kind = attachment.contentType.startsWith('video/')
+			? 'Video'
+			: attachment.contentType.startsWith('image/')
+			? 'Image'
+			: 'File'
+		doc.textWithLink(
+			pdfText(`${kind}: ${attachment.fileName} (open in SparkyTC)`),
+			PDF_MARGIN + 12,
+			y + 9,
+			{ url }
+		)
+		y += 14
+	}
+
 	// summary of the run
 	paragraph('Test run report', {
 		size: 10,
@@ -1030,29 +1079,9 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 		})
 		y += Math.max(20, titleLines.length * 16) + 2
 
-		const meta = [
-			run.executedBy ? `Recorded by ${run.executedBy}` : undefined,
-			run.executedAt ? formatDate(run.executedAt, true) : undefined,
-			data.testRun.trackTime && run.timeSeconds > 0
-				? `Time ${formatDuration(run.timeSeconds)}`
-				: undefined,
-		].filter(Boolean)
-		if (meta.length > 0) {
-			paragraph(meta.join(' · '), { size: 9, color: COLORS.muted, gap: 4 })
-		}
-
-		paragraph('Comments', {
-			size: 9,
-			style: 'bold',
-			color: COLORS.secondary,
-			gap: 1,
-		})
-		if (run.notes?.trim()) {
-			paragraph(run.notes.trim(), { size: 10, gap: 4 })
-		} else {
-			paragraph('No comments', {
-				size: 10,
-				style: 'italic',
+		if (data.testRun.trackTime && run.timeSeconds > 0) {
+			paragraph(`Time ${formatDuration(run.timeSeconds)}`, {
+				size: 9,
 				color: COLORS.muted,
 				gap: 4,
 			})
@@ -1075,43 +1104,68 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 			)
 		}
 
-		// evidence: images are embedded, videos are linked
-		for (const attachment of run.testCase.attachments ?? []) {
-			const url = `${origin}${Route.attachment(attachment.attachmentID)}`
-			if (attachment.contentType.startsWith('image/')) {
-				const image = await loadImage(attachment.attachmentID)
-				if (image) {
-					const scale = Math.min(
-						contentWidth / image.width,
-						320 / image.height,
-						1
-					)
-					const width = image.width * scale
-					const height = image.height * scale
-					ensureSpace(height + 18)
-					doc.addImage(image.data, 'JPEG', PDF_MARGIN, y, width, height)
-					doc.setDrawColor(...hex(COLORS.border))
-					doc.rect(PDF_MARGIN, y, width, height)
-					y += height + 4
-					paragraph(attachment.fileName, {
-						size: 8,
-						color: COLORS.muted,
-						gap: 6,
-					})
-					continue
-				}
-			}
-			ensureSpace(14)
+		// every result in the order it was recorded, the last one is the status
+		for (const [index, result] of run.results.entries()) {
+			ensureSpace(48)
+			const isLatest = index === run.results.length - 1
+			doc.setFont('helvetica', 'bold')
+			doc.setFontSize(9)
+			const badgeWidth = doc.getTextWidth(STATUS_LABELS[result.status]) + 14
+			pill(
+				STATUS_LABELS[result.status],
+				result.status,
+				PDF_MARGIN + badgeWidth,
+				y
+			)
 			doc.setFont('helvetica', 'normal')
 			doc.setFontSize(9)
-			setColor(COLORS.brand)
-			const label = pdfText(
-				`${attachment.contentType.startsWith('video/') ? 'Video' : 'File'}: ${
-					attachment.fileName
-				} (open in SparkyTC)`
+			setColor(COLORS.muted)
+			doc.text(
+				pdfText(
+					[
+						`Result ${index + 1} of ${run.results.length}${
+							isLatest ? ' (current)' : ''
+						}`,
+						result.recordedBy ? `by ${result.recordedBy}` : undefined,
+						formatDate(result.recordedAt, true),
+					]
+						.filter(Boolean)
+						.join(' · ')
+				),
+				PDF_MARGIN + badgeWidth + 8,
+				y + 11.5
 			)
-			doc.textWithLink(label, PDF_MARGIN, y + 9, { url })
-			y += 14
+			y += 22
+			if (result.notes?.trim()) {
+				paragraph(result.notes.trim(), { size: 10, indent: 12, gap: 4 })
+			} else {
+				paragraph('No comment', {
+					size: 10,
+					style: 'italic',
+					color: COLORS.muted,
+					indent: 12,
+					gap: 4,
+				})
+			}
+			// evidence: images are embedded, videos are linked
+			for (const attachment of result.attachments) {
+				await writeAttachment(attachment, true)
+			}
+			y += 4
+		}
+
+		// the test case's own attachments are reference material, linked only
+		const references = run.testCase.attachments ?? []
+		if (references.length > 0) {
+			paragraph('Test case attachments', {
+				size: 9,
+				style: 'bold',
+				color: COLORS.secondary,
+				gap: 1,
+			})
+			for (const attachment of references) {
+				await writeAttachment(attachment, false)
+			}
 		}
 		y += 8
 	}

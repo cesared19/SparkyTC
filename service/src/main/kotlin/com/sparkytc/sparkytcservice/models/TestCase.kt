@@ -3,6 +3,7 @@ package com.sparkytc.sparkytcservice.models
 import com.sparkytc.sparkytcservice.dto.projects.WorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.testcases.TestCaseDTO
 import jakarta.persistence.*
+import org.hibernate.annotations.SQLRestriction
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
 import java.util.*
@@ -55,8 +56,10 @@ class TestCase(
     @OneToMany(mappedBy = "testCase")
     val propertyValues: List<TestCasePropertyValue> = emptyList(),
 
+    // the test case's own attachments, without the evidence of its results
     @OneToMany(mappedBy = "testCase")
     @OrderBy("creationDate ASC")
+    @SQLRestriction("test_case_result_id IS NULL")
     val attachments: List<TestCaseAttachment> = emptyList(),
 
     @OneToMany(mappedBy = "testCase")

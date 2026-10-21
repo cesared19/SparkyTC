@@ -76,6 +76,18 @@ export class Route {
 		return `/test-case-attachments/${testCaseID}`
 	}
 
+	static resultEvidence(resultID: string) {
+		return `/test-case-result-evidence/${resultID}`
+	}
+
+	static testCaseResult(resultID: string) {
+		return `/test-case-results/${resultID}`
+	}
+
+	static testCaseHistory(testCaseID: string) {
+		return `/test-case-history/${testCaseID}`
+	}
+
 	static jiraTransitions(testCaseRunID: string, issueKey: string) {
 		return `/jira-transitions?${new URLSearchParams({
 			testCaseRunID,
@@ -260,6 +272,22 @@ export class APIRoute {
 
 	static attachment(attachmentID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/attachments/${attachmentID}`
+	}
+
+	static resultEvidence(resultID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-results/${resultID}/attachments`
+	}
+
+	static testCaseResult(resultID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-results/${resultID}`
+	}
+
+	static rerunTestRun(testRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${testRunID}/rerun`
+	}
+
+	static testCaseHistory(testCaseID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}/history`
 	}
 
 	static get jiraConfiguration() {

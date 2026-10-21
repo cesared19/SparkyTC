@@ -405,6 +405,33 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.12")
                 }
                 SchemaVersion.VERSION_0_0_12 -> {
+                    // every result recorded for a test case in a run, not only the latest, each with its evidence
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_results (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            test_case_run_id BIGINT NOT NULL REFERENCES test_case_runs(id) ON DELETE CASCADE,
+                            status TEXT NOT NULL,
+                            notes TEXT,
+                            recorded_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                            recorded_at TIMESTAMP NOT NULL
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX test_case_results_test_case_run_idx ON test_case_results (test_case_run_id)")
+                    // the result each test case already has becomes its first one
+                    jdbcTemplate.execute("""
+                        INSERT INTO test_case_results (test_case_run_id, status, notes, recorded_by_id, recorded_at)
+                        SELECT id, status, notes, executed_by_id, COALESCE(executed_at, modify_date)
+                        FROM test_case_runs WHERE status <> 'PENDING'
+                    """.trimIndent())
+                    // evidence is stored like the test case's attachments, linked to its result
+                    jdbcTemplate.execute("ALTER TABLE test_case_attachments ADD COLUMN test_case_result_id BIGINT REFERENCES test_case_results(id) ON DELETE CASCADE")
+                    jdbcTemplate.execute("CREATE INDEX test_case_attachments_result_idx ON test_case_attachments (test_case_result_id)")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.13")
+                }
+                SchemaVersion.VERSION_0_0_13 -> {
                     break
                 }
             }

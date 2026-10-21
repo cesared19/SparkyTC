@@ -16,12 +16,14 @@ import com.sparkytc.sparkytcservice.dto.properties.UpdatePropertyConfigurationDT
 import com.sparkytc.sparkytcservice.dto.testcases.BatchCreateTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.testcases.CreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.testruns.CreateTestRunDTO
+import com.sparkytc.sparkytcservice.dto.testruns.RerunTestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
 import com.sparkytc.sparkytcservice.services.BuildResultsService
 import com.sparkytc.sparkytcservice.dto.time.UpdateTestRunTimeDTO
 import com.sparkytc.sparkytcservice.services.JiraService
+import com.sparkytc.sparkytcservice.services.TestCaseResultService
 import com.sparkytc.sparkytcservice.services.TimeTrackingService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
@@ -52,6 +54,7 @@ class WorkspaceController(
     private val projectBuildService: ProjectBuildService,
     private val buildResultsService: BuildResultsService,
     private val timeTrackingService: TimeTrackingService,
+    private val testCaseResultService: TestCaseResultService,
 ) {
 
     @GetMapping("/projects")
@@ -178,6 +181,23 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = attachments))
     }
 
+    @PostMapping("/test-case-results/{resultID}/attachments", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun uploadResultEvidence(@PathVariable resultID: UUID, @RequestPart("files") files: List<MultipartFile>): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = testCaseResultService.uploadEvidence(resultID, files)))
+    }
+
+    @AdminOnly
+    @DeleteMapping("/test-case-results/{resultID}")
+    fun deleteResult(@PathVariable resultID: UUID): ResponseEntity<Any> {
+        testCaseResultService.deleteResult(resultID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @GetMapping("/test-cases/{testCaseID}/history")
+    fun retrieveTestCaseHistory(@PathVariable testCaseID: UUID): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = testCaseResultService.retrieveHistory(testCaseID)))
+    }
+
     @GetMapping("/attachments/{attachmentID}")
     fun retrieveAttachment(@PathVariable attachmentID: UUID): ResponseEntity<Resource> {
         val content = workspaceService.retrieveAttachmentContent(attachmentID)
@@ -239,6 +259,11 @@ class WorkspaceController(
     fun retrieveTestRuns(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         val testRuns = workspaceService.retrieveTestRuns(projectShortCode)
         return ResponseEntity.ok(DataResponse(data = testRuns))
+    }
+
+    @PostMapping("/test-runs/{testRunID}/rerun")
+    fun rerunTestRun(@PathVariable testRunID: UUID, @RequestBody request: RerunTestRunDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.rerunTestRun(testRunID, request)))
     }
 
     @PostMapping("/test-runs/{projectShortCode}")

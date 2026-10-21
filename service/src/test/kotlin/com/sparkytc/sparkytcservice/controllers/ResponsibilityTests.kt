@@ -270,6 +270,105 @@ class ResponsibilityTests {
     }
 
     @Test
+    fun `each recording adds a result and the latest one is the test case's status`() {
+        createTestRun(assignees = emptyList())
+        val (first, second) = testCaseRunIDs()
+        record(ana, first, TestCaseRunStatus.FAIL, "Crashes on save")
+        record(ana, first, TestCaseRunStatus.PASS, "Fixed")
+        record(ana, second, TestCaseRunStatus.PASS, null)
+
+        val testCaseRun = testCaseRuns()[0]
+        assertEquals("PASS", testCaseRun.get("status").asText())
+        assertEquals("Fixed", testCaseRun.get("notes").asText())
+        assertEquals(listOf("FAIL", "PASS"), testCaseRun.get("results").map { it.get("status").asText() })
+        assertEquals(listOf("Crashes on save", "Fixed"), testCaseRun.get("results").map { it.get("notes").asText() })
+        assertEquals(listOf("Ana", "Ana"), testCaseRun.get("results").map { it.get("recordedBy").asText() })
+        assertEquals("COMPLETE", data(admin, "/api/v1/workspace/test-runs/PRJ")[0].get("status").asText())
+
+        // a result has to be chosen
+        expectError(ana, put("/api/v1/workspace/test-case-runs/$first"), UpdateTestCaseRunDTO(TestCaseRunStatus.PENDING, null), "Choose a result")
+
+        // the history of the test case lists its results in every run, newest first
+        post(admin, "/api/v1/workspace/test-runs/PRJ", CreateTestRunDTO("Second run", null, testCaseIDs().take(1)))
+        val secondRunCase = data(admin, "/api/v1/workspace/test-case-runs/PRJ/2")[0].get("testCaseRunID").asText()
+        record(beto, secondRunCase, TestCaseRunStatus.BLOCKED, "Server down")
+        val history = data(ana, "/api/v1/workspace/test-cases/${testCaseIDs()[0]}/history")
+        assertEquals(listOf("BLOCKED", "PASS", "FAIL"), history.map { it.get("result").get("status").asText() })
+        assertEquals(listOf(2L, 1L, 1L), history.map { it.get("testRunNumber").asLong() })
+        assertEquals(listOf(true, true, false), history.map { it.get("isLatestInRun").asBoolean() })
+    }
+
+    @Test
+    fun `a test run can be run again with the test cases that failed or were blocked`() {
+        createTestRun(assignees = listOf("ana", "beto"))
+        val (first, second) = testCaseRunIDs()
+        record(ana, first, TestCaseRunStatus.FAIL, "Crashes")
+        record(beto, second, TestCaseRunStatus.PASS, null)
+        val testRunID = data(admin, "/api/v1/workspace/test-runs/PRJ")[0].get("testRunID").asText()
+        val buildID = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "1.1")).get("data").get("buildID").asText()
+
+        expectError(beto, post("/api/v1/workspace/test-runs/$testRunID/rerun"), mapOf("statuses" to listOf("SKIP")), "No test cases of this test run ended with those results")
+        val rerun = post(beto, "/api/v1/workspace/test-runs/$testRunID/rerun", mapOf("statuses" to listOf("FAIL", "BLOCKED"), "buildID" to buildID)).get("data")
+        assertEquals(2L, rerun.get("testRunNumber").asLong())
+        assertEquals("Run (re-run)", rerun.get("title").asText())
+        assertEquals("1.1", rerun.get("build").get("buildNumber").asText())
+        assertEquals(listOf("Ana", "Beto"), rerun.get("assignees").map { it.get("displayName").asText() }.sorted())
+
+        // only the failed test case, still taken by whoever had it, and pending
+        val testCaseRuns = data(admin, "/api/v1/workspace/test-case-runs/PRJ/2")
+        assertEquals(1, testCaseRuns.size())
+        assertEquals("Case 1", testCaseRuns[0].get("title").asText())
+        assertEquals("Ana", testCaseRuns[0].get("assignedTo").get("displayName").asText())
+        assertEquals("PENDING", testCaseRuns[0].get("status").asText())
+    }
+
+    @Test
+    fun `admins delete a result recorded by mistake`() {
+        createTestRun(assignees = emptyList())
+        val (first, second) = testCaseRunIDs()
+        record(ana, first, TestCaseRunStatus.FAIL, "Crashes")
+        val mistake = record(ana, first, TestCaseRunStatus.PASS, null)
+        record(ana, second, TestCaseRunStatus.PASS, null)
+        assertEquals("COMPLETE", data(admin, "/api/v1/workspace/test-runs/PRJ")[0].get("status").asText())
+
+        ana.perform(delete("/api/v1/workspace/test-case-results/$mistake")).andExpect(status().isForbidden)
+        admin.perform(delete("/api/v1/workspace/test-case-results/$mistake")).andExpect(status().isOk)
+        assertEquals("FAIL", testCaseRuns()[0].get("status").asText())
+        assertEquals("Crashes", testCaseRuns()[0].get("notes").asText())
+
+        // without results the test case is pending again, and the run is open
+        admin.perform(delete("/api/v1/workspace/test-case-results/${testCaseRuns()[0].get("results")[0].get("resultID").asText()}")).andExpect(status().isOk)
+        assertEquals("PENDING", testCaseRuns()[0].get("status").asText())
+        assertTrue(testCaseRuns()[0].get("executedBy")?.isNull ?: true)
+        assertEquals("IN_PROGRESS", data(admin, "/api/v1/workspace/test-runs/PRJ")[0].get("status").asText())
+    }
+
+    @Test
+    fun `evidence belongs to its result`() {
+        createTestRun(assignees = emptyList())
+        val first = testCaseRunIDs()[0]
+        val resultID = record(ana, first, TestCaseRunStatus.FAIL, "See screenshot")
+        fun upload(mockMvc: MockMvc) = mockMvc.perform(multipart("/api/v1/workspace/test-case-results/$resultID/attachments")
+            .file(org.springframework.mock.web.MockMultipartFile("files", "error.png", "image/png", byteArrayOf(1, 2, 3))))
+
+        upload(ana).andExpect(status().isOk)
+        upload(beto).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value(Matchers.containsString("Only who recorded this result")))
+        upload(admin).andExpect(status().isOk)
+
+        val evidence = testCaseRuns()[0].get("results")[0].get("attachments")
+        assertEquals(listOf("error.png", "error.png"), evidence.map { it.get("fileName").asText() })
+        // it isn't one of the test case's attachments
+        assertEquals(0, testCaseRuns()[0].get("testCase").get("attachments").size())
+        assertEquals(0, data(ana, "/api/v1/workspace/test-cases/PRJ")[0].get("attachments").size())
+        ana.perform(get("/api/v1/workspace/attachments/${evidence[0].get("attachmentID").asText()}")).andExpect(status().isOk)
+
+        beto.perform(delete("/api/v1/workspace/attachments/${evidence[0].get("attachmentID").asText()}")).andExpect(status().isBadRequest)
+        ana.perform(delete("/api/v1/workspace/attachments/${evidence[0].get("attachmentID").asText()}")).andExpect(status().isOk)
+        assertEquals(1, testCaseRuns()[0].get("results")[0].get("attachments").size())
+    }
+
+    @Test
     fun `blocked test cases count as executed but keep the test run open`() {
         createTestRun(assignees = emptyList())
         val (first, second) = testCaseRunIDs()
@@ -450,6 +549,15 @@ class ResponsibilityTests {
         val request = put(url).contentType(MediaType.APPLICATION_JSON)
         if (body != null) request.content(objectMapper.writeValueAsString(body))
         mockMvc.perform(request).andExpect(status().isOk)
+    }
+
+    /** Records a result and returns its id. */
+    private fun record(mockMvc: MockMvc, testCaseRunID: String, status: TestCaseRunStatus, notes: String?): String {
+        val result = mockMvc.perform(put("/api/v1/workspace/test-case-runs/$testCaseRunID")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(UpdateTestCaseRunDTO(status, notes))))
+            .andExpect(status().isOk).andReturn()
+        return objectMapper.readTree(result.response.contentAsString).get("data").get("resultID").asText()
     }
 
     private fun expectError(mockMvc: MockMvc, request: org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder, body: Any, message: String) {
