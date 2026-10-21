@@ -518,7 +518,8 @@ class WorkspaceService(
         val testRun = testCaseRun.testRun
         val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
 
-        val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING }
+        // blocked test cases are expected to be tested once unblocked
+        val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING && it.status != TestCaseRunStatus.BLOCKED }
         if (isTestRunComplete && testRun.status != TestRunStatus.COMPLETE) {
             testRun.status = TestRunStatus.COMPLETE
             testRunRepository.save(testRun)

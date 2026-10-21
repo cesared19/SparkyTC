@@ -26,7 +26,10 @@ export interface TestRunReportInput {
 interface ReportData extends TestRunReportInput {
 	jiraIssues: JiraIssue[]
 	generatedAt: Date
-	counts: Record<'passed' | 'failed' | 'skipped' | 'pending', number>
+	counts: Record<
+		'passed' | 'failed' | 'blocked' | 'skipped' | 'pending',
+		number
+	>
 	executed: number
 	total: number
 	passRate?: number
@@ -37,6 +40,7 @@ interface DayResults {
 	day: Date
 	passed: number
 	failed: number
+	blocked: number
 	skipped: number
 }
 
@@ -45,6 +49,7 @@ const COLORS = {
 	pass: '#15803d',
 	fail: '#f87171',
 	skip: '#a16207',
+	blocked: '#7c3aed',
 	pending: '#d1d5db',
 	page: '#f1f5f9',
 	surface: '#ffffff',
@@ -65,6 +70,7 @@ const STATUS_LABELS: Record<TestCaseRunStatus, string> = {
 	[TestCaseRunStatus.pass]: 'Pass',
 	[TestCaseRunStatus.fail]: 'Fail',
 	[TestCaseRunStatus.skip]: 'Skip',
+	[TestCaseRunStatus.blocked]: 'Blocked',
 }
 
 const RUN_STATUS_LABELS: Record<string, string> = {
@@ -102,10 +108,12 @@ function reportData(
 	const counts = {
 		passed: count(TestCaseRunStatus.pass),
 		failed: count(TestCaseRunStatus.fail),
+		blocked: count(TestCaseRunStatus.blocked),
 		skipped: count(TestCaseRunStatus.skip),
 		pending: count(TestCaseRunStatus.pending),
 	}
-	const executed = counts.passed + counts.failed + counts.skipped
+	const executed =
+		counts.passed + counts.failed + counts.blocked + counts.skipped
 
 	// each test case counts on the day its current result was recorded
 	const days = new Map<number, DayResults>()
@@ -116,10 +124,12 @@ function reportData(
 			day,
 			passed: 0,
 			failed: 0,
+			blocked: 0,
 			skipped: 0,
 		}
 		if (run.status === TestCaseRunStatus.pass) results.passed++
 		if (run.status === TestCaseRunStatus.fail) results.failed++
+		if (run.status === TestCaseRunStatus.blocked) results.blocked++
 		if (run.status === TestCaseRunStatus.skip) results.skipped++
 		days.set(day.getTime(), results)
 	}
@@ -340,6 +350,12 @@ const STATUS_SEGMENTS = [
 		ink: COLORS.text,
 	},
 	{
+		key: 'blocked' as const,
+		label: 'Blocked',
+		color: COLORS.blocked,
+		ink: '#ffffff',
+	},
+	{
 		key: 'skipped' as const,
 		label: 'Skipped',
 		color: COLORS.skip,
@@ -384,7 +400,8 @@ function statusCard(painter: Painter, data: ReportData, y: number) {
 	})
 
 	// a tile per status, so each color also has its number and name
-	const tileWidth = (barWidth - GAP * 3) / 4
+	const tileWidth =
+		(barWidth - GAP * (STATUS_SEGMENTS.length - 1)) / STATUS_SEGMENTS.length
 	STATUS_SEGMENTS.forEach((segment, index) => {
 		const tileX = barX + index * (tileWidth + GAP)
 		const tileY = y + 88
@@ -431,7 +448,9 @@ function progressCard(
 
 	// legend
 	let legendX = x + 20
-	for (const segment of STATUS_SEGMENTS.slice(0, 3)) {
+	for (const segment of STATUS_SEGMENTS.filter(
+		(segment) => segment.key !== 'pending'
+	)) {
 		painter.rect(legendX, y + 56, 10, 10, 2, segment.color)
 		legendX +=
 			16 +
@@ -463,7 +482,11 @@ function progressCard(
 		bottom: y + height - 40,
 	}
 	const max = niceMax(
-		Math.max(...data.days.map((day) => day.passed + day.failed + day.skipped))
+		Math.max(
+			...data.days.map(
+				(day) => day.passed + day.failed + day.blocked + day.skipped
+			)
+		)
 	)
 	const yOf = (value: number) =>
 		plot.bottom - (value / max) * (plot.bottom - plot.top)
@@ -493,6 +516,7 @@ function progressCard(
 		const parts = [
 			{ value: day.passed, color: COLORS.pass },
 			{ value: day.failed, color: COLORS.fail },
+			{ value: day.blocked, color: COLORS.blocked },
 			{ value: day.skipped, color: COLORS.skip },
 		].filter((part) => part.value > 0)
 		let below = 0
@@ -512,7 +536,7 @@ function progressCard(
 				part.color
 			)
 		})
-		const total = day.passed + day.failed + day.skipped
+		const total = day.passed + day.failed + day.blocked + day.skipped
 		if (data.days.length <= 14) {
 			painter.text(String(total), center, yOf(total) - 6, {
 				size: 11,
@@ -854,6 +878,7 @@ const PDF_STATUS_COLORS: Record<
 	[TestCaseRunStatus.pass]: { fill: COLORS.pass, ink: '#ffffff' },
 	[TestCaseRunStatus.fail]: { fill: COLORS.failTile, ink: '#ffffff' },
 	[TestCaseRunStatus.skip]: { fill: COLORS.skip, ink: '#ffffff' },
+	[TestCaseRunStatus.blocked]: { fill: COLORS.blocked, ink: '#ffffff' },
 	[TestCaseRunStatus.pending]: { fill: COLORS.pending, ink: COLORS.text },
 }
 
@@ -945,10 +970,10 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 	)
 	paragraph(
 		`${data.counts.passed} passed · ${data.counts.failed} failed · ${
-			data.counts.skipped
-		} skipped · ${data.counts.pending} pending · pass rate ${formatRate(
-			data.passRate
-		)}${
+			data.counts.blocked
+		} blocked · ${data.counts.skipped} skipped · ${
+			data.counts.pending
+		} pending · pass rate ${formatRate(data.passRate)}${
 			data.time.trackTime
 				? ` · time spent ${formatDuration(data.time.totalSeconds)}`
 				: ''

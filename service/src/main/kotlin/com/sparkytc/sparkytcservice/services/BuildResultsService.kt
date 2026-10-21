@@ -113,12 +113,14 @@ class BuildResultsService(
         val passed = latestResults.values.count { it == TestCaseRunStatus.PASS }
         val failed = latestResults.values.count { it == TestCaseRunStatus.FAIL }
         val skipped = latestResults.values.count { it == TestCaseRunStatus.SKIP }
-        val executed = passed + failed + skipped
+        val blocked = latestResults.values.count { it == TestCaseRunStatus.BLOCKED }
+        val executed = passed + failed + skipped + blocked
         return BuildResultCountsDTO(
             testCaseCount = testCaseIDs.size,
             passed = passed,
             failed = failed,
             skipped = skipped,
+            blocked = blocked,
             pending = testCaseIDs.size - executed,
             passRate = if (executed == 0) null else passed.toDouble() / executed,
             failRate = if (executed == 0) null else failed.toDouble() / executed,

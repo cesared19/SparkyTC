@@ -23,7 +23,7 @@ type ActionResponse = ErrorResponse | { ok: true; issueKey?: string }
 
 interface CreateIssueOptions {
 	testCaseRunID: string
-	// issues can only be reported for failed test case runs
+	// issues can only be reported for failed or blocked test case runs
 	isFailed: boolean
 	defaults: () => CreateJiraIssue
 }
@@ -253,7 +253,7 @@ export function JiraIssuesPanel({
 						</button>
 						{!createIssue.isFailed && (
 							<span className="text-xs text-gray-500">
-								Select Fail to report a bug for this test case
+								Select Fail or Blocked to report a bug for this test case
 							</span>
 						)}
 					</div>

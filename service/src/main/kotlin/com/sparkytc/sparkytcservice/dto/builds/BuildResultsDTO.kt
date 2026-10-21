@@ -13,12 +13,13 @@ data class BuildResultCountsDTO(
     val passed: Int,
     val failed: Int,
     val skipped: Int,
+    val blocked: Int,
     val pending: Int,
     val passRate: Double?,
     val failRate: Double?,
 ) {
     val executed: Int
-        get() = passed + failed + skipped
+        get() = passed + failed + skipped + blocked
 }
 
 /** The state of a build after one of its test runs, including the test runs before it. */

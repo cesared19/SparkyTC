@@ -304,7 +304,7 @@ function TestCaseRunView({
 					</div>
 					<fieldset
 						disabled={isLocked}
-						className="flex gap-3 disabled:opacity-50"
+						className="flex flex-wrap gap-3 disabled:opacity-50"
 					>
 						<button
 							type="button"
@@ -327,6 +327,17 @@ function TestCaseRunView({
 							}`}
 						>
 							Fail
+						</button>
+						<button
+							type="button"
+							onClick={() => setSelectedStatus(TestCaseRunStatus.blocked)}
+							className={`px-4 py-2 text-sm font-medium rounded-md ${
+								selectedStatus === TestCaseRunStatus.blocked
+									? 'bg-violet-100 text-violet-800 ring-1 ring-violet-600'
+									: 'bg-gray-50 text-gray-700 hover:bg-violet-50 hover:text-violet-700'
+							}`}
+						>
+							Blocked
 						</button>
 						<button
 							type="button"
@@ -447,7 +458,9 @@ function TestCaseRunView({
 						jiraIssueType={project.jiraIssueType}
 						createIssue={{
 							testCaseRunID: testCaseRun.testCaseRunID,
-							isFailed: selectedStatus === TestCaseRunStatus.fail,
+							isFailed:
+								selectedStatus === TestCaseRunStatus.fail ||
+								selectedStatus === TestCaseRunStatus.blocked,
 							defaults: (): CreateJiraIssue => {
 								const form = document.getElementById(
 									'testCaseForm'

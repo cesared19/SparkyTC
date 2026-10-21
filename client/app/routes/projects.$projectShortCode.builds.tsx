@@ -37,6 +37,7 @@ function resultCounts(counts: BuildResultCounts) {
 		[TestCaseRunStatus.pass]: counts.passed,
 		[TestCaseRunStatus.fail]: counts.failed,
 		[TestCaseRunStatus.skip]: counts.skipped,
+		[TestCaseRunStatus.blocked]: counts.blocked,
 		[TestCaseRunStatus.pending]: counts.pending,
 	} as Record<TestCaseRunStatus, number>
 }
@@ -63,7 +64,8 @@ export default function ProjectBuilds() {
 					<p className="mt-1 text-sm text-gray-600">
 						Results of the test runs on each build, newest first. Each build
 						counts the latest result of each test case across its test runs;
-						rates are over the executed test cases (passed, failed and skipped).
+						rates are over the executed test cases (passed, failed, blocked and
+						skipped).
 					</p>
 				</div>
 

@@ -270,6 +270,23 @@ class ResponsibilityTests {
     }
 
     @Test
+    fun `blocked test cases count as executed but keep the test run open`() {
+        createTestRun(assignees = emptyList())
+        val (first, second) = testCaseRunIDs()
+        put(admin, "/api/v1/workspace/test-case-runs/$first", UpdateTestCaseRunDTO(TestCaseRunStatus.PASS, null))
+        put(admin, "/api/v1/workspace/test-case-runs/$second", UpdateTestCaseRunDTO(TestCaseRunStatus.BLOCKED, "Login is down"))
+        assertEquals("IN_PROGRESS", data(admin, "/api/v1/workspace/test-runs/PRJ")[0].get("status").asText())
+
+        val counts = data(admin, "/api/v1/workspace/projects/PRJ/build-results")[0].get("counts")
+        assertEquals(listOf(1, 1, 0, 2), listOf("passed", "blocked", "pending", "executed").map { counts.get(it).asInt() })
+        assertEquals(0.5, counts.get("passRate").asDouble())
+
+        // once unblocked and tested, the run completes
+        put(admin, "/api/v1/workspace/test-case-runs/$second", UpdateTestCaseRunDTO(TestCaseRunStatus.FAIL, null))
+        assertEquals("COMPLETE", data(admin, "/api/v1/workspace/test-runs/PRJ")[0].get("status").asText())
+    }
+
+    @Test
     fun `build results count the latest executed result of each test case`() {
         val older = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "1.0")).get("data").get("buildID").asText()
         val current = post(admin, "/api/v1/workspace/projects/PRJ/builds", mapOf("buildNumber" to "1.1")).get("data").get("buildID").asText()

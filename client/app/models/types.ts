@@ -181,12 +181,13 @@ export interface ProjectDashboard {
 	currentBuildTimeSeconds?: number
 }
 
-// latest executed result of each test case on a build; rates are over pass, fail and skip
+// latest executed result of each test case on a build; rates are over pass, fail, skip and blocked
 export interface BuildResultCounts {
 	testCaseCount: number
 	passed: number
 	failed: number
 	skipped: number
+	blocked: number
 	pending: number
 	executed: number
 	passRate?: number | null
@@ -331,6 +332,7 @@ export enum TestCaseRunStatus {
 	pass = 'PASS',
 	fail = 'FAIL',
 	skip = 'SKIP',
+	blocked = 'BLOCKED',
 }
 
 export interface TestCaseRun {

@@ -13,6 +13,11 @@ const SEGMENTS: {
 	},
 	{ status: TestCaseRunStatus.fail, label: 'failed', className: 'bg-red-500' },
 	{
+		status: TestCaseRunStatus.blocked,
+		label: 'blocked',
+		className: 'bg-violet-500',
+	},
+	{
 		status: TestCaseRunStatus.skip,
 		label: 'skipped',
 		className: 'bg-amber-400',
