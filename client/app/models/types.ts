@@ -181,12 +181,13 @@ export interface ProjectDashboard {
 	currentBuildTimeSeconds?: number
 }
 
-// latest executed result of each test case on a build; rates are over pass, fail and skip
+// latest executed result of each test case on a build; rates are over pass, fail, skip and blocked
 export interface BuildResultCounts {
 	testCaseCount: number
 	passed: number
 	failed: number
 	skipped: number
+	blocked: number
 	pending: number
 	executed: number
 	passRate?: number | null
@@ -331,6 +332,7 @@ export enum TestCaseRunStatus {
 	pass = 'PASS',
 	fail = 'FAIL',
 	skip = 'SKIP',
+	blocked = 'BLOCKED',
 }
 
 export interface TestCaseRun {
@@ -349,6 +351,31 @@ export interface TestCaseRun {
 	runningTimers: RunningTimer[]
 	// when the current result was recorded
 	executedAt?: number
+	// every result recorded, oldest first; the latest one is the status
+	results: TestCaseResult[]
+}
+
+export interface TestCaseResult {
+	resultID: string
+	status: TestCaseRunStatus
+	notes?: string
+	recordedBy?: string
+	recordedByID?: string
+	recordedAt: number
+	// the evidence of this result
+	attachments: TestCaseAttachment[]
+}
+
+// a result of a test case in any test run of its project
+export interface TestCaseHistoryEntry {
+	result: TestCaseResult
+	testRunID: string
+	testRunNumber: number
+	testRunTitle: string
+	buildNumber?: string
+	// whether it's the result the test case ended with in that run
+	isLatestInRun: boolean
+	testRunCreationDate: number
 }
 
 export interface UpdateTestCaseRunDetails extends Record<string, any> {

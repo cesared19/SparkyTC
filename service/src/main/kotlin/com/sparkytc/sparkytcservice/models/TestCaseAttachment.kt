@@ -39,6 +39,11 @@ class TestCaseAttachment(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by_id")
     val uploadedBy: User? = null,
+
+    // set for the evidence of a result, which isn't one of the test case's own attachments
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_case_result_id")
+    val testCaseResult: TestCaseResult? = null,
 ) {
     fun toDTO(): TestCaseAttachmentDTO {
         return TestCaseAttachmentDTO(externalID, creationDate, fileName, contentType, fileSize, uploadedBy?.displayName)

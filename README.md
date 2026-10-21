@@ -53,10 +53,11 @@ View the progress of your test run and see the results of each test case.
 -  Per-project visibility: admins choose which projects each tester can see
 -  Light, dark or system theme, chosen by each user from their account page
 -  Test run responsibilities: assign test runs to users, testers take test cases so work isn't duplicated, and each result shows who completed it
+-  Results: Pass, Fail, Blocked or Skip, each with a comment and its own evidence; a test case can be recorded several times in a run, every test case shows its history across runs, and the failed or blocked test cases can be run again (see below)
 -  In-app notifications when you are assigned to a test run or a test run in your projects is completed, configurable from the account page; read notifications can be deleted one by one or all at once with **Clear read**
 -  Per-project Jira settings: disable issue creation, create issues manually or automatically when a failure is saved, and pick the Jira space and issue type from lists; similar existing issues are suggested before creating a new one
 -  Builds per project: admins register the build being tested, the newest one is shown on the dashboard, and each test run records the build it tests (see below)
--  Build results: the dashboard charts the current build's results after each of its test runs as stacked bars (passed, failed, skipped and pending), and the **Builds** tab compares the results of every build
+-  Build results: the dashboard charts the current build's results after each of its test runs as stacked bars (passed, failed, blocked, skipped and pending), and the **Builds** tab compares the results of every build
 -  Test run report: download a `.zip` with a visual summary image (pass rate, failures, progress, results by status, progress by day, time spent and Jira bugs) and a PDF of the executed test cases with their results, comments and images (see below)
 -  Optional time tracking per test run: testers time each test case with a start/pause button or type how long it took, the run shows the total and a breakdown by day, and the dashboard shows the time spent on the current build (see below)
 -  Works on phones and tablets: the menu and project list fold away, and tables become cards
@@ -111,16 +112,24 @@ Users can change their password from their account page (click their name in the
 
 Admins register each build of the product under test from the **Current build** card of the project dashboard, or from the **Builds** section of the project's **Settings** tab, where builds can also be renamed or deleted (builds used by a test run can't be deleted). Build numbers are free text, e.g. `2.3.1 (4512)`, and the newest one is the project's current build.
 
-Each build's results count the latest executed result of each test case across the build's test runs, so a failure fixed in a later run counts as passed. Pass and fail rates are over the executed test cases (passed, failed and skipped). The dashboard charts the current build after each of its test runs, and the **Builds** tab lists every build with its rates, its test runs and a chart comparing builds.
+Each build's results count the latest executed result of each test case across the build's test runs, so a failure fixed in a later run counts as passed. Pass and fail rates are over the executed test cases (passed, failed, blocked and skipped). The dashboard charts the current build after each of its test runs, and the **Builds** tab lists every build with its rates, its test runs and a chart comparing builds.
 
 When creating a test run the current build is preselected.
+
+### Results
+
+-  **Statuses**: *Pass*, *Fail*, *Blocked* and *Skip*. A blocked test case couldn't be tested, e.g. because of another failure: it counts as executed but not passed, so it lowers the pass rate, and the test run isn't complete while any test case is blocked. A bug can be created in Jira from a failed or blocked result.
+-  **Several results per test case**: every save adds a result with its status, comment and evidence, and the newest one is the test case's status. The test case run page lists all of them; results can't be edited, and admins can delete one recorded by mistake, which puts the test case back to its previous result.
+-  **Evidence per result**: screenshots and videos chosen when saving a result (or added later by whoever recorded it, or an admin) stay with that result. The *Images and Videos* of a test case are reference material shared by every run.
+-  **History**: the test case page lists every result of the test case in the project's test runs, and the test case run page shows the latest ones from other runs.
+-  **Re-run**: *Re-run test cases* in the test run's menu creates a new run with the test cases that ended as failed and blocked (skipped and pending are optional), for the chosen build. It keeps the assignees and who took each test case.
 
 ### Test run report
 
 The **Download report** button on a test run page downloads `<PROJECT>-test-run-<number>-report.zip`, a folder with two files generated in the browser, in English:
 
 -  **summary.png**: the run's title, project, build and dates; tiles with the pass rate (over executed test cases), failures and progress; the results by status; the results recorded per day; the time spent (when the run tracks time); and the Jira issues linked to its test cases with their current status.
--  **test-cases.pdf**: every executed test case with its result, who recorded it and when, its comments (the run notes), its linked Jira issues and its images, embedded. Videos and other files are listed as links to SparkyTC. Test cases not executed yet are listed at the end.
+-  **test-cases.pdf**: every executed test case with its linked Jira issues and each of its results in the run: who recorded it and when, its comment and its evidence, with images embedded. Videos and the test case's own attachments are listed as links to SparkyTC. Test cases not executed yet are listed at the end.
 
 The progress by day uses when each result was recorded, saved since 1.5.0; results recorded before use their last modification.
 

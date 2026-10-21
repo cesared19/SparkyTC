@@ -7,7 +7,12 @@ import {
 	Link,
 } from '@remix-run/react'
 import { Route, APIRoute } from '~/utility/Routes'
-import { ProjectTestCaseRunsOutletContext, TestRunStatus } from '~/models/types'
+import {
+	FetchResponse,
+	ProjectTestCaseRunsOutletContext,
+	TestRun,
+	TestRunStatus,
+} from '~/models/types'
 import type { UpdateTestRun } from '~/models/types'
 import { ActionMenu, type ActionMenuItem } from '~/components/ActionMenu'
 import { TestRunStatusBadge } from '~/components/TestRunStatusBadge'
@@ -22,6 +27,8 @@ import { useIsAdmin } from '~/utility/CurrentUser'
 import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
 import { TestRunReportButton } from '~/components/TestRunReportButton'
+import { RerunDialog } from '~/components/RerunDialog'
+import { useState } from 'react'
 import { formatDuration, TestRunTimeSection } from '~/components/TimeTracking'
 import { TestCaseRunStatus } from '~/models/types'
 
@@ -41,6 +48,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		})
 
 		return redirect(Route.viewProjectTestRuns(projectShortCode))
+	} else if (requestJSON.intent === 'rerun') {
+		const { testRunID, rerun } = requestJSON
+		try {
+			const response = await api.post<FetchResponse<TestRun>>(
+				APIRoute.rerunTestRun(testRunID),
+				{ body: rerun }
+			)
+			return redirect(
+				Route.viewTestRun(projectShortCode, response.data.testRunNumber)
+			)
+		} catch (error) {
+			return Response.json(Tools.mapErrorToResponse(error), { status: 400 })
+		}
 	} else if (requestJSON.intent === 'delete') {
 		const { testRunID } = requestJSON
 		await api.delete<void>(APIRoute.testRun(testRunID))
@@ -56,6 +76,7 @@ export default function TestRunDetails() {
 		useOutletContext<ProjectTestCaseRunsOutletContext>()
 
 	const navigate = useNavigate()
+	const [showRerun, setShowRerun] = useState(false)
 	const submit = useSubmit()
 	const isAdmin = useIsAdmin()
 
@@ -87,6 +108,11 @@ export default function TestRunDetails() {
 			},
 		}
 
+		const rerunItem: ActionMenuItem = {
+			label: 'Re-run test cases',
+			action: () => setShowRerun(true),
+		}
+
 		switch (testRun.status) {
 			case TestRunStatus.pending:
 			case TestRunStatus.inProgress:
@@ -114,6 +140,7 @@ export default function TestRunDetails() {
 						},
 					},
 					editItem,
+					rerunItem,
 					deleteItem,
 				]
 			case TestRunStatus.abort:
@@ -141,12 +168,13 @@ export default function TestRunDetails() {
 						},
 					},
 					editItem,
+					rerunItem,
 					deleteItem,
 				]
 			case TestRunStatus.complete:
-				return [editItem, deleteItem]
+				return [editItem, rerunItem, deleteItem]
 			default:
-				return [editItem, deleteItem]
+				return [editItem, rerunItem, deleteItem]
 		}
 	})()
 	// deleting test runs is restricted to admins
@@ -300,6 +328,14 @@ export default function TestRunDetails() {
 					navigate(testCaseRun.testCase.testCaseNumber.toString())
 				}
 			/>
+			{showRerun && (
+				<RerunDialog
+					testRun={testRun}
+					testCaseRuns={testCaseRuns}
+					builds={builds}
+					onClose={() => setShowRerun(false)}
+				/>
+			)}
 		</div>
 	)
 }

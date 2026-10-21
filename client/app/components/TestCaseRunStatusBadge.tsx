@@ -30,5 +30,11 @@ export function TestCaseRunStatusBadge({
 					SKIP
 				</span>
 			)
+		case TestCaseRunStatus.blocked:
+			return (
+				<span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-violet-100 text-violet-800">
+					BLOCKED
+				</span>
+			)
 	}
 }

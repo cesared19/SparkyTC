@@ -51,6 +51,8 @@ class WorkspaceService(
     private val projectBuildService: ProjectBuildService,
     private val buildResultsService: BuildResultsService,
     private val timeTrackingService: TimeTrackingService,
+    private val testCaseResultService: TestCaseResultService,
+    private val attachmentService: AttachmentService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -369,7 +371,7 @@ class WorkspaceService(
     }
 
     @Transactional
-    fun createTestRun(projectShortCode: String, testRun: CreateTestRunDTO) {
+    fun createTestRun(projectShortCode: String, testRun: CreateTestRunDTO): TestRun {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
         projectAccessService.requireAccess(project)
@@ -407,6 +409,47 @@ class WorkspaceService(
             )
             testCaseRunRepository.save(newTestCaseRun)
         }
+        return newTestRun
+    }
+
+    /**
+     * Creates a test run with the test cases of another one that ended with the chosen results, keeping its
+     * assignees, who took each test case and whether it tracks time. Archived test cases are left out.
+     */
+    @Transactional
+    fun rerunTestRun(testRunID: UUID, request: RerunTestRunDTO): TestRunDTO {
+        val source = testRunRepository.findByExternalID(testRunID)
+        requireNotNull(source) { "No test run found for id $testRunID" }
+        val project = source.project
+        projectAccessService.requireAccess(project)
+        require(request.statuses.isNotEmpty()) { "Choose which results to test again" }
+
+        val sourceCaseRuns = testCaseRunRepository.findAllByTestRun(source)
+            .filter { it.status in request.statuses && !it.testCase.isArchived }
+            .sortedBy { it.testCase.testCaseNumber }
+        require(sourceCaseRuns.isNotEmpty()) { "No test cases of this test run ended with those results" }
+
+        // people who lost access to the project since are left out
+        val assignees = source.assignees.filter { it.isActive && projectAccessService.canAccess(it, project) }
+        val created = createTestRun(project.projectShortCode, CreateTestRunDTO(
+            title = request.title?.trim()?.takeIf { it.isNotEmpty() } ?: "${source.title} (re-run)",
+            description = source.description,
+            testCaseIDs = sourceCaseRuns.map { it.testCase.externalID },
+            assigneeIDs = assignees.map { it.externalID },
+            buildID = request.buildID,
+            trackTime = source.trackTime,
+        ))
+
+        // each test case stays with whoever had it
+        val takenBy = sourceCaseRuns.associate { it.testCase.id to it.assignedTo }
+        for (testCaseRun in testCaseRunRepository.findAllByTestRun(created)) {
+            val user = takenBy[testCaseRun.testCase.id] ?: continue
+            if (user.isActive && projectAccessService.canAccess(user, project)) {
+                testCaseRun.assignedTo = user
+                testCaseRunRepository.save(testCaseRun)
+            }
+        }
+        return created.toDTO()
     }
 
     @Transactional
@@ -503,22 +546,18 @@ class WorkspaceService(
         }
 
         val previousStatus = testCaseRun.status
-        testCaseRun.status = updateDTO.status
-        testCaseRun.notes = updateDTO.notes
-        testCaseRun.executedBy = actor
-        testCaseRun.executedAt = if (updateDTO.status == TestCaseRunStatus.PENDING) null else Date()
         if (testCaseRun.assignedTo == null) {
             testCaseRun.assignedTo = actor
         }
-        testCaseRunRepository.save(testCaseRun)
-        if (updateDTO.status != TestCaseRunStatus.PENDING) {
-            timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
-        }
+        // every recording adds a result, the latest one is the test case's status
+        val result = testCaseResultService.record(testCaseRun, updateDTO.status, updateDTO.notes, actor)
+        timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
 
         val testRun = testCaseRun.testRun
         val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
 
-        val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING }
+        // blocked test cases are expected to be tested once unblocked
+        val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING && it.status != TestCaseRunStatus.BLOCKED }
         if (isTestRunComplete && testRun.status != TestRunStatus.COMPLETE) {
             testRun.status = TestRunStatus.COMPLETE
             testRunRepository.save(testRun)
@@ -536,9 +575,9 @@ class WorkspaceService(
         val failedNow = updateDTO.status == TestCaseRunStatus.FAIL && previousStatus != TestCaseRunStatus.FAIL
         if (failedNow && testRun.project.jiraFailureMode == JiraFailureMode.AUTOMATIC && jiraService.isEnabled) {
             return createAutomaticJiraIssue(testCaseRun, updateDTO.appBaseURL, actor)
-                .copy(jiraTransitionErrors = transitionErrors)
+                .copy(resultID = result.externalID, jiraTransitionErrors = transitionErrors)
         }
-        return UpdateTestCaseRunResultDTO(jiraTransitionErrors = transitionErrors)
+        return UpdateTestCaseRunResultDTO(resultID = result.externalID, jiraTransitionErrors = transitionErrors)
     }
 
     /**
@@ -801,25 +840,7 @@ class WorkspaceService(
         requireNotNull(testCase) { "No test case found with id $testCaseID" }
         projectAccessService.requireAccess(testCase.project)
 
-        require(files.isNotEmpty()) { "At least one file is required" }
-
-        return files.map { file ->
-            val fileName = file.originalFilename?.takeIf { it.isNotBlank() } ?: "attachment"
-            val contentType = file.contentType ?: ""
-            require(isSupportedMediaType(contentType)) { "Unsupported file type for $fileName, only images and videos are allowed" }
-            require(!file.isEmpty) { "File $fileName is empty" }
-
-            val attachment = TestCaseAttachment(
-                testCase = testCase,
-                fileName = fileName,
-                contentType = contentType,
-                fileSize = file.size,
-                uploadedBy = CurrentUser.get(),
-            )
-            testCaseAttachmentRepository.save(attachment)
-            testCaseAttachmentContentRepository.save(TestCaseAttachmentContent(attachment = attachment, data = file.bytes))
-            attachment.toDTO()
-        }
+        return attachmentService.store(testCase, files)
     }
 
     @Transactional
@@ -839,9 +860,9 @@ class WorkspaceService(
         val attachment = testCaseAttachmentRepository.findByExternalID(attachmentID)
         requireNotNull(attachment) { "No attachment found with id $attachmentID" }
         projectAccessService.requireAccess(attachment.testCase.project)
+        testCaseResultService.requireCanDeleteEvidence(attachment)
 
-        testCaseAttachmentContentRepository.deleteAllByAttachment(attachment)
-        testCaseAttachmentRepository.delete(attachment)
+        attachmentService.delete(attachment)
     }
 
     @Transactional
@@ -881,9 +902,11 @@ class WorkspaceService(
 
         if (appBaseURL != null) {
             // media stays in SparkyTC and is only linked, so the issue doesn't use jira storage
-            if (testCase.attachments.isNotEmpty()) {
+            // the latest result's evidence, then the test case's own attachments
+            val evidence = testCaseRun.results.lastOrNull()?.attachments.orEmpty() + testCase.attachments
+            if (evidence.isNotEmpty()) {
                 description.heading("Evidence")
-                    .links(testCase.attachments.map { it.fileName to "$appBaseURL/attachments/${it.externalID}" })
+                    .links(evidence.map { it.fileName to "$appBaseURL/attachments/${it.externalID}" })
             }
             description.heading("SparkyTC").links(listOf(
                 "Test case ${project.projectShortCode}-${testCase.testCaseNumber}" to testCaseURL(appBaseURL, testCase),
@@ -957,10 +980,6 @@ class WorkspaceService(
 
     private fun testCaseLinkTitle(testCase: TestCase): String {
         return "SparkyTC ${testCase.project.projectShortCode}-${testCase.testCaseNumber}: ${testCase.title}"
-    }
-
-    private fun isSupportedMediaType(contentType: String): Boolean {
-        return contentType.startsWith("image/") || contentType.startsWith("video/")
     }
 
     private fun testRun(

@@ -64,6 +64,11 @@ class TestCaseRun(
     @Column(name = "executed_at")
     var executedAt: Date? = null,
 
+    // every result recorded, oldest first; status, notes, executedBy and executedAt repeat the latest one
+    @OneToMany(mappedBy = "testCaseRun", fetch = FetchType.LAZY)
+    @OrderBy("recordedAt ASC, id ASC")
+    val results: List<TestCaseResult> = emptyList(),
+
     // the time testers spent on it, when the test run tracks time
     @OneToMany(mappedBy = "testCaseRun", fetch = FetchType.LAZY)
     val timeEntries: List<TimeEntry> = emptyList(),
@@ -76,6 +81,7 @@ class TestCaseRun(
             timeSeconds = timeEntries.sumOf { it.seconds(now) },
             runningTimers = timeEntries.filter { it.isRunning }.map { RunningTimerDTO(it.user?.externalID, it.user?.displayName, it.startedAt) },
             executedAt = executedAt,
+            results = results.map { it.toDTO() },
         )
     }
 }

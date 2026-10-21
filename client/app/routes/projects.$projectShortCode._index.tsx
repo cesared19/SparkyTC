@@ -102,7 +102,7 @@ export default function ProjectDashboardPage() {
 									<p className="mb-3 text-xs text-gray-500">
 										Test cases of the build after each test run, counting the
 										latest result of each one. Pass and fail rates are over the
-										executed test cases (passed, failed and skipped).
+										executed test cases (passed, failed, blocked and skipped).
 									</p>
 									<RateChart
 										firstColumn="Test run"
@@ -228,8 +228,9 @@ export default function ProjectDashboardPage() {
 function resultSummary(testRun: TestRunSummary) {
 	const passed = testRun.resultCounts[TestCaseRunStatus.pass] ?? 0
 	const failed = testRun.resultCounts[TestCaseRunStatus.fail] ?? 0
+	const blocked = testRun.resultCounts[TestCaseRunStatus.blocked] ?? 0
 	const skipped = testRun.resultCounts[TestCaseRunStatus.skip] ?? 0
-	return `${passed} passed · ${failed} failed · ${skipped} skipped of ${testRun.totalCount}`
+	return `${passed} passed · ${failed} failed · ${blocked} blocked · ${skipped} skipped of ${testRun.totalCount}`
 }
 
 function StatTile({

@@ -7,6 +7,7 @@ import {
 	useFetcher,
 	useOutletContext,
 	useParams,
+	useRevalidator,
 } from '@remix-run/react'
 import { APIRoute, Route } from '~/utility/Routes'
 import {
@@ -25,7 +26,7 @@ import {
 	UserSummary,
 } from '~/models/types'
 import { Project } from '~/models/project'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
 import { requireAPI } from '~/utility/API.server'
@@ -38,6 +39,11 @@ import { publicBaseURL } from '~/utility/PublicURL.server'
 import { TestCaseAssignment } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
 import { TestCaseTimer } from '~/components/TimeTracking'
+import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
+import {
+	TestCaseHistory,
+	TestCaseRunResults,
+} from '~/components/TestCaseResults'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 
 interface UpdateTestCaseRun extends Record<string, any> {
@@ -47,7 +53,16 @@ interface UpdateTestCaseRun extends Record<string, any> {
 }
 
 interface UpdateTestCaseRunResult {
+	resultID?: string
 	jiraTransitionErrors?: string[]
+}
+
+// returned instead of moving on when the result has evidence to upload first
+interface SavedResult {
+	resultID: string
+	// where to go once the evidence is uploaded, unless there's a message to read
+	next: string
+	message?: string
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -65,6 +80,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			testCaseRunUpdate,
 			detailsUpdate,
 			jiraIssue,
+			hasEvidence,
 		} = await request.json()
 
 		if (intent === 'createJiraIssue') {
@@ -89,28 +105,25 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		)
 		// the result is saved, the tester stays to see what Jira refused
 		const jiraErrors = result.data?.jiraTransitionErrors ?? []
-		if (jiraErrors.length > 0) {
-			return {
-				message: `The result was saved, but Jira wasn't fully updated. ${jiraErrors.join(
-					' '
-				)}`,
-			}
-		}
+		const jiraMessage = `The result was saved, but Jira wasn't fully updated. ${jiraErrors.join(
+			' '
+		)}`
+		const message = jiraErrors.length > 0 ? jiraMessage : undefined
 
 		const nextTestCaseRun = await api.get<
 			FetchResponse<TestCaseRun | undefined>
 		>(APIRoute.nextTestCaseRun(testCaseRunID))
-		if (nextTestCaseRun.data) {
-			return redirectDocument(
-				Route.viewTestCaseRun(
-					projectShortCode,
-					testRunNumber,
-					nextTestCaseRun.data.testCase.testCaseNumber
-				)
-			)
-		} else {
-			return redirect(Route.viewTestRun(projectShortCode, testRunNumber))
+		const nextNumber = nextTestCaseRun.data?.testCase.testCaseNumber
+		const next = nextNumber
+			? Route.viewTestCaseRun(projectShortCode, testRunNumber, nextNumber)
+			: Route.viewTestRun(projectShortCode, testRunNumber)
+
+		// the page uploads the evidence to the new result, then moves on
+		if (hasEvidence && result.data?.resultID) {
+			return { resultID: result.data.resultID, next, message } as SavedResult
 		}
+		if (message) return { message }
+		return nextNumber ? redirectDocument(next) : redirect(next)
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), {
 			status: 400,
@@ -186,11 +199,19 @@ function TestCaseRunView({
 		testCaseRun.assignedTo.userID !== currentUser?.userID
 	const isLocked = assignedToOther && !isAdmin
 
-	const fetcher = useFetcher<ErrorResponse>()
+	const fetcher = useFetcher<ErrorResponse | SavedResult>()
+	const revalidator = useRevalidator()
 	const [isEditing, setIsEditing] = useState(false)
+	// each save adds a result, so none is chosen until the tester picks one
 	const [selectedStatus, setSelectedStatus] = useState<TestCaseRunStatus>(
-		testCaseRun.status
+		TestCaseRunStatus.pending
 	)
+	const evidenceRef = useRef<HTMLInputElement>(null)
+	const [evidenceCount, setEvidenceCount] = useState(0)
+	const [isUploadingEvidence, setIsUploadingEvidence] = useState(false)
+	const [evidenceError, setEvidenceError] = useState<string>()
+	// revalidating brings the same data back, the evidence is uploaded once per result
+	const uploadedFor = useRef<string>()
 	// undefined while a checked issue has no transition chosen
 	const [jiraTransitions, setJiraTransitions] = useState<
 		JiraIssueTransition[] | undefined
@@ -210,10 +231,12 @@ function TestCaseRunView({
 				: {}),
 		}
 
+		setEvidenceError(undefined)
 		fetcher.submit(
 			{
 				testCaseRunID: testCaseRun.testCaseRunID,
 				testCaseRunUpdate,
+				hasEvidence: evidenceCount > 0,
 			},
 			{
 				method: 'post',
@@ -221,6 +244,49 @@ function TestCaseRunView({
 			}
 		)
 	}
+
+	// once the result is saved, its evidence is uploaded before moving on
+	useEffect(() => {
+		const data = fetcher.data
+		if (fetcher.state !== 'idle' || !data || !('resultID' in data)) return
+		if (uploadedFor.current === data.resultID) return
+		uploadedFor.current = data.resultID
+		const files = Array.from(evidenceRef.current?.files ?? [])
+		const upload = async () => {
+			setIsUploadingEvidence(true)
+			const formData = new FormData()
+			files.forEach((file) => formData.append('files', file))
+			try {
+				const response = await fetch(Route.resultEvidence(data.resultID), {
+					method: 'POST',
+					body: formData,
+				})
+				const body = await response.json().catch(() => ({}))
+				if (!response.ok || body.message) {
+					throw new Error(body.message ?? `status ${response.status}`)
+				}
+			} catch (error) {
+				setEvidenceError(
+					`The result was saved, but its evidence couldn't be uploaded (${
+						error instanceof Error ? error.message : error
+					}). Add it from the results below.`
+				)
+				setIsUploadingEvidence(false)
+				revalidator.revalidate()
+				return
+			}
+			if (data.message) {
+				setIsUploadingEvidence(false)
+				revalidator.revalidate()
+			} else {
+				window.location.assign(data.next)
+			}
+		}
+		upload()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [fetcher.state, fetcher.data])
+
+	const isSaving = fetcher.state !== 'idle' || isUploadingEvidence
 
 	return (
 		<div className="space-y-6">
@@ -258,6 +324,7 @@ function TestCaseRunView({
 
 			{actionData && <ErrorMessage message={actionData.message} />}
 			{fetcher.data?.message && <ErrorMessage message={fetcher.data.message} />}
+			{evidenceError && <ErrorMessage message={evidenceError} />}
 
 			<div className="space-y-8">
 				<section className="mt-6">
@@ -299,12 +366,18 @@ function TestCaseRunView({
 				)}
 
 				<section>
-					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-xl font-semibold text-gray-900">Status</h2>
+					<div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+						<h2 className="text-xl font-semibold text-gray-900">
+							Record a result
+						</h2>
+						<span className="inline-flex items-center gap-2 text-sm text-gray-500">
+							Current status
+							<TestCaseRunStatusBadge status={testCaseRun.status} />
+						</span>
 					</div>
 					<fieldset
 						disabled={isLocked}
-						className="flex gap-3 disabled:opacity-50"
+						className="flex flex-wrap gap-3 disabled:opacity-50"
 					>
 						<button
 							type="button"
@@ -327,6 +400,17 @@ function TestCaseRunView({
 							}`}
 						>
 							Fail
+						</button>
+						<button
+							type="button"
+							onClick={() => setSelectedStatus(TestCaseRunStatus.blocked)}
+							className={`px-4 py-2 text-sm font-medium rounded-md ${
+								selectedStatus === TestCaseRunStatus.blocked
+									? 'bg-violet-100 text-violet-800 ring-1 ring-violet-600'
+									: 'bg-gray-50 text-gray-700 hover:bg-violet-50 hover:text-violet-700'
+							}`}
+						>
+							Blocked
 						</button>
 						<button
 							type="button"
@@ -424,9 +508,13 @@ function TestCaseRunView({
 				)}
 
 				<section>
-					<h2 className="text-xl font-semibold text-gray-900 mb-4">
+					<h2 className="text-xl font-semibold text-gray-900">
 						Images and Videos
 					</h2>
+					<p className="mb-4 mt-1 text-xs text-gray-500">
+						Reference material of the test case, shared by every run. The
+						evidence of a result is added with the result.
+					</p>
 					<AttachmentGallery
 						testCaseID={testCaseRun.testCase.testCaseID}
 						attachments={testCaseRun.testCase.attachments ?? []}
@@ -447,7 +535,9 @@ function TestCaseRunView({
 						jiraIssueType={project.jiraIssueType}
 						createIssue={{
 							testCaseRunID: testCaseRun.testCaseRunID,
-							isFailed: selectedStatus === TestCaseRunStatus.fail,
+							isFailed:
+								selectedStatus === TestCaseRunStatus.fail ||
+								selectedStatus === TestCaseRunStatus.blocked,
 							defaults: (): CreateJiraIssue => {
 								const form = document.getElementById(
 									'testCaseForm'
@@ -474,13 +564,38 @@ function TestCaseRunView({
 
 				<form id="testCaseForm">
 					<section>
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">Notes</h2>
+						<h2 className="text-xl font-semibold text-gray-900 mb-4">
+							<label htmlFor="resultNotes">Comment</label>
+						</h2>
 						<textarea
+							id="resultNotes"
 							name="notes"
-							defaultValue={testCaseRun.notes}
 							className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-							placeholder="Enter any notes or observations about this test case run"
+							placeholder="What happened? The comment is saved with this result"
 						/>
+					</section>
+					<section className="mt-4">
+						<label
+							htmlFor="resultEvidence"
+							className="block text-sm font-medium text-gray-700"
+						>
+							Evidence (optional)
+						</label>
+						<input
+							ref={evidenceRef}
+							id="resultEvidence"
+							type="file"
+							accept="image/*,video/*"
+							multiple
+							onChange={(event) =>
+								setEvidenceCount(event.target.files?.length ?? 0)
+							}
+							className="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-gray-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-100"
+						/>
+						<p className="mt-1 text-xs text-gray-500">
+							Screenshots or videos of this result. They&apos;re kept with the
+							result, not the test case.
+						</p>
 					</section>
 					{/* if the timer wasn't used, the time can be typed in with the result */}
 					{testRun.trackTime &&
@@ -516,17 +631,52 @@ function TestCaseRunView({
 					<button
 						type="button"
 						onClick={handleSave}
-						disabled={isLocked || !jiraTransitions || fetcher.state !== 'idle'}
+						disabled={
+							isLocked ||
+							!jiraTransitions ||
+							isSaving ||
+							selectedStatus === TestCaseRunStatus.pending
+						}
 						title={
-							jiraTransitions
+							selectedStatus === TestCaseRunStatus.pending
+								? 'Choose a result first'
+								: jiraTransitions
 								? undefined
 								: 'Choose a transition for each Jira issue to update'
 						}
 						className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						Save Changes
+						{isUploadingEvidence
+							? 'Uploading evidence...'
+							: fetcher.state !== 'idle'
+							? 'Saving...'
+							: 'Save result'}
 					</button>
 				</div>
+
+				<section>
+					<h2 className="text-xl font-semibold text-gray-900">
+						Results in this run
+					</h2>
+					<p className="mt-1 text-xs text-gray-500">
+						Every save adds a result; the newest one is the test case&apos;s
+						status.
+					</p>
+					<TestCaseRunResults testCaseRun={testCaseRun} />
+				</section>
+
+				<section>
+					<h2 className="mb-4 text-xl font-semibold text-gray-900">
+						History in other runs
+					</h2>
+					<TestCaseHistory
+						testCaseID={testCaseRun.testCase.testCaseID}
+						projectShortCode={project.projectShortCode}
+						testCaseNumber={testCaseRun.testCase.testCaseNumber}
+						excludeTestRunID={testRun.testRunID}
+						limit={5}
+					/>
+				</section>
 			</div>
 		</div>
 	)

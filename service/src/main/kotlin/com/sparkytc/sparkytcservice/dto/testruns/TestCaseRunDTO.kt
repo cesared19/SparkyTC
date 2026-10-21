@@ -23,4 +23,6 @@ data class TestCaseRunDTO(
     val runningTimers: List<RunningTimerDTO> = emptyList(),
     // when the current result was recorded
     val executedAt: Date? = null,
+    // every result recorded, oldest first
+    val results: List<TestCaseResultDTO> = emptyList(),
 )

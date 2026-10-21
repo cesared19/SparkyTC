@@ -1,6 +1,7 @@
 import { Project } from '~/models/project'
 import {
 	JiraIssue,
+	TestCaseAttachment,
 	TestCaseRun,
 	TestCaseRunStatus,
 	TestRun,
@@ -26,7 +27,10 @@ export interface TestRunReportInput {
 interface ReportData extends TestRunReportInput {
 	jiraIssues: JiraIssue[]
 	generatedAt: Date
-	counts: Record<'passed' | 'failed' | 'skipped' | 'pending', number>
+	counts: Record<
+		'passed' | 'failed' | 'blocked' | 'skipped' | 'pending',
+		number
+	>
 	executed: number
 	total: number
 	passRate?: number
@@ -37,6 +41,7 @@ interface DayResults {
 	day: Date
 	passed: number
 	failed: number
+	blocked: number
 	skipped: number
 }
 
@@ -45,6 +50,7 @@ const COLORS = {
 	pass: '#15803d',
 	fail: '#f87171',
 	skip: '#a16207',
+	blocked: '#7c3aed',
 	pending: '#d1d5db',
 	page: '#f1f5f9',
 	surface: '#ffffff',
@@ -65,6 +71,7 @@ const STATUS_LABELS: Record<TestCaseRunStatus, string> = {
 	[TestCaseRunStatus.pass]: 'Pass',
 	[TestCaseRunStatus.fail]: 'Fail',
 	[TestCaseRunStatus.skip]: 'Skip',
+	[TestCaseRunStatus.blocked]: 'Blocked',
 }
 
 const RUN_STATUS_LABELS: Record<string, string> = {
@@ -102,10 +109,12 @@ function reportData(
 	const counts = {
 		passed: count(TestCaseRunStatus.pass),
 		failed: count(TestCaseRunStatus.fail),
+		blocked: count(TestCaseRunStatus.blocked),
 		skipped: count(TestCaseRunStatus.skip),
 		pending: count(TestCaseRunStatus.pending),
 	}
-	const executed = counts.passed + counts.failed + counts.skipped
+	const executed =
+		counts.passed + counts.failed + counts.blocked + counts.skipped
 
 	// each test case counts on the day its current result was recorded
 	const days = new Map<number, DayResults>()
@@ -116,10 +125,12 @@ function reportData(
 			day,
 			passed: 0,
 			failed: 0,
+			blocked: 0,
 			skipped: 0,
 		}
 		if (run.status === TestCaseRunStatus.pass) results.passed++
 		if (run.status === TestCaseRunStatus.fail) results.failed++
+		if (run.status === TestCaseRunStatus.blocked) results.blocked++
 		if (run.status === TestCaseRunStatus.skip) results.skipped++
 		days.set(day.getTime(), results)
 	}
@@ -340,6 +351,12 @@ const STATUS_SEGMENTS = [
 		ink: COLORS.text,
 	},
 	{
+		key: 'blocked' as const,
+		label: 'Blocked',
+		color: COLORS.blocked,
+		ink: '#ffffff',
+	},
+	{
 		key: 'skipped' as const,
 		label: 'Skipped',
 		color: COLORS.skip,
@@ -384,7 +401,8 @@ function statusCard(painter: Painter, data: ReportData, y: number) {
 	})
 
 	// a tile per status, so each color also has its number and name
-	const tileWidth = (barWidth - GAP * 3) / 4
+	const tileWidth =
+		(barWidth - GAP * (STATUS_SEGMENTS.length - 1)) / STATUS_SEGMENTS.length
 	STATUS_SEGMENTS.forEach((segment, index) => {
 		const tileX = barX + index * (tileWidth + GAP)
 		const tileY = y + 88
@@ -431,7 +449,9 @@ function progressCard(
 
 	// legend
 	let legendX = x + 20
-	for (const segment of STATUS_SEGMENTS.slice(0, 3)) {
+	for (const segment of STATUS_SEGMENTS.filter(
+		(segment) => segment.key !== 'pending'
+	)) {
 		painter.rect(legendX, y + 56, 10, 10, 2, segment.color)
 		legendX +=
 			16 +
@@ -463,7 +483,11 @@ function progressCard(
 		bottom: y + height - 40,
 	}
 	const max = niceMax(
-		Math.max(...data.days.map((day) => day.passed + day.failed + day.skipped))
+		Math.max(
+			...data.days.map(
+				(day) => day.passed + day.failed + day.blocked + day.skipped
+			)
+		)
 	)
 	const yOf = (value: number) =>
 		plot.bottom - (value / max) * (plot.bottom - plot.top)
@@ -493,6 +517,7 @@ function progressCard(
 		const parts = [
 			{ value: day.passed, color: COLORS.pass },
 			{ value: day.failed, color: COLORS.fail },
+			{ value: day.blocked, color: COLORS.blocked },
 			{ value: day.skipped, color: COLORS.skip },
 		].filter((part) => part.value > 0)
 		let below = 0
@@ -512,7 +537,7 @@ function progressCard(
 				part.color
 			)
 		})
-		const total = day.passed + day.failed + day.skipped
+		const total = day.passed + day.failed + day.blocked + day.skipped
 		if (data.days.length <= 14) {
 			painter.text(String(total), center, yOf(total) - 6, {
 				size: 11,
@@ -854,6 +879,7 @@ const PDF_STATUS_COLORS: Record<
 	[TestCaseRunStatus.pass]: { fill: COLORS.pass, ink: '#ffffff' },
 	[TestCaseRunStatus.fail]: { fill: COLORS.failTile, ink: '#ffffff' },
 	[TestCaseRunStatus.skip]: { fill: COLORS.skip, ink: '#ffffff' },
+	[TestCaseRunStatus.blocked]: { fill: COLORS.blocked, ink: '#ffffff' },
 	[TestCaseRunStatus.pending]: { fill: COLORS.pending, ink: COLORS.text },
 }
 
@@ -917,6 +943,54 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 		return width
 	}
 
+	// an image is embedded when asked, anything else is a link to SparkyTC
+	const writeAttachment = async (
+		attachment: TestCaseAttachment,
+		embed: boolean
+	) => {
+		const url = `${origin}${Route.attachment(attachment.attachmentID)}`
+		if (embed && attachment.contentType.startsWith('image/')) {
+			const image = await loadImage(attachment.attachmentID)
+			if (image) {
+				const scale = Math.min(
+					(contentWidth - 12) / image.width,
+					320 / image.height,
+					1
+				)
+				const width = image.width * scale
+				const height = image.height * scale
+				ensureSpace(height + 18)
+				doc.addImage(image.data, 'JPEG', PDF_MARGIN + 12, y, width, height)
+				doc.setDrawColor(...hex(COLORS.border))
+				doc.rect(PDF_MARGIN + 12, y, width, height)
+				y += height + 4
+				paragraph(attachment.fileName, {
+					size: 8,
+					color: COLORS.muted,
+					indent: 12,
+					gap: 6,
+				})
+				return
+			}
+		}
+		ensureSpace(14)
+		doc.setFont('helvetica', 'normal')
+		doc.setFontSize(9)
+		setColor(COLORS.brand)
+		const kind = attachment.contentType.startsWith('video/')
+			? 'Video'
+			: attachment.contentType.startsWith('image/')
+			? 'Image'
+			: 'File'
+		doc.textWithLink(
+			pdfText(`${kind}: ${attachment.fileName} (open in SparkyTC)`),
+			PDF_MARGIN + 12,
+			y + 9,
+			{ url }
+		)
+		y += 14
+	}
+
 	// summary of the run
 	paragraph('Test run report', {
 		size: 10,
@@ -945,10 +1019,10 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 	)
 	paragraph(
 		`${data.counts.passed} passed · ${data.counts.failed} failed · ${
-			data.counts.skipped
-		} skipped · ${data.counts.pending} pending · pass rate ${formatRate(
-			data.passRate
-		)}${
+			data.counts.blocked
+		} blocked · ${data.counts.skipped} skipped · ${
+			data.counts.pending
+		} pending · pass rate ${formatRate(data.passRate)}${
 			data.time.trackTime
 				? ` · time spent ${formatDuration(data.time.totalSeconds)}`
 				: ''
@@ -1005,29 +1079,9 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 		})
 		y += Math.max(20, titleLines.length * 16) + 2
 
-		const meta = [
-			run.executedBy ? `Recorded by ${run.executedBy}` : undefined,
-			run.executedAt ? formatDate(run.executedAt, true) : undefined,
-			data.testRun.trackTime && run.timeSeconds > 0
-				? `Time ${formatDuration(run.timeSeconds)}`
-				: undefined,
-		].filter(Boolean)
-		if (meta.length > 0) {
-			paragraph(meta.join(' · '), { size: 9, color: COLORS.muted, gap: 4 })
-		}
-
-		paragraph('Comments', {
-			size: 9,
-			style: 'bold',
-			color: COLORS.secondary,
-			gap: 1,
-		})
-		if (run.notes?.trim()) {
-			paragraph(run.notes.trim(), { size: 10, gap: 4 })
-		} else {
-			paragraph('No comments', {
-				size: 10,
-				style: 'italic',
+		if (data.testRun.trackTime && run.timeSeconds > 0) {
+			paragraph(`Time ${formatDuration(run.timeSeconds)}`, {
+				size: 9,
 				color: COLORS.muted,
 				gap: 4,
 			})
@@ -1050,43 +1104,68 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 			)
 		}
 
-		// evidence: images are embedded, videos are linked
-		for (const attachment of run.testCase.attachments ?? []) {
-			const url = `${origin}${Route.attachment(attachment.attachmentID)}`
-			if (attachment.contentType.startsWith('image/')) {
-				const image = await loadImage(attachment.attachmentID)
-				if (image) {
-					const scale = Math.min(
-						contentWidth / image.width,
-						320 / image.height,
-						1
-					)
-					const width = image.width * scale
-					const height = image.height * scale
-					ensureSpace(height + 18)
-					doc.addImage(image.data, 'JPEG', PDF_MARGIN, y, width, height)
-					doc.setDrawColor(...hex(COLORS.border))
-					doc.rect(PDF_MARGIN, y, width, height)
-					y += height + 4
-					paragraph(attachment.fileName, {
-						size: 8,
-						color: COLORS.muted,
-						gap: 6,
-					})
-					continue
-				}
-			}
-			ensureSpace(14)
+		// every result in the order it was recorded, the last one is the status
+		for (const [index, result] of run.results.entries()) {
+			ensureSpace(48)
+			const isLatest = index === run.results.length - 1
+			doc.setFont('helvetica', 'bold')
+			doc.setFontSize(9)
+			const badgeWidth = doc.getTextWidth(STATUS_LABELS[result.status]) + 14
+			pill(
+				STATUS_LABELS[result.status],
+				result.status,
+				PDF_MARGIN + badgeWidth,
+				y
+			)
 			doc.setFont('helvetica', 'normal')
 			doc.setFontSize(9)
-			setColor(COLORS.brand)
-			const label = pdfText(
-				`${attachment.contentType.startsWith('video/') ? 'Video' : 'File'}: ${
-					attachment.fileName
-				} (open in SparkyTC)`
+			setColor(COLORS.muted)
+			doc.text(
+				pdfText(
+					[
+						`Result ${index + 1} of ${run.results.length}${
+							isLatest ? ' (current)' : ''
+						}`,
+						result.recordedBy ? `by ${result.recordedBy}` : undefined,
+						formatDate(result.recordedAt, true),
+					]
+						.filter(Boolean)
+						.join(' · ')
+				),
+				PDF_MARGIN + badgeWidth + 8,
+				y + 11.5
 			)
-			doc.textWithLink(label, PDF_MARGIN, y + 9, { url })
-			y += 14
+			y += 22
+			if (result.notes?.trim()) {
+				paragraph(result.notes.trim(), { size: 10, indent: 12, gap: 4 })
+			} else {
+				paragraph('No comment', {
+					size: 10,
+					style: 'italic',
+					color: COLORS.muted,
+					indent: 12,
+					gap: 4,
+				})
+			}
+			// evidence: images are embedded, videos are linked
+			for (const attachment of result.attachments) {
+				await writeAttachment(attachment, true)
+			}
+			y += 4
+		}
+
+		// the test case's own attachments are reference material, linked only
+		const references = run.testCase.attachments ?? []
+		if (references.length > 0) {
+			paragraph('Test case attachments', {
+				size: 9,
+				style: 'bold',
+				color: COLORS.secondary,
+				gap: 1,
+			})
+			for (const attachment of references) {
+				await writeAttachment(attachment, false)
+			}
 		}
 		y += 8
 	}

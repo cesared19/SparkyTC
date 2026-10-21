@@ -36,6 +36,11 @@ const SEGMENTS = [
 		color: 'rgb(var(--color-chart-fail))',
 	},
 	{
+		key: 'blocked' as const,
+		label: 'Blocked',
+		color: 'rgb(var(--color-chart-blocked))',
+	},
+	{
 		key: 'skipped' as const,
 		label: 'Skipped',
 		color: 'rgb(var(--color-chart-skip))',
@@ -71,7 +76,7 @@ function Legend() {
 }
 
 function countsSummary(counts: BuildResultCounts) {
-	return `${counts.passed} passed · ${counts.failed} failed · ${counts.skipped} skipped · ${counts.pending} pending`
+	return `${counts.passed} passed · ${counts.failed} failed · ${counts.blocked} blocked · ${counts.skipped} skipped · ${counts.pending} pending`
 }
 
 const TOOLTIP_WIDTH = 224
@@ -92,7 +97,7 @@ function roundedTop(x: number, y: number, width: number, height: number) {
 
 /**
  * Results over a sequence of points, such as the test runs of a build or the builds of a project. Each
- * bar stacks the passed, failed, skipped and pending test cases, so it shows both quality and progress.
+ * bar stacks the passed, failed, blocked, skipped and pending test cases, so it shows both quality and progress.
  */
 export function RateChart({
 	points,
