@@ -56,6 +56,7 @@ class WorkspaceService(
     private val attachmentService: AttachmentService,
     private val sectionService: TestCaseSectionService,
     private val stepService: StepService,
+    private val testPlanService: TestPlanService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -413,6 +414,7 @@ class WorkspaceService(
             createdBy = CurrentUser.get(),
             build = testRun.buildID?.let { projectBuildService.requireBuild(project, it) },
             trackTime = testRun.trackTime,
+            testPlan = testRun.testPlanID?.let { testPlanService.requirePlan(project, it) },
         )
         newTestRun.assignees.addAll(projectUsersByID(project, testRun.assigneeIDs))
         testRunRepository.save(newTestRun)
@@ -464,6 +466,7 @@ class WorkspaceService(
             assigneeIDs = assignees.map { it.externalID },
             buildID = request.buildID,
             trackTime = source.trackTime,
+            testPlanID = source.testPlan?.externalID,
         ))
 
         // each test case stays with whoever had it

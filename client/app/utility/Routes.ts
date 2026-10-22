@@ -133,6 +133,19 @@ export class Route {
 		return `/test-runs/${projectShortCode}`
 	}
 
+	static viewTestPlans(projectShortCode: string) {
+		return `/test-plans/${projectShortCode}`
+	}
+
+	static viewTestPlan(projectShortCode: string, testPlanID: string) {
+		return `/test-plans/${projectShortCode}/${testPlanID}`
+	}
+
+	// the new test run form with the plan's test cases chosen
+	static newTestRunFromPlan(projectShortCode: string, testPlanID: string) {
+		return `/test-runs/${projectShortCode}/new?plan=${testPlanID}`
+	}
+
 	static viewTestRun(projectShortCode: string, testRunNumber: number) {
 		return `/test-runs/${projectShortCode}/${testRunNumber}`
 	}
@@ -406,6 +419,14 @@ export class APIRoute {
 
 	static projectTestRuns(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${projectShortCode}`
+	}
+
+	static projectTestPlans(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/test-plans`
+	}
+
+	static testPlan(testPlanID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-plans/${testPlanID}`
 	}
 
 	static testRun(testRunID: string) {

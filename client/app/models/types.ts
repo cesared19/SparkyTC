@@ -362,6 +362,39 @@ export interface TestRun {
 	trackTime: boolean
 	// total set by an admin, replacing the tracked time
 	timeOverrideSeconds?: number
+	// the test plan it was launched from
+	testPlanID?: string
+	testPlanName?: string
+}
+
+// a template of test cases: those in its sections (and nested ones), with any of its labels, or chosen
+export interface TestPlan {
+	testPlanID: string
+	name: string
+	description?: string
+	sectionIDs: string[]
+	labels: string[]
+	testCaseIDs: string[]
+	createdBy?: string
+	updatedBy?: string
+	modifyDate?: number
+}
+
+// a type alias, unlike an interface, can be submitted as JSON as is
+export type SaveTestPlan = {
+	name: string
+	description?: string
+	sectionIDs: string[]
+	labels: string[]
+	testCaseIDs: string[]
+}
+
+export interface ProjectTestPlansOutletContext {
+	project: Project
+	testPlans: TestPlan[]
+	testCases: TestCase[]
+	sections: TestCaseSection[]
+	testRuns: TestRun[]
 }
 
 export interface RunningTimer {

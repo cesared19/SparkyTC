@@ -16,5 +16,8 @@ data class TestRunDTO(
     val assignees: List<UserSummaryDTO> = emptyList(),
     val build: ProjectBuildDTO? = null,
     val trackTime: Boolean = false,
-    val timeOverrideSeconds: Long? = null
+    val timeOverrideSeconds: Long? = null,
+    // the plan it was launched from
+    val testPlanID: UUID? = null,
+    val testPlanName: String? = null,
 )

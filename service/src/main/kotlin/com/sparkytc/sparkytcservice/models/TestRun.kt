@@ -65,6 +65,11 @@ class TestRun (
     var trackTime: Boolean = false,
 
     // total time set by an admin once the run was closed, replacing the tracked time
+    // the plan it was launched from
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_plan_id")
+    var testPlan: TestPlan? = null,
+
     @Column(name = "time_override_seconds")
     var timeOverrideSeconds: Long? = null,
 ) {
@@ -73,6 +78,6 @@ class TestRun (
 
     fun toDTO(): TestRunDTO {
         val assigneeSummaries = assignees.sortedBy { it.displayName.lowercase() }.map { UserSummaryDTO(it.externalID, it.displayName) }
-        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries, build?.toDTO(), trackTime, timeOverrideSeconds)
+        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries, build?.toDTO(), trackTime, timeOverrideSeconds, testPlan?.externalID, testPlan?.name)
     }
 }

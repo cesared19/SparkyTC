@@ -26,6 +26,8 @@ import com.sparkytc.sparkytcservice.services.JiraService
 import com.sparkytc.sparkytcservice.services.TestCaseResultService
 import com.sparkytc.sparkytcservice.services.TestCaseSectionService
 import com.sparkytc.sparkytcservice.services.StepService
+import com.sparkytc.sparkytcservice.services.TestPlanService
+import com.sparkytc.sparkytcservice.dto.plans.SaveTestPlanDTO
 import com.sparkytc.sparkytcservice.dto.steps.SaveSharedStepDTO
 import com.sparkytc.sparkytcservice.dto.sections.*
 import com.sparkytc.sparkytcservice.services.TimeTrackingService
@@ -61,6 +63,7 @@ class WorkspaceController(
     private val testCaseResultService: TestCaseResultService,
     private val sectionService: TestCaseSectionService,
     private val stepService: StepService,
+    private val testPlanService: TestPlanService,
 ) {
 
     @GetMapping("/projects")
@@ -161,6 +164,28 @@ class WorkspaceController(
     @GetMapping("/projects/{projectShortCode}/dashboard")
     fun retrieveProjectDashboard(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveProjectDashboard(projectShortCode)))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/test-plans")
+    fun retrieveTestPlans(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = testPlanService.retrieveTestPlans(projectShortCode)))
+    }
+
+    @PostMapping("/projects/{projectShortCode}/test-plans")
+    fun createTestPlan(@PathVariable projectShortCode: String, @RequestBody request: SaveTestPlanDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = testPlanService.createTestPlan(projectShortCode, request)))
+    }
+
+    @PutMapping("/test-plans/{testPlanID}")
+    fun updateTestPlan(@PathVariable testPlanID: UUID, @RequestBody request: SaveTestPlanDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = testPlanService.updateTestPlan(testPlanID, request)))
+    }
+
+    @AdminOnly
+    @DeleteMapping("/test-plans/{testPlanID}")
+    fun deleteTestPlan(@PathVariable testPlanID: UUID): ResponseEntity<Any> {
+        testPlanService.deleteTestPlan(testPlanID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
     @GetMapping("/projects/{projectShortCode}/shared-steps")

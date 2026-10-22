@@ -269,6 +269,20 @@ export default function TestRunDetails() {
 							Created by {testRun.createdBy}
 						</p>
 					)}
+					{testRun.testPlanID && (
+						<p className="mt-1 text-sm text-gray-500">
+							From the test plan{' '}
+							<Link
+								to={Route.viewTestPlan(
+									project.projectShortCode,
+									testRun.testPlanID
+								)}
+								className="text-brand-600 hover:underline"
+							>
+								{testRun.testPlanName}
+							</Link>
+						</p>
+					)}
 					<div className="mt-4">
 						<h3 className="text-lg font-medium text-gray-900 mb-1">
 							Assigned to

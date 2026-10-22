@@ -202,6 +202,47 @@ class OrganizationTests {
         send(delete("/api/v1/workspace/shared-steps/$signIn"), null).andExpect(status().isOk)
     }
 
+    @Test
+    fun `test plans choose test cases by section, label or one by one and launch runs`() {
+        val mobile = createSection("Mobile", null)
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Login", mobile))
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Checkout", null).copy(labels = listOf("smoke")))
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Profile", null))
+        val profile = testCases().first { it.get("title").asText() == "Profile" }.get("testCaseID").asText()
+
+        // a plan needs a name and at least one rule, all from its project
+        send(post("/api/v1/workspace/projects/PRJ/test-plans"), mapOf("name" to "Empty"))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.message").value(Matchers.containsString("Choose the test cases")))
+        send(post("/api/v1/workspace/projects/PRJ/test-plans"), mapOf("name" to "Bad", "sectionIDs" to listOf(UUID.randomUUID())))
+            .andExpect(status().isBadRequest)
+
+        val plan = data(send(post("/api/v1/workspace/projects/PRJ/test-plans"), mapOf(
+            "name" to " Regression ", "description" to "Every build",
+            "sectionIDs" to listOf(mobile), "labels" to listOf("smoke", "Smoke"), "testCaseIDs" to listOf(profile),
+        )))
+        val planID = plan.get("testPlanID").asText()
+        assertEquals("Regression", plan.get("name").asText())
+        assertEquals(listOf("smoke"), plan.get("labels").map { it.asText() })
+        assertEquals(listOf(mobile), plan.get("sectionIDs").map { it.asText() })
+
+        send(put("/api/v1/workspace/test-plans/$planID"), mapOf("name" to "Regression", "labels" to listOf("smoke")))
+        val updated = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-plans")))[0]
+        assertEquals(0, updated.get("sectionIDs").size())
+        assertEquals(0, updated.get("testCaseIDs").size())
+
+        // a run launched from the plan remembers it, and keeps its results when the plan is deleted
+        send(post("/api/v1/workspace/test-runs/PRJ"), mapOf("title" to "Regression 1", "description" to null, "testCaseIDs" to listOf(profile), "testPlanID" to planID))
+        val run = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))[0]
+        assertEquals(planID, run.get("testPlanID").asText())
+        assertEquals("Regression", run.get("testPlanName").asText())
+
+        send(delete("/api/v1/workspace/test-plans/$planID"), null).andExpect(status().isOk)
+        assertEquals(0, data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-plans"))).size())
+        val runAfter = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))[0]
+        assertEquals(true, runAfter.get("testPlanID") == null || runAfter.get("testPlanID").isNull)
+        assertEquals(1, data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1"))).size())
+    }
+
     private fun createSection(name: String, parentID: String?): String {
         return data(send(post("/api/v1/workspace/projects/PRJ/sections"), mapOf("name" to name, "parentID" to parentID))).get("sectionID").asText()
     }
