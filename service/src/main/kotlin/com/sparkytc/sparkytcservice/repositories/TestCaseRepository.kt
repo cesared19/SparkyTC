@@ -2,6 +2,7 @@ package com.sparkytc.sparkytcservice.repositories
 
 import com.sparkytc.sparkytcservice.models.PropertyConfiguration
 import com.sparkytc.sparkytcservice.models.TestCase
+import com.sparkytc.sparkytcservice.models.TestCaseSection
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import jakarta.transaction.Transactional
 import org.springframework.data.jpa.repository.JpaRepository
@@ -18,4 +19,6 @@ interface TestCaseRepository : JpaRepository<TestCase, Long> {
     fun findTopByProjectOrderByTestCaseNumberDesc(project: WorkspaceProject): TestCase?
 
     fun findByExternalID(externalID: UUID): TestCase?
+
+    fun findAllBySection(section: TestCaseSection): List<TestCase>
 }

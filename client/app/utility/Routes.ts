@@ -76,6 +76,18 @@ export class Route {
 		return `/test-case-attachments/${testCaseID}`
 	}
 
+	static get sections() {
+		return '/sections'
+	}
+
+	static get sharedSteps() {
+		return '/shared-steps'
+	}
+
+	static viewSharedSteps(projectShortCode: string) {
+		return `/test-cases/${projectShortCode}/shared-steps`
+	}
+
 	static resultEvidence(resultID: string) {
 		return `/test-case-result-evidence/${resultID}`
 	}
@@ -260,6 +272,30 @@ export class APIRoute {
 
 	static testCase(testCaseID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}`
+	}
+
+	static projectSections(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/sections`
+	}
+
+	static section(sectionID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/sections/${sectionID}`
+	}
+
+	static reorderSection(sectionID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/sections/${sectionID}/reorder`
+	}
+
+	static projectSharedSteps(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/shared-steps`
+	}
+
+	static sharedStep(sharedStepID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/shared-steps/${sharedStepID}`
+	}
+
+	static get moveTestCases() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/section`
 	}
 
 	static batchCreateTestCases(projectShortCode: string) {

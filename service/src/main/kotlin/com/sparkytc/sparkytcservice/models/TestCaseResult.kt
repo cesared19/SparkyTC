@@ -44,6 +44,10 @@ class TestCaseResult(
     @OneToMany(mappedBy = "testCaseResult")
     @OrderBy("creationDate ASC")
     val attachments: List<TestCaseAttachment> = emptyList(),
+
+    // how each step went, for test cases written as steps
+    @OneToMany(mappedBy = "result")
+    val stepResults: List<TestCaseResultStep> = emptyList(),
 ) {
     fun toDTO(): TestCaseResultDTO {
         return TestCaseResultDTO(
@@ -54,6 +58,7 @@ class TestCaseResult(
             recordedByID = recordedBy?.externalID,
             recordedAt = recordedAt,
             attachments = attachments.map { it.toDTO() },
+            stepResults = stepResults.sortedBy { it.step.position }.map { it.toDTO() },
         )
     }
 }

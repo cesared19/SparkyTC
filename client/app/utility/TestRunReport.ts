@@ -49,7 +49,7 @@ interface DayResults {
 const COLORS = {
 	pass: '#15803d',
 	fail: '#f87171',
-	skip: '#a16207',
+	skip: '#0891b2',
 	blocked: '#7c3aed',
 	pending: '#d1d5db',
 	page: '#f1f5f9',
@@ -360,7 +360,8 @@ const STATUS_SEGMENTS = [
 		key: 'skipped' as const,
 		label: 'Skipped',
 		color: COLORS.skip,
-		ink: '#ffffff',
+		// white on cyan is below 4.5:1
+		ink: COLORS.text,
 	},
 	{
 		key: 'pending' as const,
@@ -878,7 +879,7 @@ const PDF_STATUS_COLORS: Record<
 > = {
 	[TestCaseRunStatus.pass]: { fill: COLORS.pass, ink: '#ffffff' },
 	[TestCaseRunStatus.fail]: { fill: COLORS.failTile, ink: '#ffffff' },
-	[TestCaseRunStatus.skip]: { fill: COLORS.skip, ink: '#ffffff' },
+	[TestCaseRunStatus.skip]: { fill: COLORS.skip, ink: COLORS.text },
 	[TestCaseRunStatus.blocked]: { fill: COLORS.blocked, ink: '#ffffff' },
 	[TestCaseRunStatus.pending]: { fill: COLORS.pending, ink: COLORS.text },
 }
@@ -1146,6 +1147,22 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 					indent: 12,
 					gap: 4,
 				})
+			}
+			// how each step went, for test cases written as steps
+			for (const [stepIndex, step] of (run.steps ?? []).entries()) {
+				const stepResult = result.stepResults?.find(
+					(item) => item.stepID === step.stepID
+				)
+				if (!stepResult) continue
+				const status = stepResult.status
+					? STATUS_LABELS[stepResult.status]
+					: 'Not marked'
+				paragraph(
+					`${stepIndex + 1}. ${step.action}: ${status}${
+						stepResult.actual ? ` (actual: ${stepResult.actual})` : ''
+					}`,
+					{ size: 9, color: COLORS.secondary, indent: 12, gap: 1 }
+				)
 			}
 			// evidence: images are embedded, videos are linked
 			for (const attachment of result.attachments) {

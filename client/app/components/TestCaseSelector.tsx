@@ -3,6 +3,7 @@ import {
 	PropertyType,
 	type PropertyConfiguration,
 	type TestCase,
+	type TestCaseSection,
 } from '~/models/types'
 
 import { SelectDropdown } from './SelectDropdown'
@@ -10,6 +11,19 @@ import { Table, type Column } from './Table'
 import { Tools } from '~/utility/Tools'
 import { Project } from '~/models/project'
 import { Checkbox } from './Checkbox'
+import { SectionSelect } from './SectionSelect'
+import {
+	hasAllLabels,
+	LabelChip,
+	LabelFilter,
+	projectLabels,
+} from './LabelInput'
+import {
+	flattenTree,
+	sectionAndDescendants,
+	sectionPath,
+	sectionTree,
+} from '~/utility/Sections'
 
 // Example: you might define a union for your filter values.
 // "text" covers both text/number; "select" covers multi-select checkboxes.
@@ -20,6 +34,7 @@ type FilterValue =
 interface TestCaseSelectorProps {
 	properties: PropertyConfiguration[]
 	testCases: TestCase[]
+	sections: TestCaseSection[]
 	onDone: (selectedTestCases: TestCase[]) => void
 	initialSelectedTestCases?: TestCase[]
 	project: Project
@@ -28,11 +43,27 @@ interface TestCaseSelectorProps {
 export default function TestCaseSelector({
 	properties,
 	testCases,
+	sections,
 	onDone,
 	initialSelectedTestCases = [],
 	project,
 }: TestCaseSelectorProps) {
 	const [searchQuery, setSearchQuery] = useState('')
+	// a suite or section, with the sections nested in it
+	const [sectionFilter, setSectionFilter] = useState('')
+	const [labelFilter, setLabelFilter] = useState<string[]>([])
+	const sectionIDs = sectionFilter
+		? sectionAndDescendants(sections, sectionFilter)
+		: undefined
+	// listed in the order of the tree, like the test case list
+	const sectionOrder = new Map(
+		flattenTree(sectionTree(sections)).map((node, index) => [
+			node.section.sectionID,
+			index,
+		])
+	)
+	const sectionIndex = (testCase: TestCase) =>
+		sectionOrder.get(testCase.sectionID ?? '') ?? Infinity
 	const [showFilters, setShowFilters] = useState(false)
 
 	// Instead of storing a single string per property,
@@ -50,7 +81,7 @@ export default function TestCaseSelector({
 	)
 
 	// 1) Filter logic
-	const filteredTestCases = testCases.filter((testCase: TestCase) => {
+	const matchingTestCases = testCases.filter((testCase: TestCase) => {
 		// For each property in selectedFilters, check if the test case matches
 		const matchesAllFilters = Object.entries(selectedFilters).every(
 			([propertyID, filterValue]) => {
@@ -84,8 +115,21 @@ export default function TestCaseSelector({
 			  )
 			: true
 
-		return matchesAllFilters && matchesSearch
+		const matchesSection =
+			!sectionIDs ||
+			(!!testCase.sectionID && sectionIDs.has(testCase.sectionID))
+
+		return (
+			matchesAllFilters &&
+			matchesSearch &&
+			matchesSection &&
+			hasAllLabels(testCase, labelFilter)
+		)
 	})
+	const filteredTestCases = [...matchingTestCases].sort(
+		(a, b) =>
+			sectionIndex(a) - sectionIndex(b) || a.testCaseNumber - b.testCaseNumber
+	)
 
 	// 2) Handlers
 
@@ -233,6 +277,16 @@ export default function TestCaseSelector({
 				render: (testCase) => (
 					<div>
 						<div className="font-medium text-gray-900">{testCase.title}</div>
+						<div className="text-xs text-gray-500">
+							{sectionPath(sections, testCase.sectionID)}
+						</div>
+						{(testCase.labels?.length ?? 0) > 0 && (
+							<div className="mt-1 flex flex-wrap gap-1">
+								{testCase.labels?.map((label) => (
+									<LabelChip key={label} label={label} />
+								))}
+							</div>
+						)}
 						{testCase.description && (
 							<div className="text-sm text-gray-500">
 								{testCase.description}
@@ -254,7 +308,14 @@ export default function TestCaseSelector({
 			</div>
 
 			{/* Basic text search (title/desc) + Filter button */}
-			<div className="flex items-center gap-4">
+			<div className="flex flex-wrap items-center gap-4">
+				<SectionSelect
+					sections={sections}
+					value={sectionFilter}
+					onChange={setSectionFilter}
+					emptyLabel="All suites and sections"
+					className="py-2"
+				/>
 				<input
 					type="text"
 					placeholder="Search test cases..."
@@ -277,6 +338,12 @@ export default function TestCaseSelector({
 					}
 				/>
 			</div>
+
+			<LabelFilter
+				labels={projectLabels(testCases)}
+				selected={labelFilter}
+				onChange={setLabelFilter}
+			/>
 
 			{/* Display existing filters */}
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

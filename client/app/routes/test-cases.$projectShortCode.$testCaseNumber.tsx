@@ -5,6 +5,7 @@ import {
 	TestCaseOutletContext,
 } from '~/models/types'
 import { Tools } from '~/utility/Tools'
+import { projectLabels } from '~/components/LabelInput'
 
 export default function TestCaseDetailsRoot() {
 	const params = useParams()
@@ -13,7 +14,7 @@ export default function TestCaseDetailsRoot() {
 		return <p>No test case number found</p>
 	}
 
-	const { project, testCases, properties } =
+	const { project, testCases, properties, sections, sharedSteps } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const testCase = testCases.find(
 		(testCase) => testCase.testCaseNumber === testCaseNumber
@@ -32,6 +33,9 @@ export default function TestCaseDetailsRoot() {
 		testCase,
 		properties,
 		propertyValues,
+		sections,
+		labels: projectLabels(testCases),
+		sharedSteps,
 	}
 
 	return <Outlet context={context} />

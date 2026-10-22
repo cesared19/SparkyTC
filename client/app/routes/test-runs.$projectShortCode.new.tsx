@@ -17,6 +17,7 @@ import type {
 	ProjectBuild,
 	PropertyConfiguration,
 	TestCase,
+	TestCaseSection,
 	TestRun,
 	UserSummary,
 } from '~/models/types'
@@ -44,24 +45,29 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		throw new Response('Project short code is required', { status: 400 })
 	}
 
-	const [properties, testCases, projectUsers, builds] = await Promise.all([
-		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
-		api.get<FetchResponse<TestCase[]>>(
-			APIRoute.projectTestCases(projectShortCode)
-		),
-		api.get<FetchResponse<UserSummary[]>>(
-			APIRoute.projectUsers(projectShortCode)
-		),
-		api.get<FetchResponse<ProjectBuild[]>>(
-			APIRoute.projectBuilds(projectShortCode)
-		),
-	])
+	const [properties, testCases, projectUsers, builds, sections] =
+		await Promise.all([
+			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+			api.get<FetchResponse<TestCase[]>>(
+				APIRoute.projectTestCases(projectShortCode)
+			),
+			api.get<FetchResponse<UserSummary[]>>(
+				APIRoute.projectUsers(projectShortCode)
+			),
+			api.get<FetchResponse<ProjectBuild[]>>(
+				APIRoute.projectBuilds(projectShortCode)
+			),
+			api.get<FetchResponse<TestCaseSection[]>>(
+				APIRoute.projectSections(projectShortCode)
+			),
+		])
 
 	return {
 		properties: properties.data,
 		testCases: testCases.data,
 		projectUsers: projectUsers.data,
 		builds: builds.data,
+		sections: sections.data,
 	}
 }
 
@@ -85,7 +91,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function NewTestRun() {
 	const navigate = useNavigate()
-	const { properties, testCases, projectUsers, builds } =
+	const { properties, testCases, projectUsers, builds, sections } =
 		useLoaderData<typeof loader>()
 	const [assigneeIDs, setAssigneeIDs] = useState<string[]>([])
 	// the current build is preselected
@@ -143,6 +149,7 @@ export default function NewTestRun() {
 						project={project}
 						properties={properties}
 						testCases={testCases}
+						sections={sections}
 						onDone={(testCases) => {
 							setSelectedTestCases(testCases)
 							setShowTestCaseSelector(false)

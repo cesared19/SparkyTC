@@ -6,6 +6,8 @@ import {
 	ProjectTestCasesOutletContext,
 	PropertyConfiguration,
 	TestCase,
+	TestCaseSection,
+	SharedStep,
 } from '~/models/types'
 import { Project } from '~/models/project'
 import { APIRoute } from '~/utility/Routes'
@@ -27,29 +29,40 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Project not found', { status: 404 })
 	}
 
-	const [testCasesData, propertiesData] = await Promise.all([
-		api.get<FetchResponse<TestCase[]>>(
-			APIRoute.projectTestCases(projectShortCode)
-		),
-		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
-	])
+	const [testCasesData, propertiesData, sectionsData, sharedStepsData] =
+		await Promise.all([
+			api.get<FetchResponse<TestCase[]>>(
+				APIRoute.projectTestCases(projectShortCode)
+			),
+			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+			api.get<FetchResponse<TestCaseSection[]>>(
+				APIRoute.projectSections(projectShortCode)
+			),
+			api.get<FetchResponse<SharedStep[]>>(
+				APIRoute.projectSharedSteps(projectShortCode)
+			),
+		])
 
 	return {
 		project,
 		projects: projectData.data,
 		testCases: testCasesData.data,
 		properties: propertiesData.data,
+		sections: sectionsData.data,
+		sharedSteps: sharedStepsData.data,
 	}
 }
 
 export default function ProjectLayout() {
-	const { project, projects, testCases, properties } =
+	const { project, projects, testCases, properties, sections, sharedSteps } =
 		useLoaderData<typeof loader>()
 
 	const outletContext: ProjectTestCasesOutletContext = {
 		project,
 		testCases,
 		properties,
+		sections,
+		sharedSteps,
 	}
 
 	return (

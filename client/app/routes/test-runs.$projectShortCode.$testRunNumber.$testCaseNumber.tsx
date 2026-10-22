@@ -21,6 +21,8 @@ import {
 	CreateJiraIssue,
 	JiraIssueTransition,
 	JiraLink,
+	StepResult,
+	TestCaseFormat,
 	PropertyConfiguration,
 	TestRun,
 	UserSummary,
@@ -41,6 +43,11 @@ import { TestRunBuild } from '~/components/Builds'
 import { TestCaseTimer } from '~/components/TimeTracking'
 import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
 import {
+	RunStepsChecklist,
+	runStepsText,
+	suggestedResult,
+} from '~/components/StepsView'
+import {
 	TestCaseHistory,
 	TestCaseRunResults,
 } from '~/components/TestCaseResults'
@@ -50,6 +57,7 @@ interface UpdateTestCaseRun extends Record<string, any> {
 	status: TestCaseRunStatus
 	notes?: string
 	jiraTransitions?: JiraIssueTransition[]
+	stepResults?: StepResult[]
 }
 
 interface UpdateTestCaseRunResult {
@@ -206,6 +214,15 @@ function TestCaseRunView({
 	const [selectedStatus, setSelectedStatus] = useState<TestCaseRunStatus>(
 		TestCaseRunStatus.pending
 	)
+	// how each step went, for test cases written as steps
+	const [stepResults, setStepResults] = useState<Record<string, StepResult>>({})
+	const isSteps = testCaseRun.format === TestCaseFormat.steps
+	const changeStepResults = (results: Record<string, StepResult>) => {
+		setStepResults(results)
+		// the steps suggest the result; the tester can still choose another one
+		const suggestion = suggestedResult(testCaseRun.steps ?? [], results)
+		if (suggestion) setSelectedStatus(suggestion)
+	}
 	const evidenceRef = useRef<HTMLInputElement>(null)
 	const [evidenceCount, setEvidenceCount] = useState(0)
 	const [isUploadingEvidence, setIsUploadingEvidence] = useState(false)
@@ -216,6 +233,11 @@ function TestCaseRunView({
 	const [jiraTransitions, setJiraTransitions] = useState<
 		JiraIssueTransition[] | undefined
 	>([])
+
+	// steps left without a status or an actual result aren't sent
+	const markedSteps = Object.values(stepResults).filter(
+		(result) => result.status || result.actual?.trim()
+	)
 
 	const handleSave = () => {
 		const form = document.getElementById('testCaseForm') as HTMLFormElement
@@ -229,6 +251,7 @@ function TestCaseRunView({
 			...(jiraTransitions && jiraTransitions.length > 0
 				? { jiraTransitions }
 				: {}),
+			...(isSteps ? { stepResults: markedSteps } : {}),
 		}
 
 		setEvidenceError(undefined)
@@ -417,8 +440,8 @@ function TestCaseRunView({
 							onClick={() => setSelectedStatus(TestCaseRunStatus.skip)}
 							className={`px-4 py-2 text-sm font-medium rounded-md ${
 								selectedStatus === TestCaseRunStatus.skip
-									? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-600'
-									: 'bg-gray-50 text-gray-700 hover:bg-yellow-50 hover:text-yellow-700'
+									? 'bg-cyan-100 text-cyan-800 ring-1 ring-cyan-600'
+									: 'bg-gray-50 text-gray-700 hover:bg-cyan-50 hover:text-cyan-700'
 							}`}
 						>
 							Skip
@@ -492,18 +515,34 @@ function TestCaseRunView({
 							</section>
 						)}
 
-						<section>
-							<h2 className="text-xl font-semibold text-gray-900 mb-4">
-								Test Instructions
-							</h2>
-							<div className="prose prose-sm max-w-none whitespace-pre-wrap">
-								{testCaseRun.testInstructions ? (
-									<LinkifiedText text={testCaseRun.testInstructions} />
-								) : (
-									'No test instructions available'
-								)}
-							</div>
-						</section>
+						{isSteps ? (
+							<section>
+								<h2 className="text-xl font-semibold text-gray-900">Steps</h2>
+								<p className="mb-4 mt-1 text-xs text-gray-500">
+									Mark each step as you test it. The result is suggested from
+									the steps, and you can change it before saving.
+								</p>
+								<RunStepsChecklist
+									steps={testCaseRun.steps ?? []}
+									results={stepResults}
+									onChange={changeStepResults}
+									disabled={isLocked}
+								/>
+							</section>
+						) : (
+							<section>
+								<h2 className="text-xl font-semibold text-gray-900 mb-4">
+									Test Instructions
+								</h2>
+								<div className="prose prose-sm max-w-none whitespace-pre-wrap">
+									{testCaseRun.testInstructions ? (
+										<LinkifiedText text={testCaseRun.testInstructions} />
+									) : (
+										'No test instructions available'
+									)}
+								</div>
+							</section>
+						)}
 					</>
 				)}
 
@@ -547,7 +586,9 @@ function TestCaseRunView({
 									: testCaseRun.notes
 								return {
 									summary: testCaseRun.title,
-									stepsToReproduce: testCaseRun.testInstructions ?? '',
+									stepsToReproduce: isSteps
+										? runStepsText(testCaseRun.steps ?? [], stepResults)
+										: testCaseRun.testInstructions ?? '',
 									expectedResult:
 										propertyValue(testCaseRun, properties, 'expected result') ??
 										'',
@@ -770,24 +811,33 @@ function TestCaseRunDetailsEditor({
 				/>
 			</div>
 
-			<div>
-				<label
-					htmlFor="runTestInstructions"
-					className="block text-sm font-medium text-gray-700"
-				>
-					Test Instructions
-				</label>
-				<textarea
-					id="runTestInstructions"
+			{/* test cases written as steps keep their steps, edited on the test case */}
+			{testCaseRun.format === TestCaseFormat.steps ? (
+				<input
+					type="hidden"
 					name="testInstructions"
-					rows={6}
-					defaultValue={testCaseRun.testInstructions}
-					className={inputClassName}
+					value={testCaseRun.testInstructions ?? ''}
 				/>
-				<p className="mt-1 text-xs text-gray-500">
-					Links such as https://example.com become clickable
-				</p>
-			</div>
+			) : (
+				<div>
+					<label
+						htmlFor="runTestInstructions"
+						className="block text-sm font-medium text-gray-700"
+					>
+						Test Instructions
+					</label>
+					<textarea
+						id="runTestInstructions"
+						name="testInstructions"
+						rows={6}
+						defaultValue={testCaseRun.testInstructions}
+						className={inputClassName}
+					/>
+					<p className="mt-1 text-xs text-gray-500">
+						Links such as https://example.com become clickable
+					</p>
+				</div>
+			)}
 
 			{/* an archived test case is no longer part of the project */}
 			{!testCaseRun.testCase.isArchived && (

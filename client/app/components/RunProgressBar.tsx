@@ -20,7 +20,7 @@ const SEGMENTS: {
 	{
 		status: TestCaseRunStatus.skip,
 		label: 'skipped',
-		className: 'bg-amber-400',
+		className: 'bg-cyan-600',
 	},
 	{
 		status: TestCaseRunStatus.pending,

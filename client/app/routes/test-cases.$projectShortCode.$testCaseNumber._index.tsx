@@ -1,14 +1,18 @@
 import { Link, useOutletContext } from '@remix-run/react'
-import { TestCaseOutletContext } from '~/models/types'
+import { TestCaseFormat, TestCaseOutletContext } from '~/models/types'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '~/components/DateDisplay'
 import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 import { TestCaseHistory } from '~/components/TestCaseResults'
+import { Route } from '~/utility/Routes'
+import { sectionPath } from '~/utility/Sections'
+import { LabelChip } from '~/components/LabelInput'
+import { TestCaseStepsView } from '~/components/StepsView'
 
 export default function TestCaseDetails() {
-	const { project, testCase, propertyValues } =
+	const { project, testCase, propertyValues, sections } =
 		useOutletContext<TestCaseOutletContext>()
 
 	return (
@@ -31,6 +35,23 @@ export default function TestCaseDetails() {
 						{project.projectShortCode}-{testCase.testCaseNumber}
 					</span>
 				</div>
+				{(testCase.labels?.length ?? 0) > 0 && (
+					<div className="mt-2 flex flex-wrap gap-1.5">
+						{testCase.labels?.map((label) => (
+							<LabelChip key={label} label={label} />
+						))}
+					</div>
+				)}
+				{testCase.sectionID && (
+					<Link
+						to={`${Route.viewProjectTestCases(
+							project.projectShortCode
+						)}?section=${testCase.sectionID}`}
+						className="mt-1 inline-block text-sm text-gray-500 hover:text-gray-900 hover:underline"
+					>
+						{sectionPath(sections, testCase.sectionID)}
+					</Link>
+				)}
 			</div>
 
 			<div className="space-y-8">
@@ -96,18 +117,25 @@ export default function TestCaseDetails() {
 					</div>
 				</div>
 
-				<div>
-					<h3 className="text-xl font-semibold text-gray-900 mb-2">
-						Test Instructions
-					</h3>
-					<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
-						{testCase.testInstructions ? (
-							<LinkifiedText text={testCase.testInstructions} />
-						) : (
-							'No test instructions provided'
-						)}
+				{testCase.format === TestCaseFormat.steps ? (
+					<div>
+						<h3 className="text-xl font-semibold text-gray-900 mb-2">Steps</h3>
+						<TestCaseStepsView steps={testCase.steps ?? []} />
 					</div>
-				</div>
+				) : (
+					<div>
+						<h3 className="text-xl font-semibold text-gray-900 mb-2">
+							Test Instructions
+						</h3>
+						<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+							{testCase.testInstructions ? (
+								<LinkifiedText text={testCase.testInstructions} />
+							) : (
+								'No test instructions provided'
+							)}
+						</div>
+					</div>
+				)}
 
 				<div>
 					<h3 className="text-xl font-semibold text-gray-900 mb-2">

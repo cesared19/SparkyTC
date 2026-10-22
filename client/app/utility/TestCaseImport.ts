@@ -8,6 +8,8 @@ import { parseCSV, toCSV } from './CSV'
 export const TITLE_COLUMN = 'Title'
 export const DESCRIPTION_COLUMN = 'Description'
 export const TEST_INSTRUCTIONS_COLUMN = 'Test Instructions'
+// several labels in one cell, separated by commas or semicolons
+export const LABELS_COLUMN = 'Labels'
 
 const COLUMN_ALIASES: Record<string, string[]> = {
 	[TITLE_COLUMN]: ['title', 'name', 'titulo', 'título', 'nombre'],
@@ -20,6 +22,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
 		'instrucciones',
 		'pasos',
 	],
+	[LABELS_COLUMN]: ['labels', 'label', 'tags', 'etiquetas'],
 }
 
 export interface ImportedTestCaseRow {
@@ -90,6 +93,11 @@ export function importTestCasesFromCSV(
 
 	const cell = (row: string[], index?: number) =>
 		index === undefined ? '' : (row[index] ?? '').trim()
+	const labelsOf = (row: string[]) =>
+		cell(row, columnIndexes.get(LABELS_COLUMN))
+			.split(/[,;]/)
+			.map((label) => label.trim())
+			.filter(Boolean)
 
 	const rows = dataRows.map((row, index): ImportedTestCaseRow => {
 		const errors: string[] = []
@@ -149,6 +157,7 @@ export function importTestCasesFromCSV(
 					columnIndexes.get(TEST_INSTRUCTIONS_COLUMN)
 				),
 				propertyValues,
+				...(columnIndexes.has(LABELS_COLUMN) ? { labels: labelsOf(row) } : {}),
 			},
 			errors,
 		}
@@ -166,12 +175,14 @@ export function buildTestCaseTemplateCSV(properties: PropertyConfiguration[]) {
 		TITLE_COLUMN,
 		DESCRIPTION_COLUMN,
 		TEST_INSTRUCTIONS_COLUMN,
+		LABELS_COLUMN,
 		...properties.map((property) => property.title),
 	]
 	const example = [
 		'Login with valid credentials',
 		'Verify users can sign in. Spec: https://example.com/login-spec',
 		'1. Open https://example.com/login\n2. Enter valid credentials\n3. Click Login\n4. Verify the dashboard is displayed',
+		'smoke, login',
 		...properties.map(
 			(property) => property.defaultValue ?? property.selectOptions?.[0] ?? ''
 		),

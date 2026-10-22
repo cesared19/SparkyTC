@@ -26,7 +26,7 @@ export function TestCaseRunStatusBadge({
 			)
 		case TestCaseRunStatus.skip:
 			return (
-				<span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-yellow-100 text-yellow-800">
+				<span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-cyan-100 text-cyan-800">
 					SKIP
 				</span>
 			)
