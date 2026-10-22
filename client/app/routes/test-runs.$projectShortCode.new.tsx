@@ -7,6 +7,7 @@ import {
 	useSubmit,
 	useOutletContext,
 	useActionData,
+	Link,
 } from '@remix-run/react'
 import { APIRoute } from '~/utility/Routes'
 import { useState } from 'react'
@@ -18,6 +19,7 @@ import type {
 	PropertyConfiguration,
 	TestCase,
 	TestCaseSection,
+	TestPlan,
 	TestRun,
 	UserSummary,
 } from '~/models/types'
@@ -28,6 +30,7 @@ import { Route } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '../utility/Tools'
 import { ErrorMessage } from '../components/ErrorMessage'
+import { planTestCases } from '~/utility/TestPlans'
 
 interface CreateTestRun extends Record<string, any> {
 	title: string
@@ -36,6 +39,7 @@ interface CreateTestRun extends Record<string, any> {
 	assigneeIDs: string[]
 	buildID: string | null
 	trackTime: boolean
+	testPlanID?: string
 }
 
 export async function loader({ request, params }: ActionFunctionArgs) {
@@ -45,7 +49,7 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		throw new Response('Project short code is required', { status: 400 })
 	}
 
-	const [properties, testCases, projectUsers, builds, sections] =
+	const [properties, testCases, projectUsers, builds, sections, testPlans] =
 		await Promise.all([
 			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
 			api.get<FetchResponse<TestCase[]>>(
@@ -60,7 +64,13 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 			api.get<FetchResponse<TestCaseSection[]>>(
 				APIRoute.projectSections(projectShortCode)
 			),
+			api.get<FetchResponse<TestPlan[]>>(
+				APIRoute.projectTestPlans(projectShortCode)
+			),
 		])
+	// started from a test plan: its test cases come chosen
+	const planID = new URL(request.url).searchParams.get('plan')
+	const testPlan = testPlans.data.find((plan) => plan.testPlanID === planID)
 
 	return {
 		properties: properties.data,
@@ -68,6 +78,7 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		projectUsers: projectUsers.data,
 		builds: builds.data,
 		sections: sections.data,
+		testPlan,
 	}
 }
 
@@ -91,7 +102,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function NewTestRun() {
 	const navigate = useNavigate()
-	const { properties, testCases, projectUsers, builds, sections } =
+	const { properties, testCases, projectUsers, builds, sections, testPlan } =
 		useLoaderData<typeof loader>()
 	const [assigneeIDs, setAssigneeIDs] = useState<string[]>([])
 	// the current build is preselected
@@ -101,7 +112,13 @@ export default function NewTestRun() {
 	const actionData = useActionData<ErrorResponse>()
 
 	const [showTestCaseSelector, setShowTestCaseSelector] = useState(false)
-	const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([])
+	const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(() =>
+		testPlan
+			? planTestCases(testPlan, testCases, sections).map(
+					(match) => match.testCase
+			  )
+			: []
+	)
 	const submit = useSubmit()
 
 	const todayDateString = new Date()
@@ -112,7 +129,9 @@ export default function NewTestRun() {
 		})
 		.replace(/\//g, '-')
 	// kept in state so they survive switching to the test case selector and back
-	const [title, setTitle] = useState(`${todayDateString} Test Run`)
+	const [title, setTitle] = useState(
+		`${todayDateString} ${testPlan?.name ?? 'Test Run'}`
+	)
 	const [description, setDescription] = useState('')
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -125,6 +144,7 @@ export default function NewTestRun() {
 			assigneeIDs,
 			buildID: buildID || null,
 			trackTime,
+			...(testPlan ? { testPlanID: testPlan.testPlanID } : {}),
 		}
 
 		submit(jsonData, {
@@ -139,6 +159,21 @@ export default function NewTestRun() {
 				<h1 className="text-2xl font-semibold text-gray-900">
 					{showTestCaseSelector ? 'Select Test Cases' : 'Create New Test Run'}
 				</h1>
+				{testPlan && !showTestCaseSelector && (
+					<p className="mt-1 text-sm text-gray-600">
+						From the test plan{' '}
+						<Link
+							to={Route.viewTestPlan(
+								project.projectShortCode,
+								testPlan.testPlanID
+							)}
+							className="font-medium text-brand-600 hover:underline"
+						>
+							{testPlan.name}
+						</Link>
+						, with its test cases chosen. Change the selection if needed.
+					</p>
+				)}
 			</div>
 
 			{actionData && <ErrorMessage message={actionData.message} />}

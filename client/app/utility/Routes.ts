@@ -64,10 +64,6 @@ export class Route {
 		return `/jira-similar?${params.toString()}`
 	}
 
-	static importTestCases(projectShortCode: string) {
-		return `/test-cases/${projectShortCode}/import`
-	}
-
 	static attachment(attachmentID: string) {
 		return `/attachments/${attachmentID}`
 	}
@@ -80,12 +76,12 @@ export class Route {
 		return '/sections'
 	}
 
-	static get sharedSteps() {
-		return '/shared-steps'
+	static get bulkEdit() {
+		return '/bulk-edit'
 	}
 
-	static viewSharedSteps(projectShortCode: string) {
-		return `/test-cases/${projectShortCode}/shared-steps`
+	static get sharedSteps() {
+		return '/shared-steps'
 	}
 
 	static resultEvidence(resultID: string) {
@@ -133,6 +129,19 @@ export class Route {
 		return `/test-runs/${projectShortCode}`
 	}
 
+	static viewTestPlans(projectShortCode: string) {
+		return `/test-plans/${projectShortCode}`
+	}
+
+	static viewTestPlan(projectShortCode: string, testPlanID: string) {
+		return `/test-plans/${projectShortCode}/${testPlanID}`
+	}
+
+	// the new test run form with the plan's test cases chosen
+	static newTestRunFromPlan(projectShortCode: string, testPlanID: string) {
+		return `/test-runs/${projectShortCode}/new?plan=${testPlanID}`
+	}
+
 	static viewTestRun(projectShortCode: string, testRunNumber: number) {
 		return `/test-runs/${projectShortCode}/${testRunNumber}`
 	}
@@ -143,10 +152,6 @@ export class Route {
 		testCaseNumber: number
 	) {
 		return `/test-runs/${projectShortCode}/${testRunNumber}/${testCaseNumber}`
-	}
-
-	static get login() {
-		return '/login'
 	}
 
 	static get logout() {
@@ -294,8 +299,20 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/shared-steps/${sharedStepID}`
 	}
 
-	static get moveTestCases() {
-		return `${this.baseAPIURL}/api/v1/workspace/test-cases/section`
+	static projectTestRun(projectShortCode: string, testRunNumber: number) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/test-runs/${testRunNumber}`
+	}
+
+	static get bulkEditTestCases() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/bulk`
+	}
+
+	static get bulkDeleteTestCases() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/bulk-delete`
+	}
+
+	static get bulkAssignTestCaseRuns() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/bulk-assignee`
 	}
 
 	static batchCreateTestCases(projectShortCode: string) {
@@ -406,6 +423,14 @@ export class APIRoute {
 
 	static projectTestRuns(projectShortCode: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-runs/${projectShortCode}`
+	}
+
+	static projectTestPlans(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/test-plans`
+	}
+
+	static testPlan(testPlanID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-plans/${testPlanID}`
 	}
 
 	static testRun(testRunID: string) {

@@ -9,4 +9,6 @@ data class CreateTestRunDTO(
     val assigneeIDs: List<UUID> = emptyList(),
     val buildID: UUID? = null,
     val trackTime: Boolean = false,
+    // the plan it's launched from, if any
+    val testPlanID: UUID? = null,
 )

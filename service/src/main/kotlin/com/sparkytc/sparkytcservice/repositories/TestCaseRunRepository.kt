@@ -11,6 +11,8 @@ interface TestCaseRunRepository : JpaRepository<TestCaseRun, Long> {
 
     fun findAllByTestRun(testRun: TestRun): List<TestCaseRun>
 
+    fun findAllByTestRunIn(testRuns: Collection<TestRun>): List<TestCaseRun>
+
     fun existsByTestCase(testCase: TestCase): Boolean
 
     fun findAllByTestRunOrderByTestCaseTestCaseNumberAsc(testRun: TestRun): List<TestCaseRun>

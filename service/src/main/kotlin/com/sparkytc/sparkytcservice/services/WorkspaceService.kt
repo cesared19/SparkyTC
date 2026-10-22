@@ -56,6 +56,7 @@ class WorkspaceService(
     private val attachmentService: AttachmentService,
     private val sectionService: TestCaseSectionService,
     private val stepService: StepService,
+    private val testPlanService: TestPlanService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -109,8 +110,9 @@ class WorkspaceService(
             }
 
         val testRuns = testRunRepository.findAllByProject(project).sortedByDescending { it.testRunNumber }
+        val testCaseRunsByRun = buildResultsService.testCaseRunsByRun(testRuns)
         val summaries = testRuns.associateWith { testRun ->
-            buildResultsService.summary(testRun, testCaseRunRepository.findAllByTestRun(testRun))
+            buildResultsService.summary(testRun, testCaseRunsByRun[testRun.id].orEmpty())
         }
 
         val activeStatuses = setOf(TestRunStatus.PENDING, TestRunStatus.IN_PROGRESS)
@@ -213,7 +215,8 @@ class WorkspaceService(
             testInstructions = Tools.sanitize(testCase.testInstructions),
             createdBy = CurrentUser.get(),
             updatedBy = CurrentUser.get(),
-            section = sectionService.sectionFor(project, testCase.sectionID),
+            section = testCase.sectionPath?.takeIf { it.isNotBlank() }?.let { sectionService.sectionForPath(project, it) }
+                ?: sectionService.sectionFor(project, testCase.sectionID),
             labels = cleanLabels(testCase.labels.orEmpty()),
         )
         testCaseRepository.save(newTestCaseModel)
@@ -225,7 +228,7 @@ class WorkspaceService(
     }
 
     /** Trimmed labels without repeats, ignoring case: the first spelling wins. */
-    private fun cleanLabels(labels: List<String>): MutableSet<String> {
+    fun cleanLabels(labels: List<String>): MutableSet<String> {
         val cleaned = linkedMapOf<String, String>()
         for (label in labels) {
             val name = label.trim().replace(Regex("\\s+"), " ")
@@ -395,6 +398,16 @@ class WorkspaceService(
     }
 
     @Transactional
+    fun retrieveTestRun(projectShortCode: String, testRunNumber: Long): TestRunDTO {
+        val project = projectRepository.findByProjectShortCode(projectShortCode)
+        requireNotNull(project) { "No project found for id $projectShortCode" }
+        projectAccessService.requireAccess(project)
+        val testRun = testRunRepository.findByProjectAndTestRunNumber(project, testRunNumber)
+        requireNotNull(testRun) { "No test run found" }
+        return testRun.toDTO()
+    }
+
+    @Transactional
     fun createTestRun(projectShortCode: String, testRun: CreateTestRunDTO): TestRun {
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
@@ -413,6 +426,7 @@ class WorkspaceService(
             createdBy = CurrentUser.get(),
             build = testRun.buildID?.let { projectBuildService.requireBuild(project, it) },
             trackTime = testRun.trackTime,
+            testPlan = testRun.testPlanID?.let { testPlanService.requirePlan(project, it) },
         )
         newTestRun.assignees.addAll(projectUsersByID(project, testRun.assigneeIDs))
         testRunRepository.save(newTestRun)
@@ -464,6 +478,7 @@ class WorkspaceService(
             assigneeIDs = assignees.map { it.externalID },
             buildID = request.buildID,
             trackTime = source.trackTime,
+            testPlanID = source.testPlan?.externalID,
         ))
 
         // each test case stays with whoever had it

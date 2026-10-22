@@ -292,6 +292,8 @@ export interface CreateTestCase extends Record<string, any> {
 	testInstructions: string
 	propertyValues: Record<string, string>
 	sectionID?: string
+	// a section by its path, e.g. "Mobile / Login", created if missing (imports)
+	sectionPath?: string
 	labels?: string[]
 	format?: TestCaseFormat
 	steps?: StepInput[]
@@ -333,6 +335,13 @@ export interface PropertyConfigurationResponse {
 	data: PropertyConfiguration[]
 }
 
+// how many test cases a bulk edit changed; deleting archives the ones used in test runs
+export interface BulkEditResult {
+	updated: number
+	archived: number
+	deleted: number
+}
+
 export interface FetchResponse<T> {
 	data: T
 }
@@ -362,6 +371,39 @@ export interface TestRun {
 	trackTime: boolean
 	// total set by an admin, replacing the tracked time
 	timeOverrideSeconds?: number
+	// the test plan it was launched from
+	testPlanID?: string
+	testPlanName?: string
+}
+
+// a template of test cases: those in its sections (and nested ones), with any of its labels, or chosen
+export interface TestPlan {
+	testPlanID: string
+	name: string
+	description?: string
+	sectionIDs: string[]
+	labels: string[]
+	testCaseIDs: string[]
+	createdBy?: string
+	updatedBy?: string
+	modifyDate?: number
+}
+
+// a type alias, unlike an interface, can be submitted as JSON as is
+export type SaveTestPlan = {
+	name: string
+	description?: string
+	sectionIDs: string[]
+	labels: string[]
+	testCaseIDs: string[]
+}
+
+export interface ProjectTestPlansOutletContext {
+	project: Project
+	testPlans: TestPlan[]
+	testCases: TestCase[]
+	sections: TestCaseSection[]
+	testRuns: TestRun[]
 }
 
 export interface RunningTimer {
@@ -480,7 +522,6 @@ export interface TestCaseOutletContext {
 
 export interface ProjectTestRunsOutletContext {
 	project: Project
-	testRuns: TestRun[]
 }
 
 export interface ProjectTestCaseRunsOutletContext {
@@ -491,6 +532,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	projectUsers: UserSummary[]
 	builds: ProjectBuild[]
 	time: TestRunTime
+	sections: TestCaseSection[]
 }
 
 export interface ErrorResponse extends Record<string, any> {

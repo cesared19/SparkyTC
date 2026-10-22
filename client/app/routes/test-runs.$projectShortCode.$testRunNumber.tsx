@@ -7,6 +7,7 @@ import type {
 	ProjectTestCaseRunsOutletContext,
 	TestRun,
 	TestRunTime,
+	TestCaseSection,
 	ProjectTestRunsOutletContext,
 	TestCaseRun,
 	PropertyConfiguration,
@@ -25,55 +26,64 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Test run number is required', { status: 400 })
 	}
 
-	const [response, propertiesResponse, usersResponse, buildsResponse, runs] =
-		await Promise.all([
-			api.get<FetchResponse<TestCaseRun[]>>(
-				APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
-			),
-			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
-			api.get<FetchResponse<UserSummary[]>>(
-				APIRoute.projectUsers(projectShortCode)
-			),
-			api.get<FetchResponse<ProjectBuild[]>>(
-				APIRoute.projectBuilds(projectShortCode)
-			),
-			api.get<FetchResponse<TestRun[]>>(
-				APIRoute.projectTestRuns(projectShortCode)
-			),
-		])
-	const testRun = runs.data.find((run) => run.testRunNumber === testRunNumber)
+	// the test run first, so an unknown number is a 404
+	const testRunResponse = await api
+		.get<FetchResponse<TestRun>>(
+			APIRoute.projectTestRun(projectShortCode, testRunNumber)
+		)
+		.catch(() => undefined)
+	const testRun = testRunResponse?.data
 	if (!testRun) {
 		throw new Response('Test run not found', { status: 404 })
 	}
-	const time = await api.get<FetchResponse<TestRunTime>>(
-		APIRoute.testRunTime(testRun.testRunID)
-	)
+
+	const [
+		response,
+		propertiesResponse,
+		usersResponse,
+		buildsResponse,
+		sectionsResponse,
+		time,
+	] = await Promise.all([
+		api.get<FetchResponse<TestCaseRun[]>>(
+			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
+		),
+		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+		api.get<FetchResponse<UserSummary[]>>(
+			APIRoute.projectUsers(projectShortCode)
+		),
+		api.get<FetchResponse<ProjectBuild[]>>(
+			APIRoute.projectBuilds(projectShortCode)
+		),
+		api.get<FetchResponse<TestCaseSection[]>>(
+			APIRoute.projectSections(projectShortCode)
+		),
+		api.get<FetchResponse<TestRunTime>>(
+			APIRoute.testRunTime(testRun.testRunID)
+		),
+	])
 	return {
-		testRunNumber,
+		testRun,
 		testCaseRuns: response.data,
 		properties: propertiesResponse.data,
 		projectUsers: usersResponse.data,
 		builds: buildsResponse.data,
 		time: time.data,
+		sections: sectionsResponse.data,
 	}
 }
 
 export default function TestRunsIndex() {
 	const {
-		testRunNumber,
+		testRun,
 		testCaseRuns,
 		properties,
 		projectUsers,
 		builds,
 		time,
+		sections,
 	} = useLoaderData<typeof loader>()
-	const { project, testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
-	const testRun = testRuns.find(
-		(testRun) => testRun.testRunNumber === testRunNumber
-	)
-	if (!testRun) {
-		return <p>Test run not found</p>
-	}
+	const { project } = useOutletContext<ProjectTestRunsOutletContext>()
 
 	const outletContext: ProjectTestCaseRunsOutletContext = {
 		project,
@@ -83,6 +93,7 @@ export default function TestRunsIndex() {
 		projectUsers,
 		builds,
 		time,
+		sections,
 	}
 
 	return <Outlet context={outletContext} />

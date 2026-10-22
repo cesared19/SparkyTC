@@ -12,7 +12,7 @@ interface ProjectShellProps {
 
 /**
  * Layout shared by every project page: the projects the user can access on the left and the
- * Dashboard | Test Cases | Test Runs | Builds tabs above the page content.
+ * Dashboard | Test Cases | Test Plans | Test Runs | Builds tabs above the page content.
  */
 export function ProjectShell({
 	projects,
@@ -33,6 +33,10 @@ export function ProjectShell({
 		{
 			to: Route.viewProjectTestCases(currentProject.projectShortCode),
 			label: 'Test Cases',
+		},
+		{
+			to: Route.viewTestPlans(currentProject.projectShortCode),
+			label: 'Test Plans',
 		},
 		{
 			to: Route.viewProjectTestRuns(currentProject.projectShortCode),

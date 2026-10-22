@@ -528,6 +528,47 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.16")
                 }
                 SchemaVersion.VERSION_0_0_16 -> {
+                    // test plans: templates of test cases chosen by section, label or one by one
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_plans (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            name TEXT NOT NULL,
+                            description TEXT,
+                            created_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                            updated_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_plan_sections (
+                            test_plan_id BIGINT NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
+                            section_id BIGINT NOT NULL REFERENCES test_case_sections(id) ON DELETE CASCADE,
+                            PRIMARY KEY (test_plan_id, section_id)
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_plan_labels (
+                            test_plan_id BIGINT NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
+                            name TEXT NOT NULL,
+                            PRIMARY KEY (test_plan_id, name)
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_plan_test_cases (
+                            test_plan_id BIGINT NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
+                            test_case_id BIGINT NOT NULL REFERENCES test_cases(id) ON DELETE CASCADE,
+                            PRIMARY KEY (test_plan_id, test_case_id)
+                        )
+                    """.trimIndent())
+                    // the plan a test run was launched from
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN test_plan_id BIGINT REFERENCES test_plans(id) ON DELETE SET NULL")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.17")
+                }
+                SchemaVersion.VERSION_0_0_17 -> {
                     break
                 }
             }

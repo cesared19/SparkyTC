@@ -11,6 +11,8 @@ data class CreateTestCaseDTO(
     val propertyValues: Map<UUID, String>,
     // the project's first suite when empty; on an update, empty keeps the current one
     val sectionID: UUID? = null,
+    // a section by its path, e.g. "Mobile / Login", created if missing; used by imports and wins over sectionID
+    val sectionPath: String? = null,
     // on an update, null keeps the current labels
     val labels: List<String>? = null,
     // on an update, null keeps the current format and steps

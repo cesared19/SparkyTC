@@ -8,14 +8,15 @@ import { Tools } from '~/utility/Tools'
 import { projectLabels } from '~/components/LabelInput'
 
 export default function TestCaseDetailsRoot() {
+	// hooks before any early return, so they run in the same order on every render
 	const params = useParams()
+	const { project, testCases, properties, sections, sharedSteps } =
+		useOutletContext<ProjectTestCasesOutletContext>()
 	const testCaseNumber = Number(params.testCaseNumber)
 	if (!testCaseNumber) {
 		return <p>No test case number found</p>
 	}
 
-	const { project, testCases, properties, sections, sharedSteps } =
-		useOutletContext<ProjectTestCasesOutletContext>()
 	const testCase = testCases.find(
 		(testCase) => testCase.testCaseNumber === testCaseNumber
 	)

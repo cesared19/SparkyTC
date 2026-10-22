@@ -62,6 +62,28 @@ class StepService(
         }
     }
 
+    /**
+     * Switches a test case between text and steps without losing its content: a test case without steps gets its
+     * instructions (or its title) as the first step, and one without instructions gets its steps as numbered text.
+     */
+    fun convertFormat(testCase: TestCase, format: TestCaseFormat) {
+        if (testCase.format == format) return
+        val steps = stepRepository.findAllByTestCaseOrderByPositionAsc(testCase)
+        if (format == TestCaseFormat.STEPS && steps.isEmpty()) {
+            val action = clean(testCase.testInstructions) ?: testCase.title
+            stepRepository.save(TestCaseStep(testCase = testCase, position = 0, action = action))
+        }
+        if (format == TestCaseFormat.TEXT && clean(testCase.testInstructions) == null) {
+            val lines = steps.flatMap { step ->
+                step.sharedStep?.items?.map { it.action to it.expected } ?: listOf((step.action ?: "") to step.expected)
+            }
+            testCase.testInstructions = lines.mapIndexed { index, (action, expected) ->
+                "${index + 1}. $action" + (expected?.let { "\n   Expected: $it" } ?: "")
+            }.joinToString("\n").takeIf { it.isNotEmpty() }
+        }
+        testCase.format = format
+    }
+
     /** Copies the format and steps of the test case into a new test run, expanding shared steps. */
     fun copyToRun(testCase: TestCase, testCaseRun: TestCaseRun) {
         testCaseRun.format = testCase.format

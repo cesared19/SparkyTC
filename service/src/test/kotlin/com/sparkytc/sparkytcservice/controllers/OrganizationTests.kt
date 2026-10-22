@@ -100,7 +100,7 @@ class OrganizationTests {
         assertEquals(listOf("Single sign-on", "Login"), mobileChildren.map { it.get("name").asText() })
 
         val loginCase = testCases().first { it.get("title").asText() == "Login works" }
-        send(put("/api/v1/workspace/test-cases/section"), mapOf("testCaseIDs" to listOf(loginCase.get("testCaseID").asText()), "sectionID" to login))
+        send(put("/api/v1/workspace/test-cases/bulk"), mapOf("testCaseIDs" to listOf(loginCase.get("testCaseID").asText()), "sectionID" to login))
         val moved = testCases().first { it.get("title").asText() == "Login works" }
         assertEquals(login, moved.get("sectionID").asText())
         assertEquals(1, moved.get("testCaseNumber").asInt())
@@ -142,6 +142,22 @@ class OrganizationTests {
             sectionID = UUID.fromString(imported),
         ))
         assertEquals(listOf(imported, imported), testCases().map { it.get("sectionID").asText() })
+
+        // a row's section path wins, creating the sections that don't exist and reusing the ones that do
+        send(post("/api/v1/workspace/test-cases/PRJ/batch"), BatchCreateTestCasesDTO(
+            testCases = listOf(
+                testCaseDTO("Third", null).copy(sectionPath = "Mobile / Login"),
+                testCaseDTO("Fourth", null).copy(sectionPath = " mobile/ LOGIN "),
+                testCaseDTO("Fifth", null).copy(sectionPath = "Imported"),
+            ),
+            sectionID = UUID.fromString(imported),
+        ))
+        val byTitle = testCases().associate { it.get("title").asText() to it.get("sectionID").asText() }
+        assertEquals(byTitle["Third"], byTitle["Fourth"])
+        assertEquals(imported, byTitle["Fifth"])
+        val login = sections().single { it.get("sectionID").asText() == byTitle["Third"] }
+        assertEquals("Login", login.get("name").asText())
+        assertEquals("Mobile", sections().single { it.get("sectionID").asText() == login.get("parentID").asText() }.get("name").asText())
     }
 
     @Test
@@ -200,6 +216,98 @@ class OrganizationTests {
             .andExpect(jsonPath("$.message").value(Matchers.containsString("used by 1 test case")))
         send(put("/api/v1/workspace/test-cases/${testCase.get("testCaseID").asText()}"), testCaseDTO("Checkout", null).copy(format = TestCaseFormat.TEXT, steps = emptyList()))
         send(delete("/api/v1/workspace/shared-steps/$signIn"), null).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `test plans choose test cases by section, label or one by one and launch runs`() {
+        val mobile = createSection("Mobile", null)
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Login", mobile))
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Checkout", null).copy(labels = listOf("smoke")))
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Profile", null))
+        val profile = testCases().first { it.get("title").asText() == "Profile" }.get("testCaseID").asText()
+
+        // a plan needs a name and at least one rule, all from its project
+        send(post("/api/v1/workspace/projects/PRJ/test-plans"), mapOf("name" to "Empty"))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.message").value(Matchers.containsString("Choose the test cases")))
+        send(post("/api/v1/workspace/projects/PRJ/test-plans"), mapOf("name" to "Bad", "sectionIDs" to listOf(UUID.randomUUID())))
+            .andExpect(status().isBadRequest)
+
+        val plan = data(send(post("/api/v1/workspace/projects/PRJ/test-plans"), mapOf(
+            "name" to " Regression ", "description" to "Every build",
+            "sectionIDs" to listOf(mobile), "labels" to listOf("smoke", "Smoke"), "testCaseIDs" to listOf(profile),
+        )))
+        val planID = plan.get("testPlanID").asText()
+        assertEquals("Regression", plan.get("name").asText())
+        assertEquals(listOf("smoke"), plan.get("labels").map { it.asText() })
+        assertEquals(listOf(mobile), plan.get("sectionIDs").map { it.asText() })
+
+        send(put("/api/v1/workspace/test-plans/$planID"), mapOf("name" to "Regression", "labels" to listOf("smoke")))
+        val updated = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-plans")))[0]
+        assertEquals(0, updated.get("sectionIDs").size())
+        assertEquals(0, updated.get("testCaseIDs").size())
+
+        // a run launched from the plan remembers it, and keeps its results when the plan is deleted
+        send(post("/api/v1/workspace/test-runs/PRJ"), mapOf("title" to "Regression 1", "description" to null, "testCaseIDs" to listOf(profile), "testPlanID" to planID))
+        val run = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))[0]
+        assertEquals(planID, run.get("testPlanID").asText())
+        assertEquals("Regression", run.get("testPlanName").asText())
+        // a test run's page loads just that run
+        assertEquals("Regression 1", data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/1"))).get("title").asText())
+        admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/99")).andExpect(status().isBadRequest)
+
+        send(delete("/api/v1/workspace/test-plans/$planID"), null).andExpect(status().isOk)
+        assertEquals(0, data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-plans"))).size())
+        val runAfter = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))[0]
+        assertEquals(true, runAfter.get("testPlanID") == null || runAfter.get("testPlanID").isNull)
+        assertEquals(1, data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1"))).size())
+    }
+
+    @Test
+    fun `many test cases are moved, labeled, changed and deleted at once`() {
+        val mobile = createSection("Mobile", null)
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Login", null).copy(labels = listOf("old", "smoke"), testInstructions = "Open the app"))
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Logout", null))
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Profile", null))
+        val ids = testCases().associate { it.get("title").asText() to it.get("testCaseID").asText() }
+        val chosen = listOf(ids["Login"], ids["Logout"])
+
+        send(put("/api/v1/workspace/test-cases/bulk"), mapOf("testCaseIDs" to chosen))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.message").value("Choose what to change"))
+
+        val result = data(send(put("/api/v1/workspace/test-cases/bulk"), mapOf(
+            "testCaseIDs" to chosen, "sectionID" to mobile,
+            "addLabels" to listOf("Regression", "SMOKE"), "removeLabels" to listOf("OLD"), "format" to "STEPS",
+        )))
+        assertEquals(2, result.get("updated").asInt())
+        val login = testCases().single { it.get("title").asText() == "Login" }
+        assertEquals(mobile, login.get("sectionID").asText())
+        assertEquals(listOf("Regression", "smoke"), login.get("labels").map { it.asText() })
+        // the instructions become the first step
+        assertEquals("STEPS", login.get("format").asText())
+        assertEquals("Open the app", login.get("steps")[0].get("action").asText())
+        val profile = testCases().single { it.get("title").asText() == "Profile" }
+        assertEquals(0, profile.get("labels").size())
+
+        // a property changes on all of them and the others keep their values
+        val select = data(admin.perform(get("/api/v1/workspace/properties"))).first { it.get("propertyType").asText() == "SINGLE_SELECT_LIST" }
+        val option = select.get("selectOptions").last().asText()
+        send(put("/api/v1/workspace/test-cases/bulk"), mapOf("testCaseIDs" to chosen, "propertyID" to select.get("propertyConfigurationID").asText(), "propertyValue" to "Nope"))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.message").value(Matchers.startsWith("PRJ-")))
+        send(put("/api/v1/workspace/test-cases/bulk"), mapOf("testCaseIDs" to chosen, "propertyID" to select.get("propertyConfigurationID").asText(), "propertyValue" to option))
+        val values = testCases().single { it.get("title").asText() == "Logout" }.get("propertyValues")
+        assertEquals(option, values.get(select.get("propertyConfigurationID").asText()).asText())
+        assertEquals(testCaseDTO("x", null).propertyValues.size, values.size())
+
+        // back to text, the steps are written as instructions
+        send(put("/api/v1/workspace/test-cases/bulk"), mapOf("testCaseIDs" to listOf(ids["Login"]), "format" to "TEXT"))
+        assertEquals("TEXT", testCases().single { it.get("title").asText() == "Login" }.get("format").asText())
+
+        // deleting archives the test cases used in runs and deletes the rest
+        send(post("/api/v1/workspace/test-runs/PRJ"), mapOf("title" to "Run", "description" to null, "testCaseIDs" to listOf(ids["Login"])))
+        val deleted = data(send(post("/api/v1/workspace/test-cases/bulk-delete"), mapOf("testCaseIDs" to chosen)))
+        assertEquals(1, deleted.get("archived").asInt())
+        assertEquals(1, deleted.get("deleted").asInt())
+        assertEquals(listOf("Profile"), testCases().map { it.get("title").asText() })
     }
 
     private fun createSection(name: String, parentID: String?): String {

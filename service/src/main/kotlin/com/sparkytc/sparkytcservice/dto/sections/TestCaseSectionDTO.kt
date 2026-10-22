@@ -27,7 +27,4 @@ data class ReorderTestCaseSectionDTO(
     val direction: String,
 )
 
-data class MoveTestCasesDTO(
-    val testCaseIDs: List<UUID>,
-    val sectionID: UUID,
-)
+

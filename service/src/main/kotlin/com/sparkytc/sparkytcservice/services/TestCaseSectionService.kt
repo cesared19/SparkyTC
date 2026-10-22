@@ -1,7 +1,6 @@
 package com.sparkytc.sparkytcservice.services
 
 import com.sparkytc.sparkytcservice.dto.sections.CreateTestCaseSectionDTO
-import com.sparkytc.sparkytcservice.dto.sections.MoveTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.sections.ReorderTestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.TestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.UpdateTestCaseSectionDTO
@@ -106,25 +105,22 @@ class TestCaseSectionService(
         renumber(project, section.parent)
     }
 
-    @Transactional
-    fun moveTestCases(request: MoveTestCasesDTO) {
-        require(request.testCaseIDs.isNotEmpty()) { "Choose the test cases to move" }
-        val testCases = request.testCaseIDs.distinct().map { testCaseID ->
-            val testCase = testCaseRepository.findByExternalID(testCaseID)
-            requireNotNull(testCase) { "No test case found with id $testCaseID" }
-            testCase
-        }
-        val project = testCases.first().project
-        require(testCases.all { it.project.id == project.id }) { "The test cases must belong to the same project" }
-        projectAccessService.requireAccess(project)
-        val section = requireSection(project, request.sectionID)
-        testCases.forEach { it.section = section }
-        testCaseRepository.saveAll(testCases)
-    }
-
     /** The section a test case is filed in: the chosen one, or the project's first suite, created if needed. */
     fun sectionFor(project: WorkspaceProject, sectionID: UUID?): TestCaseSection {
         return sectionID?.let { requireSection(project, it) } ?: defaultSection(project)
+    }
+
+    /** The section at a path such as "Mobile / Login", creating the suite and sections that don't exist yet. */
+    fun sectionForPath(project: WorkspaceProject, path: String): TestCaseSection {
+        val names = path.split("/").map { it.trim() }.filter { it.isNotEmpty() }
+        require(names.isNotEmpty()) { "The section path is empty" }
+        var parent: TestCaseSection? = null
+        for (name in names) {
+            val siblings = siblings(project, parent)
+            parent = siblings.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                ?: sectionRepository.save(TestCaseSection(project = project, parent = parent, name = requireName(name), position = siblings.size))
+        }
+        return parent!!
     }
 
     private fun defaultSection(project: WorkspaceProject): TestCaseSection {

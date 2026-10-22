@@ -1,11 +1,11 @@
 # Build stage
-FROM node:20-slim as builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -14,13 +14,13 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-slim as production
+FROM node:22-slim AS production
 
 WORKDIR /app
 
 # Copy package files and install only production dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --omit=dev
 
 # Copy built assets from builder stage
 COPY --from=builder /app/build ./build

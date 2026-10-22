@@ -119,6 +119,26 @@ class ResponsibilityTests {
     }
 
     @Test
+    fun `admins assign many test cases of a run at once`() {
+        createTestRun(assignees = listOf("ana", "beto"))
+        val ids = testCaseRunIDs()
+
+        // testers can only take test cases for themselves
+        expectError(beto, put("/api/v1/workspace/test-case-runs/bulk-assignee"), mapOf("testCaseRunIDs" to ids, "userID" to userIDs["ana"]), "Only admins can assign test cases to other users")
+        put(admin, "/api/v1/workspace/test-case-runs/${ids[0]}/assignee", mapOf("userID" to userIDs["beto"]))
+
+        // the ones already assigned to beto are left as they are
+        val response = admin.perform(put("/api/v1/workspace/test-case-runs/bulk-assignee").contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("testCaseRunIDs" to ids, "userID" to userIDs["beto"]))))
+            .andExpect(status().isOk).andReturn()
+        assertEquals(1, objectMapper.readTree(response.response.contentAsString).get("data").get("updated").asInt())
+        assertEquals(listOf("Beto", "Beto"), testCaseRuns().map { it.get("assignedTo").get("displayName").asText() })
+
+        put(admin, "/api/v1/workspace/test-case-runs/bulk-assignee", mapOf("testCaseRunIDs" to ids, "userID" to null))
+        assertTrue(testCaseRuns().all { it.get("assignedTo")?.isNull ?: true })
+    }
+
+    @Test
     fun `testers take test cases so others don't duplicate the work`() {
         createTestRun(assignees = listOf("ana", "beto"))
         val (first, second) = testCaseRunIDs()

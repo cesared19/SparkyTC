@@ -1,11 +1,23 @@
-import { Link, useOutletContext, useNavigate } from '@remix-run/react'
-import { ProjectTestRunsOutletContext, TestRun } from '~/models/types'
+import { type LoaderFunctionArgs } from '@remix-run/node'
+import { Link, useLoaderData, useNavigate } from '@remix-run/react'
+import { FetchResponse, TestRun } from '~/models/types'
+import { requireAPI } from '~/utility/API.server'
+import { APIRoute } from '~/utility/Routes'
 import { TestRunStatusBadge } from '~/components/TestRunStatusBadge'
 import { Table, Column } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
 
+// only the list needs every test run; a test run's page loads just its own
+export async function loader({ request, params }: LoaderFunctionArgs) {
+	const api = await requireAPI(request)
+	const response = await api.get<FetchResponse<TestRun[]>>(
+		APIRoute.projectTestRuns(params.projectShortCode ?? '')
+	)
+	return { testRuns: response.data }
+}
+
 export default function TestRunsIndex() {
-	const { testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
+	const { testRuns } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 
 	const columns: Column<TestRun>[] = [
