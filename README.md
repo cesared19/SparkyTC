@@ -24,7 +24,12 @@ Create and organize your test cases for each of your projects.
 -  **Labels**: free labels such as `smoke` or `payments`, several per test case, to find test cases across suites. The test case list and the test run's test case selector filter by labels (a test case must have all the chosen ones) and by section.
 -  **Text or steps**: a test case is written as free text or as steps, each with an action and an expected result. Switching keeps the content: the text becomes the first step, and the steps become numbered text.
 -  **Shared steps**: steps used by several test cases, such as signing in, kept in the project's **Shared steps** library and inserted in a test case as a block. Editing one changes every test case that uses it; test runs already created keep their copy, and a shared step in use can't be deleted.
+-  **Bulk edit**: click **Select** on the test case list, pick test cases (or every test case of a section with the select all checkbox) and move them to a section, add or remove labels, set a property or change the format at once. Admins can also delete them; the ones used in test runs are archived. Only the test cases shown by the current filters are changed.
 -  **During a run**, a test case written as steps lists them to be marked as pass, fail, blocked or skip, with an optional actual result. The result is suggested from the steps (any failed step suggests Fail, then Blocked), and each result keeps how every step went, shown in the run, the report PDF and the steps to reproduce of Jira bugs.
+
+### Test Plans
+
+A test plan is a template of the test cases to run again and again, e.g. *Regression* or *Smoke*. It chooses its test cases by suites and sections (including the sections nested inside them), by labels, or one by one, and the plan's page shows them grouped by section. **Start test run** opens a new test run with the plan's test cases already chosen; they are worked out again each time, so test cases added later to a chosen section or label are included. Test runs remember the plan they came from, and keep their results if the plan is deleted (admins only).
 
 ### Test Runs
 
@@ -44,12 +49,13 @@ Document the results of each test case with a status and any notes or observatio
 
 ![Test Run Progress](./documentation/assets/in-progress-test-run.png)
 
-View the progress of your test run and see the results of each test case.
+View the progress of your test run and see the results of each test case. While the run is open, admins can click **Select** above its test cases to assign several of them to a user at once.
 
 ### Additional Features
 
 -  Custom property configuration for test cases
 -  Batch import of test cases from a `.csv` file (see below)
+-  Export the test case list (with the current filters) and the results of a test run as `.csv` or Excel `.xlsx`; the exported test cases can be edited and imported again
 -  Images and videos attached to test cases, visible while executing a test run
 -  Links inside test case descriptions, instructions and properties are clickable and open in a new tab
 -  Edit a test case's title, description and instructions from within a test run, optionally applying the changes to the original test case
@@ -78,9 +84,12 @@ From a project's test case list, click **Import CSV**. The first row of the file
 | `Description`       | No       |                                                                                                       |
 | `Test Instructions` | No       | Line breaks are kept when the value is quoted                                                         |
 | `Labels`            | No       | Several labels separated by commas or semicolons                                                      |
+| `Section`           | No       | A path such as `Mobile / Login`; missing suites and sections are created                              |
+| `Format`            | No       | `Text` or `Steps`                                                                                     |
+| `Steps`             | No       | Numbered steps: `1. Open the page`, then `   Expected: It loads`; `2. [Shared] Sign in` for a shared step |
 | _Property title_    | No       | One column per property (e.g. `Priority`, `Type`). Empty required properties use their default value |
 
-Comma, semicolon and tab separated files are supported, and column names and select options are matched case-insensitively. Use **Download template** on the import page to get a file with the columns for your current properties. The rows are previewed and validated before importing, and the import is all-or-nothing. The imported test cases go to the section chosen on the import page.
+Comma, semicolon and tab separated files are supported, and column names and select options are matched case-insensitively. Use **Download template** on the import page to get a file with the columns for your current properties. The rows are previewed and validated before importing, and the import is all-or-nothing. The imported test cases go to the section of their `Section` column, or else to the section chosen on the import page. A file exported from the test case list has these columns (plus an `ID` column that is ignored, since imported test cases get new numbers), so test cases can be edited in a spreadsheet and imported again.
 
 ### Test case attachments
 

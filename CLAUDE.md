@@ -1,6 +1,6 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.6.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.7.0 está en `main`.
 
 **Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
@@ -10,7 +10,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 - **Backend:** Spring Boot 3 + Kotlin (JDK 21), en `service/`. Paquete `com.sparkytc.sparkytcservice`, configuración con prefijo `sparkytc.*`.
 - **Frontend:** Remix + React + Tailwind, en `client/`. Todas las llamadas a la API pasan por el servidor Remix con la sesión del usuario (`requireAPI` / `requireUser` / `requireAdmin`).
-- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.16). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
+- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.17). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
 - **Deploy:** Docker Compose (`docker-compose.yml`). El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
 
 ## Funcionalidades existentes (v1.0.0)
@@ -32,13 +32,16 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - Resultados (desde 1.6.0): estados Pass, Fail, Blocked y Skip. Blocked cuenta como ejecutado sin pasar (baja el pass rate) y deja el run abierto; permite crear bug de Jira en modo Manual. Cada guardado agrega un resultado (`test_case_results`, no se editan; un admin puede borrar uno) y `test_case_runs` guarda copia del último (status, notes, executed_by, executed_at), que es lo que leen dashboard, builds y reporte (`TestCaseResultService`). La evidencia va por resultado (`test_case_attachments.test_case_result_id`; los adjuntos del test case la excluyen con `@SQLRestriction`); se sube después de guardar el resultado. Historial por test case (`/test-cases/{id}/history`) y re-run de los fallidos/bloqueados (`/test-runs/{id}/rerun`, conserva asignaciones).
 - Organización (desde 1.7.0): suites y secciones anidadas (`test_case_sections`, las de primer nivel son suites; cada caso en una, `test_cases.section_id`; `TestCaseSectionService`), árbol en la lista de casos y filtro por sección en el selector del run. Labels libres (`test_case_labels`, sin repetir ignorando mayúsculas) con filtro en la lista y el selector, y columna Labels en el CSV.
 - Pasos (desde 1.7.0): `test_cases.format` TEXT o STEPS; `test_case_steps` (acción y esperado, o referencia a un shared step). Biblioteca de shared steps por proyecto (`shared_steps`, `shared_step_items`); editar uno cambia los casos, no los runs, y no se borra mientras se use. Los runs copian los pasos expandidos (`test_case_run_steps`) y cada resultado guarda cada paso (`test_case_result_steps`); el resultado se sugiere a partir de los pasos (`StepService`, `StepsEditor`, `StepsView`). Skip usa cian (`#0891b2`).
+- Test plans (desde 2.0.0): plantillas de casos por secciones (con las anidadas), labels (cualquiera) o casos sueltos (`test_plans`, `test_plan_sections`, `test_plan_labels`, `test_plan_test_cases`; `TestPlanService`, `planTestCases` en `utility/TestPlans.ts`). Los casos se calculan al iniciar el run (`/test-runs/{code}/new?plan=id`); el run guarda `test_runs.test_plan_id` (ON DELETE SET NULL). Solo admins borran planes.
+- Exportación (desde 2.0.0): lista de casos (con los filtros) y resultados de un run en CSV (con BOM) o .xlsx (`utility/Xlsx.ts` con JSZip, `TestCaseExport.ts`). El CSV de casos se reimporta: columnas ID (se ignora), Section (ruta, crea lo que falte: `CreateTestCaseDTO.sectionPath`), Format y Steps ("1. acción", "   Expected: x", "N. [Shared] Nombre").
+- Edición masiva (desde 2.0.0): botón Select en la lista de casos; mover de sección, agregar/quitar labels, fijar una propiedad, cambiar formato (`StepService.convertFormat`) y, solo admins, borrar (archiva los usados). En un run abierto los admins asignan varios casos. Todo o nada (`BulkEditService`, `/test-cases/bulk`, `/test-cases/bulk-delete`, `/test-case-runs/bulk-assignee`, ruta de recurso `/bulk-edit`, `BulkEditBar`).
 - Responsivo (desde 1.3.0): en móvil la barra superior es un menú, la lista de proyectos es un panel lateral y las tablas (`Table`) se muestran como tarjetas hasta `lg`; la página Users usa `useMediaQuery` para no duplicar sus formularios. Revisa los cambios de interfaz también a 390 px y 820 px.
 - Modo claro, oscuro o del sistema. Paleta de marca carmesí `#C01C37`, con la escala de grises y la escala `brand` definidas como variables CSS en `client/app/tailwind.css`.
 
 ## Cómo trabajar
 
 - **Antes de hacer push:**
-  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 78).
+  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 81).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint ya tiene 55 problemas heredados de `main` (42 errores, 13 warnings); el criterio es no agregar nuevos.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
@@ -54,5 +57,4 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Versión en curso
 
-- **1.7.0** (rama `claude/v1.7.0`), etapa B de la 2.0 — hechos: color de Skip; suites y secciones; labels; pasos estructurados; shared steps.
-- **2.0.0** (después), etapa C: test plans como plantillas de casos (por suites, secciones, labels o a mano; los casos agrupados por sección), exportación CSV/Excel de casos y de resultados de un run (el CSV de casos reimportable) y edición masiva (mover de sección, labels, propiedades, formato, archivar; en un run, asignar).
+- **2.0.0** (rama `claude/v2.0.0`), etapa C — hechos: padding del formulario de nuevo caso en modo oscuro; test plans; exportación CSV/Excel; edición masiva.
