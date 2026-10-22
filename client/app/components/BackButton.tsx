@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '@remix-run/react'
+import { useNavigate } from '@remix-run/react'
 
 export function BackButton() {
 	const navigate = useNavigate()

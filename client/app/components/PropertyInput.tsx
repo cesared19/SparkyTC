@@ -17,23 +17,19 @@ export const PropertyInput = ({
 	onChange,
 	onUnset,
 }: PropertyInputProps) => {
-	const [internalValue, setInternalValue] = useState<string | undefined>(
-		() => {
-			if (
-				property.propertyType === PropertyType.singleSelectList &&
-				!property.isRequired &&
-				!initialValue
-			) {
-				return NOT_SET_VALUE
-			}
-			return initialValue
+	const [internalValue, setInternalValue] = useState<string | undefined>(() => {
+		if (
+			property.propertyType === PropertyType.singleSelectList &&
+			!property.isRequired &&
+			!initialValue
+		) {
+			return NOT_SET_VALUE
 		}
-	)
+		return initialValue
+	})
 
 	const actionWord =
-		property.propertyType === PropertyType.singleSelectList
-			? 'Select'
-			: 'Enter'
+		property.propertyType === PropertyType.singleSelectList ? 'Select' : 'Enter'
 	const placeholder = `${actionWord} ${property.title}${
 		!property.isRequired ? ' (optional)' : ''
 	}`
@@ -68,7 +64,7 @@ export const PropertyInput = ({
 					placeholder={placeholder}
 				/>
 			)
-		case PropertyType.singleSelectList:
+		case PropertyType.singleSelectList: {
 			if (!property.selectOptions) return null
 
 			const options = property.isRequired
@@ -83,6 +79,7 @@ export const PropertyInput = ({
 					placeholder={placeholder}
 				/>
 			)
+		}
 		default:
 			return null
 	}

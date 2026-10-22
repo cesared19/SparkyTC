@@ -53,7 +53,7 @@ import {
 } from '~/components/TestCaseResults'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 
-interface UpdateTestCaseRun extends Record<string, any> {
+type UpdateTestCaseRun = {
 	status: TestCaseRunStatus
 	notes?: string
 	jiraTransitions?: JiraIssueTransition[]
@@ -362,7 +362,7 @@ function TestCaseRunView({
 					{isLocked && (
 						<p className="mt-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
 							{testCaseRun.assignedTo?.displayName} is working on this test
-							case, so you can't record its result.
+							case, so you can&apos;t record its result.
 						</p>
 					)}
 				</section>

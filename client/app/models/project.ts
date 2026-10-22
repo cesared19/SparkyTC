@@ -11,7 +11,7 @@ export interface Project {
 	jiraIssueType?: string
 }
 
-export interface NewProject extends Record<string, any> {
+export type NewProject = {
 	title: string
 	projectShortCode: string
 	description?: string

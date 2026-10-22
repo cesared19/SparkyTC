@@ -18,15 +18,11 @@ export default function TopNavigation({ user }: TopNavigationProps) {
 		: isAdmin
 		? 'Admin'
 		: 'Tester'
-	const links = [
-		{ to: '/', label: 'Projects' },
-		...(isAdmin
-			? [
-					{ to: Route.viewProperties, label: 'Configuration' },
-					{ to: Route.users, label: 'Users' },
-			  ]
-			: []),
+	const adminLinks = [
+		{ to: Route.viewProperties, label: 'Configuration' },
+		{ to: Route.users, label: 'Users' },
 	]
+	const links = [{ to: '/', label: 'Projects' }, ...(isAdmin ? adminLinks : [])]
 
 	// the phone menu closes once a link is followed
 	useEffect(() => setIsMenuOpen(false), [location.pathname])

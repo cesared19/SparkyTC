@@ -5,6 +5,8 @@ interface SelectDropdownProps {
 	value?: string
 	onChange: (value: string) => void
 	placeholder: string
+	// lets a label point at the dropdown
+	id?: string
 }
 
 export function SelectDropdown({
@@ -12,6 +14,7 @@ export function SelectDropdown({
 	value,
 	onChange,
 	placeholder,
+	id,
 }: SelectDropdownProps) {
 	const [isOpen, setIsOpen] = useState(false)
 	const buttonRef = useRef<HTMLButtonElement>(null)
@@ -34,6 +37,7 @@ export function SelectDropdown({
 	return (
 		<div className="relative">
 			<button
+				id={id}
 				ref={buttonRef}
 				type="button"
 				onClick={() => options.length > 0 && setIsOpen(!isOpen)}
@@ -43,9 +47,7 @@ export function SelectDropdown({
 						: 'cursor-not-allowed bg-gray-50'
 				} flex items-center justify-between shadow-sm`}
 			>
-				<span
-					className={`px-1 ${!value ? 'text-gray-500' : 'text-gray-900'}`}
-				>
+				<span className={`px-1 ${!value ? 'text-gray-500' : 'text-gray-900'}`}>
 					{value || placeholder}
 				</span>
 				<svg

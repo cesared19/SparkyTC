@@ -125,10 +125,9 @@ export default function TestCasesIndex() {
 			header: 'Priority',
 			key: 'priority',
 			render: (testCase) =>
-				priorityConfig
-					? testCase.propertyValues[priorityConfig.propertyConfigurationID] ||
-					  '-'
-					: '-',
+				(priorityConfig &&
+					testCase.propertyValues[priorityConfig.propertyConfigurationID]) ||
+				'-',
 		},
 		{
 			header: 'Type',

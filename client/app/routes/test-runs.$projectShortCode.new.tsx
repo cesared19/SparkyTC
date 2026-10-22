@@ -1,15 +1,14 @@
-import { json, type ActionFunctionArgs, redirect } from '@remix-run/node'
+import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
 	Form,
 	useNavigate,
-	useParams,
 	useLoaderData,
 	useSubmit,
 	useOutletContext,
 	useActionData,
 	Link,
 } from '@remix-run/react'
-import { APIRoute } from '~/utility/Routes'
+import { APIRoute, Route } from '~/utility/Routes'
 import { useState } from 'react'
 import type {
 	ErrorResponse,
@@ -20,19 +19,17 @@ import type {
 	TestCase,
 	TestCaseSection,
 	TestPlan,
-	TestRun,
 	UserSummary,
 } from '~/models/types'
 import TestCaseSelector from '~/components/TestCaseSelector'
 import { AssigneePicker } from '~/components/Assignments'
 import { BuildSelect } from '~/components/Builds'
-import { Route } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '../utility/Tools'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { planTestCases } from '~/utility/TestPlans'
 
-interface CreateTestRun extends Record<string, any> {
+type CreateTestRun = {
 	title: string
 	description?: string
 	testCaseIDs: string[]
@@ -112,13 +109,12 @@ export default function NewTestRun() {
 	const actionData = useActionData<ErrorResponse>()
 
 	const [showTestCaseSelector, setShowTestCaseSelector] = useState(false)
-	const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(() =>
-		testPlan
-			? planTestCases(testPlan, testCases, sections).map(
-					(match) => match.testCase
-			  )
-			: []
-	)
+	const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(() => {
+		if (!testPlan) return []
+		return planTestCases(testPlan, testCases, sections).map(
+			(match) => match.testCase
+		)
+	})
 	const submit = useSubmit()
 
 	const todayDateString = new Date()

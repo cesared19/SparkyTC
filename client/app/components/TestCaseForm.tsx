@@ -1,7 +1,6 @@
-import { Form, useSubmit } from '@remix-run/react'
+import { Form } from '@remix-run/react'
 import {
 	PropertyConfiguration,
-	PropertyType,
 	TestCase,
 	CreateTestCase,
 	TestCaseSection,
@@ -9,8 +8,6 @@ import {
 	TestCaseFormat,
 } from '../models/types'
 import { useState } from 'react'
-import { useRef, useEffect } from 'react'
-import { SelectDropdown } from './SelectDropdown'
 import { ErrorMessage } from './ErrorMessage'
 import { PropertyInput } from './PropertyInput'
 import { SectionSelect } from './SectionSelect'

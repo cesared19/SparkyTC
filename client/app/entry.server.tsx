@@ -24,19 +24,15 @@ export default function handleRequest(
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	loadContext: AppLoadContext
 ) {
-	return isbot(request.headers.get('user-agent') || '')
-		? handleBotRequest(
-				request,
-				responseStatusCode,
-				responseHeaders,
-				remixContext
-		  )
-		: handleBrowserRequest(
-				request,
-				responseStatusCode,
-				responseHeaders,
-				remixContext
-		  )
+	const handleRequest = isbot(request.headers.get('user-agent') || '')
+		? handleBotRequest
+		: handleBrowserRequest
+	return handleRequest(
+		request,
+		responseStatusCode,
+		responseHeaders,
+		remixContext
+	)
 }
 
 function handleBotRequest(

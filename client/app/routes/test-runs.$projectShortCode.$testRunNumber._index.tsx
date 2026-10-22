@@ -3,7 +3,6 @@ import {
 	useNavigate,
 	useSubmit,
 	useOutletContext,
-	useFetcher,
 	Link,
 } from '@remix-run/react'
 import { Route, APIRoute } from '~/utility/Routes'
@@ -12,16 +11,15 @@ import {
 	ProjectTestCaseRunsOutletContext,
 	TestRun,
 	TestRunStatus,
+	TestCaseRunStatus,
 } from '~/models/types'
-import type { UpdateTestRun } from '~/models/types'
+import type { UpdateTestRun, TestCaseRun } from '~/models/types'
 import { ActionMenu, type ActionMenuItem } from '~/components/ActionMenu'
 import { TestRunStatusBadge } from '~/components/TestRunStatusBadge'
 import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
 import { Table, type Column } from '~/components/Table'
-import type { TestCaseRun } from '~/models/types'
 import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
-import { DateDisplay } from '../components/DateDisplay'
 import { requireAPI } from '~/utility/API.server'
 import { useIsAdmin } from '~/utility/CurrentUser'
 import {
@@ -38,7 +36,6 @@ import { ExportMenu } from '~/components/ExportMenu'
 import { downloadTable, runResultRows } from '~/utility/TestCaseExport'
 import { useState } from 'react'
 import { formatDuration, TestRunTimeSection } from '~/components/TimeTracking'
-import { TestCaseRunStatus } from '~/models/types'
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	const api = await requireAPI(request)

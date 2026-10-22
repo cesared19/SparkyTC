@@ -1,5 +1,4 @@
-import { Outlet, useOutletContext } from '@remix-run/react'
-import { useParams } from '@remix-run/react'
+import { Outlet, useOutletContext, useParams } from '@remix-run/react'
 import {
 	PropertyConfigurationDetailsOutletContext,
 	PropertyConfigurationOutletContext,
