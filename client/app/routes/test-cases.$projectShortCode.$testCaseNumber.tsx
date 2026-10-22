@@ -14,7 +14,7 @@ export default function TestCaseDetailsRoot() {
 		return <p>No test case number found</p>
 	}
 
-	const { project, testCases, properties, sections } =
+	const { project, testCases, properties, sections, sharedSteps } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const testCase = testCases.find(
 		(testCase) => testCase.testCaseNumber === testCaseNumber
@@ -35,6 +35,7 @@ export default function TestCaseDetailsRoot() {
 		propertyValues,
 		sections,
 		labels: projectLabels(testCases),
+		sharedSteps,
 	}
 
 	return <Outlet context={context} />

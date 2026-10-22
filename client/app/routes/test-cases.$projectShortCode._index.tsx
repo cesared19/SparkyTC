@@ -128,6 +128,12 @@ export default function TestCasesIndex() {
 				<h2 className="text-2xl font-semibold text-gray-900">Test Cases</h2>
 				<div className="flex flex-wrap items-center gap-3">
 					<Link
+						to="shared-steps"
+						className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+					>
+						Shared steps
+					</Link>
+					<Link
 						to={selectedID ? `import?section=${selectedID}` : 'import'}
 						className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
 					>

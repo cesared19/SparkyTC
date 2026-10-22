@@ -23,6 +23,7 @@ import com.sparkytc.sparkytcservice.dto.testcases.BatchCreateTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.testcases.CreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.testcases.TestCaseDTO
 import com.sparkytc.sparkytcservice.dto.testruns.*
+import com.sparkytc.sparkytcservice.dto.steps.TestCaseFormat
 import com.sparkytc.sparkytcservice.models.*
 import com.sparkytc.sparkytcservice.repositories.*
 import com.sparkytc.sparkytcservice.utility.Tools
@@ -54,6 +55,7 @@ class WorkspaceService(
     private val testCaseResultService: TestCaseResultService,
     private val attachmentService: AttachmentService,
     private val sectionService: TestCaseSectionService,
+    private val stepService: StepService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -158,6 +160,7 @@ class WorkspaceService(
         testCase.testInstructions = Tools.sanitize(updateDTO.testInstructions)
         updateDTO.sectionID?.let { testCase.section = sectionService.sectionFor(testCase.project, it) }
         updateDTO.labels?.let { testCase.labels = cleanLabels(it) }
+        stepService.saveSteps(testCase, updateDTO.format, updateDTO.steps)
         testCase.updatedBy = CurrentUser.get()
         testCaseRepository.save(testCase)
 
@@ -213,6 +216,8 @@ class WorkspaceService(
             section = sectionService.sectionFor(project, testCase.sectionID),
             labels = cleanLabels(testCase.labels.orEmpty()),
         )
+        testCaseRepository.save(newTestCaseModel)
+        stepService.saveSteps(newTestCaseModel, testCase.format ?: TestCaseFormat.TEXT, testCase.steps.orEmpty())
         testCaseRepository.save(newTestCaseModel)
 
         updateTestCasePropertyValues(newTestCaseModel, testCase.propertyValues)
@@ -427,6 +432,8 @@ class WorkspaceService(
                 notes = null
             )
             testCaseRunRepository.save(newTestCaseRun)
+            stepService.copyToRun(testCaseModel, newTestCaseRun)
+            testCaseRunRepository.save(newTestCaseRun)
         }
         return newTestRun
     }
@@ -570,6 +577,7 @@ class WorkspaceService(
         }
         // every recording adds a result, the latest one is the test case's status
         val result = testCaseResultService.record(testCaseRun, updateDTO.status, updateDTO.notes, actor)
+        stepService.recordStepResults(result, testCaseRun, updateDTO.stepResults)
         timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
 
         val testRun = testCaseRun.testRun
@@ -680,7 +688,7 @@ class WorkspaceService(
         val notProvided = "Not provided"
         val request = CreateJiraIssueDTO(
             summary = testCaseRun.title,
-            stepsToReproduce = testCaseRun.testInstructions ?: notProvided,
+            stepsToReproduce = stepService.stepsText(testCaseRun) ?: testCaseRun.testInstructions ?: notProvided,
             expectedResult = propertyValue(testCaseRun.testCase, "expected result") ?: notProvided,
             actualResult = testCaseRun.notes?.takeIf { it.isNotBlank() } ?: notProvided,
             buildNumber = testCaseRun.testRun.build?.buildNumber

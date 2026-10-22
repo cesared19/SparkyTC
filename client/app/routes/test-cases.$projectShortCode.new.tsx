@@ -35,7 +35,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function NewTestCase() {
-	const { properties, sections, testCases } =
+	const { properties, sections, testCases, sharedSteps } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const [searchParams] = useSearchParams()
 	const navigate = useNavigate()
@@ -52,6 +52,7 @@ export default function NewTestCase() {
 					properties={properties}
 					sections={sections}
 					labelSuggestions={projectLabels(testCases)}
+					sharedSteps={sharedSteps}
 					defaultSectionID={searchParams.get('section') ?? undefined}
 					mode={TestCaseFormMode.create}
 					onCancel={() => navigate('..')}

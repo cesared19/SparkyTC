@@ -5,6 +5,8 @@ import {
 	TestCase,
 	CreateTestCase,
 	TestCaseSection,
+	SharedStep,
+	TestCaseFormat,
 } from '../models/types'
 import { useState } from 'react'
 import { useRef, useEffect } from 'react'
@@ -13,6 +15,14 @@ import { ErrorMessage } from './ErrorMessage'
 import { PropertyInput } from './PropertyInput'
 import { SectionSelect } from './SectionSelect'
 import { LabelInput } from './LabelInput'
+import {
+	EditableStep,
+	emptyStep,
+	StepsEditor,
+	stepsAsText,
+	stepsFromTestCase,
+	toStepInputs,
+} from './StepsEditor'
 
 export enum TestCaseFormMode {
 	create,
@@ -26,6 +36,7 @@ interface TestCaseFormProps {
 	defaultSectionID?: string
 	// the labels already used in the project
 	labelSuggestions?: string[]
+	sharedSteps?: SharedStep[]
 	defaultValues?: TestCase
 	mode: TestCaseFormMode
 	onCancel: () => void
@@ -39,6 +50,7 @@ export function TestCaseForm({
 	sections,
 	defaultSectionID,
 	labelSuggestions = [],
+	sharedSteps = [],
 	defaultValues = undefined,
 	mode,
 	onCancel,
@@ -72,6 +84,27 @@ export function TestCaseForm({
 	)
 
 	const [labels, setLabels] = useState<string[]>(defaultValues?.labels ?? [])
+	const [format, setFormat] = useState(
+		defaultValues?.format ?? TestCaseFormat.text
+	)
+	const [steps, setSteps] = useState<EditableStep[]>(() =>
+		stepsFromTestCase(defaultValues?.steps)
+	)
+	const [instructions, setInstructions] = useState(
+		defaultValues?.testInstructions ?? ''
+	)
+
+	// nothing is lost when switching: the text becomes the first step, and the steps become text
+	const changeFormat = (next: TestCaseFormat) => {
+		if (next === format) return
+		if (next === TestCaseFormat.steps && steps.length === 0) {
+			setSteps([emptyStep(instructions.trim())])
+		}
+		if (next === TestCaseFormat.text && !instructions.trim()) {
+			setInstructions(stepsAsText(steps, sharedSteps))
+		}
+		setFormat(next)
+	}
 
 	const handlePropertyChange = (propertyID: string, value?: string) => {
 		setPropertyValues((prev) => {
@@ -95,10 +128,12 @@ export function TestCaseForm({
 		const testCase: CreateTestCase = {
 			title: formData.get('title') as string,
 			description: formData.get('description') as string,
-			testInstructions: formData.get('testInstructions') as string,
+			testInstructions: instructions,
 			propertyValues,
 			...(sectionID ? { sectionID } : {}),
 			labels,
+			format,
+			steps: format === TestCaseFormat.steps ? toStepInputs(steps) : [],
 		}
 
 		onSubmit(testCase)
@@ -210,25 +245,65 @@ export function TestCaseForm({
 
 			{/* Test Instructions Section */}
 			<div>
-				<label
-					htmlFor="testInstructions"
-					className="block text-base font-semibold text-gray-700"
-				>
-					Test Instructions
-				</label>
-				<div className="space-y-2">
-					<textarea
-						name="testInstructions"
-						id="testInstructions"
-						rows={5}
-						defaultValue={defaultValues?.testInstructions}
-						className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-						placeholder="1. Navigate to login page&#10;2. Enter credentials&#10;3. Click login button&#10;4. Verify dashboard is displayed"
-					/>
-					<p className="text-xs text-gray-500">
-						Enter the instructions for the test
-					</p>
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<span className="block text-base font-semibold text-gray-700">
+						{format === TestCaseFormat.steps ? 'Steps' : 'Test Instructions'}
+					</span>
+					<div
+						role="radiogroup"
+						aria-label="Format"
+						className="inline-flex rounded-md border border-gray-300 p-0.5 text-sm"
+					>
+						{[
+							{ value: TestCaseFormat.text, label: 'Text' },
+							{ value: TestCaseFormat.steps, label: 'Steps' },
+						].map((option) => (
+							<button
+								key={option.value}
+								type="button"
+								role="radio"
+								aria-checked={format === option.value}
+								onClick={() => changeFormat(option.value)}
+								className={`rounded px-3 py-1 font-medium ${
+									format === option.value
+										? 'bg-brand-600 text-white'
+										: 'text-gray-700 hover:bg-gray-50'
+								}`}
+							>
+								{option.label}
+							</button>
+						))}
+					</div>
 				</div>
+				{format === TestCaseFormat.steps ? (
+					<div className="mt-2">
+						<StepsEditor
+							steps={steps}
+							onChange={setSteps}
+							sharedSteps={sharedSteps}
+						/>
+						<p className="mt-1 text-xs text-gray-500">
+							Testers mark each step during a run. Shared steps are edited in
+							the shared step library.
+						</p>
+					</div>
+				) : (
+					<div className="space-y-2">
+						<textarea
+							name="testInstructions"
+							id="testInstructions"
+							aria-label="Test Instructions"
+							rows={5}
+							value={instructions}
+							onChange={(event) => setInstructions(event.target.value)}
+							className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+							placeholder="1. Navigate to login page&#10;2. Enter credentials&#10;3. Click login button&#10;4. Verify dashboard is displayed"
+						/>
+						<p className="text-xs text-gray-500">
+							Enter the instructions for the test
+						</p>
+					</div>
+				)}
 			</div>
 
 			<div className="flex justify-end space-x-3">

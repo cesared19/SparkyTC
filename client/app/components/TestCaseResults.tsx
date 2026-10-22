@@ -8,10 +8,12 @@ import {
 	TestCaseHistoryEntry,
 	TestCaseResult,
 	TestCaseRun,
+	TestCaseRunStep,
 } from '~/models/types'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 import { Route } from '~/utility/Routes'
 import { ErrorMessage } from './ErrorMessage'
+import { StepResultsSummary } from './StepsView'
 
 function formatDateTime(date: number) {
 	return new Date(date).toLocaleString('en-US', {
@@ -26,9 +28,12 @@ function formatDateTime(date: number) {
 function ResultItem({
 	result,
 	isCurrent,
+	steps,
 }: {
 	result: TestCaseResult
 	isCurrent: boolean
+	// the run's steps, for test cases written as steps
+	steps?: TestCaseRunStep[]
 }) {
 	const currentUser = useCurrentUser()
 	const isAdmin = useIsAdmin()
@@ -87,6 +92,12 @@ function ResultItem({
 			) : (
 				<p className="text-sm italic text-gray-500">No comment</p>
 			)}
+			{steps && steps.length > 0 && (
+				<StepResultsSummary
+					steps={steps}
+					stepResults={result.stepResults ?? []}
+				/>
+			)}
 			{(result.attachments.length > 0 || canEditEvidence) && (
 				<AttachmentGallery
 					attachments={result.attachments}
@@ -118,6 +129,7 @@ export function TestCaseRunResults({
 					key={result.resultID}
 					result={result}
 					isCurrent={index === 0}
+					steps={testCaseRun.steps}
 				/>
 			))}
 		</ul>

@@ -80,6 +80,14 @@ export class Route {
 		return '/sections'
 	}
 
+	static get sharedSteps() {
+		return '/shared-steps'
+	}
+
+	static viewSharedSteps(projectShortCode: string) {
+		return `/test-cases/${projectShortCode}/shared-steps`
+	}
+
 	static resultEvidence(resultID: string) {
 		return `/test-case-result-evidence/${resultID}`
 	}
@@ -276,6 +284,14 @@ export class APIRoute {
 
 	static reorderSection(sectionID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/sections/${sectionID}/reorder`
+	}
+
+	static projectSharedSteps(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/shared-steps`
+	}
+
+	static sharedStep(sharedStepID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/shared-steps/${sharedStepID}`
 	}
 
 	static get moveTestCases() {

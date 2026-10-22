@@ -1,6 +1,7 @@
 package com.sparkytc.sparkytcservice.dto.testruns
 
 import com.sparkytc.sparkytcservice.dto.jira.JiraIssueTransitionDTO
+import com.sparkytc.sparkytcservice.dto.steps.StepResultDTO
 
 data class UpdateTestCaseRunDTO(
     val status: TestCaseRunStatus,
@@ -11,4 +12,6 @@ data class UpdateTestCaseRunDTO(
     val manualSeconds: Long? = null,
     // linked issues to close on a pass or reopen on a fail
     val jiraTransitions: List<JiraIssueTransitionDTO> = emptyList(),
+    // how each step went, for test cases written as steps
+    val stepResults: List<StepResultDTO> = emptyList(),
 )

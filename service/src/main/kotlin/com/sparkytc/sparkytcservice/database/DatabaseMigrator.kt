@@ -467,6 +467,67 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.15")
                 }
                 SchemaVersion.VERSION_0_0_15 -> {
+                    // test cases written as steps, each with its expected result, and steps shared between them
+                    jdbcTemplate.execute("ALTER TABLE test_cases ADD COLUMN format TEXT NOT NULL DEFAULT 'TEXT'")
+                    jdbcTemplate.execute("ALTER TABLE test_case_runs ADD COLUMN format TEXT NOT NULL DEFAULT 'TEXT'")
+                    jdbcTemplate.execute("""
+                        CREATE TABLE shared_steps (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            name TEXT NOT NULL
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("""
+                        CREATE TABLE shared_step_items (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            shared_step_id BIGINT NOT NULL REFERENCES shared_steps(id) ON DELETE CASCADE,
+                            position INT NOT NULL,
+                            action TEXT NOT NULL,
+                            expected TEXT
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_steps (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            test_case_id BIGINT NOT NULL REFERENCES test_cases(id) ON DELETE CASCADE,
+                            position INT NOT NULL,
+                            action TEXT,
+                            expected TEXT,
+                            shared_step_id BIGINT REFERENCES shared_steps(id)
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX test_case_steps_test_case_idx ON test_case_steps (test_case_id)")
+                    // runs keep their own copy, with shared steps expanded
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_run_steps (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            test_case_run_id BIGINT NOT NULL REFERENCES test_case_runs(id) ON DELETE CASCADE,
+                            position INT NOT NULL,
+                            action TEXT NOT NULL,
+                            expected TEXT,
+                            shared_step_name TEXT
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX test_case_run_steps_run_idx ON test_case_run_steps (test_case_run_id)")
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_result_steps (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            test_case_result_id BIGINT NOT NULL REFERENCES test_case_results(id) ON DELETE CASCADE,
+                            test_case_run_step_id BIGINT NOT NULL REFERENCES test_case_run_steps(id) ON DELETE CASCADE,
+                            status TEXT,
+                            actual TEXT
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX test_case_result_steps_result_idx ON test_case_result_steps (test_case_result_id)")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.16")
+                }
+                SchemaVersion.VERSION_0_0_16 -> {
                     break
                 }
             }

@@ -4,6 +4,7 @@ import com.sparkytc.sparkytcservice.dto.auth.UserSummaryDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.dto.time.RunningTimerDTO
+import com.sparkytc.sparkytcservice.dto.steps.TestCaseFormat
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
@@ -64,6 +65,15 @@ class TestCaseRun(
     @Column(name = "executed_at")
     var executedAt: Date? = null,
 
+    // copied from the test case when the run is created
+    @Column(name = "format", nullable = false)
+    @Enumerated(EnumType.STRING)
+    var format: TestCaseFormat = TestCaseFormat.TEXT,
+
+    @OneToMany(mappedBy = "testCaseRun", fetch = FetchType.LAZY)
+    @OrderBy("position ASC")
+    val steps: List<TestCaseRunStep> = emptyList(),
+
     // every result recorded, oldest first; status, notes, executedBy and executedAt repeat the latest one
     @OneToMany(mappedBy = "testCaseRun", fetch = FetchType.LAZY)
     @OrderBy("recordedAt ASC, id ASC")
@@ -82,6 +92,8 @@ class TestCaseRun(
             runningTimers = timeEntries.filter { it.isRunning }.map { RunningTimerDTO(it.user?.externalID, it.user?.displayName, it.startedAt) },
             executedAt = executedAt,
             results = results.map { it.toDTO() },
+            format = format,
+            steps = steps.map { it.toDTO() },
         )
     }
 }

@@ -25,6 +25,8 @@ import com.sparkytc.sparkytcservice.dto.time.UpdateTestRunTimeDTO
 import com.sparkytc.sparkytcservice.services.JiraService
 import com.sparkytc.sparkytcservice.services.TestCaseResultService
 import com.sparkytc.sparkytcservice.services.TestCaseSectionService
+import com.sparkytc.sparkytcservice.services.StepService
+import com.sparkytc.sparkytcservice.dto.steps.SaveSharedStepDTO
 import com.sparkytc.sparkytcservice.dto.sections.*
 import com.sparkytc.sparkytcservice.services.TimeTrackingService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
@@ -58,6 +60,7 @@ class WorkspaceController(
     private val timeTrackingService: TimeTrackingService,
     private val testCaseResultService: TestCaseResultService,
     private val sectionService: TestCaseSectionService,
+    private val stepService: StepService,
 ) {
 
     @GetMapping("/projects")
@@ -158,6 +161,27 @@ class WorkspaceController(
     @GetMapping("/projects/{projectShortCode}/dashboard")
     fun retrieveProjectDashboard(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveProjectDashboard(projectShortCode)))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/shared-steps")
+    fun retrieveSharedSteps(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = stepService.retrieveSharedSteps(projectShortCode)))
+    }
+
+    @PostMapping("/projects/{projectShortCode}/shared-steps")
+    fun createSharedStep(@PathVariable projectShortCode: String, @RequestBody request: SaveSharedStepDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = stepService.createSharedStep(projectShortCode, request)))
+    }
+
+    @PutMapping("/shared-steps/{sharedStepID}")
+    fun updateSharedStep(@PathVariable sharedStepID: UUID, @RequestBody request: SaveSharedStepDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = stepService.updateSharedStep(sharedStepID, request)))
+    }
+
+    @DeleteMapping("/shared-steps/{sharedStepID}")
+    fun deleteSharedStep(@PathVariable sharedStepID: UUID): ResponseEntity<Any> {
+        stepService.deleteSharedStep(sharedStepID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
     @GetMapping("/projects/{projectShortCode}/sections")

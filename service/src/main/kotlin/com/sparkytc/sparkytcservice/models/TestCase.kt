@@ -2,6 +2,7 @@ package com.sparkytc.sparkytcservice.models
 
 import com.sparkytc.sparkytcservice.dto.projects.WorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.testcases.TestCaseDTO
+import com.sparkytc.sparkytcservice.dto.steps.TestCaseFormat
 import jakarta.persistence.*
 import org.hibernate.annotations.SQLRestriction
 import org.hibernate.annotations.CreationTimestamp
@@ -54,6 +55,15 @@ class TestCase(
     @JoinColumn(name = "section_id")
     var section: TestCaseSection? = null,
 
+    // free text instructions, or steps each with its expected result
+    @Column(name = "format", nullable = false)
+    @Enumerated(EnumType.STRING)
+    var format: TestCaseFormat = TestCaseFormat.TEXT,
+
+    @OneToMany(mappedBy = "testCase")
+    @OrderBy("position ASC")
+    val steps: List<TestCaseStep> = emptyList(),
+
     // free labels such as smoke or payments, to find test cases across suites
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "test_case_labels", joinColumns = [JoinColumn(name = "test_case_id")])
@@ -84,6 +94,6 @@ class TestCase(
             propertyValueMap[propertyValue.propertyConfiguration.externalID] = propertyValue.value
         }
 
-        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate, isArchived, section?.externalID, labels.sortedBy { it.lowercase() })
+        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate, isArchived, section?.externalID, labels.sortedBy { it.lowercase() }, format, steps.map { it.toDTO() })
     }
 }

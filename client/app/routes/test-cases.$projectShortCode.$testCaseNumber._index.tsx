@@ -1,5 +1,5 @@
 import { Link, useOutletContext } from '@remix-run/react'
-import { TestCaseOutletContext } from '~/models/types'
+import { TestCaseFormat, TestCaseOutletContext } from '~/models/types'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '~/components/DateDisplay'
 import { LinkifiedText } from '~/components/LinkifiedText'
@@ -9,6 +9,7 @@ import { TestCaseHistory } from '~/components/TestCaseResults'
 import { Route } from '~/utility/Routes'
 import { sectionPath } from '~/utility/Sections'
 import { LabelChip } from '~/components/LabelInput'
+import { TestCaseStepsView } from '~/components/StepsView'
 
 export default function TestCaseDetails() {
 	const { project, testCase, propertyValues, sections } =
@@ -116,18 +117,25 @@ export default function TestCaseDetails() {
 					</div>
 				</div>
 
-				<div>
-					<h3 className="text-xl font-semibold text-gray-900 mb-2">
-						Test Instructions
-					</h3>
-					<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
-						{testCase.testInstructions ? (
-							<LinkifiedText text={testCase.testInstructions} />
-						) : (
-							'No test instructions provided'
-						)}
+				{testCase.format === TestCaseFormat.steps ? (
+					<div>
+						<h3 className="text-xl font-semibold text-gray-900 mb-2">Steps</h3>
+						<TestCaseStepsView steps={testCase.steps ?? []} />
 					</div>
-				</div>
+				) : (
+					<div>
+						<h3 className="text-xl font-semibold text-gray-900 mb-2">
+							Test Instructions
+						</h3>
+						<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+							{testCase.testInstructions ? (
+								<LinkifiedText text={testCase.testInstructions} />
+							) : (
+								'No test instructions provided'
+							)}
+						</div>
+					</div>
+				)}
 
 				<div>
 					<h3 className="text-xl font-semibold text-gray-900 mb-2">

@@ -20,6 +20,52 @@ export interface TestCase {
 	sectionID?: string
 	// free labels such as smoke or payments
 	labels?: string[]
+	// free text instructions, or steps each with its expected result
+	format?: TestCaseFormat
+	steps?: TestCaseStep[]
+}
+
+export enum TestCaseFormat {
+	text = 'TEXT',
+	steps = 'STEPS',
+}
+
+// a step of a test case, or a shared step inserted as a block
+export interface TestCaseStep {
+	stepID: string
+	action?: string
+	expected?: string
+	sharedStep?: SharedStep
+}
+
+// a step sent when saving a test case
+export interface StepInput {
+	action?: string
+	expected?: string
+	sharedStepID?: string
+}
+
+// steps reused by several test cases; editing them updates every test case that uses them
+export interface SharedStep {
+	sharedStepID: string
+	name: string
+	items: { action: string; expected?: string }[]
+	usageCount: number
+}
+
+// a step as copied into a test run, with shared steps expanded
+export interface TestCaseRunStep {
+	stepID: string
+	action: string
+	expected?: string
+	sharedStepName?: string
+}
+
+// how a step went in one result
+export interface StepResult {
+	stepID: string
+	status?: TestCaseRunStatus
+	actual?: string
 }
 
 // a folder of test cases; the ones without a parent are the project's suites
@@ -247,6 +293,8 @@ export interface CreateTestCase extends Record<string, any> {
 	propertyValues: Record<string, string>
 	sectionID?: string
 	labels?: string[]
+	format?: TestCaseFormat
+	steps?: StepInput[]
 }
 
 export interface PropertyValue {
@@ -368,6 +416,9 @@ export interface TestCaseRun {
 	executedAt?: number
 	// every result recorded, oldest first; the latest one is the status
 	results: TestCaseResult[]
+	// copied from the test case when the run was created
+	format?: TestCaseFormat
+	steps?: TestCaseRunStep[]
 }
 
 export interface TestCaseResult {
@@ -379,6 +430,8 @@ export interface TestCaseResult {
 	recordedAt: number
 	// the evidence of this result
 	attachments: TestCaseAttachment[]
+	// how each step went, for test cases written as steps
+	stepResults?: StepResult[]
 }
 
 // a result of a test case in any test run of its project
@@ -411,6 +464,7 @@ export interface ProjectTestCasesOutletContext {
 	testCases: TestCase[]
 	properties: PropertyConfiguration[]
 	sections: TestCaseSection[]
+	sharedSteps: SharedStep[]
 }
 
 export interface TestCaseOutletContext {
@@ -421,6 +475,7 @@ export interface TestCaseOutletContext {
 	sections: TestCaseSection[]
 	// every label used in the project
 	labels: string[]
+	sharedSteps: SharedStep[]
 }
 
 export interface ProjectTestRunsOutletContext {

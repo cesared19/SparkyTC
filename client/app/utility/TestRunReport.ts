@@ -1148,6 +1148,22 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 					gap: 4,
 				})
 			}
+			// how each step went, for test cases written as steps
+			for (const [stepIndex, step] of (run.steps ?? []).entries()) {
+				const stepResult = result.stepResults?.find(
+					(item) => item.stepID === step.stepID
+				)
+				if (!stepResult) continue
+				const status = stepResult.status
+					? STATUS_LABELS[stepResult.status]
+					: 'Not marked'
+				paragraph(
+					`${stepIndex + 1}. ${step.action}: ${status}${
+						stepResult.actual ? ` (actual: ${stepResult.actual})` : ''
+					}`,
+					{ size: 9, color: COLORS.secondary, indent: 12, gap: 1 }
+				)
+			}
 			// evidence: images are embedded, videos are linked
 			for (const attachment of result.attachments) {
 				await writeAttachment(attachment, true)
