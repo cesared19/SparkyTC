@@ -6,9 +6,11 @@ import { LinkifiedText } from '~/components/LinkifiedText'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 import { TestCaseHistory } from '~/components/TestCaseResults'
+import { Route } from '~/utility/Routes'
+import { sectionPath } from '~/utility/Sections'
 
 export default function TestCaseDetails() {
-	const { project, testCase, propertyValues } =
+	const { project, testCase, propertyValues, sections } =
 		useOutletContext<TestCaseOutletContext>()
 
 	return (
@@ -31,6 +33,16 @@ export default function TestCaseDetails() {
 						{project.projectShortCode}-{testCase.testCaseNumber}
 					</span>
 				</div>
+				{testCase.sectionID && (
+					<Link
+						to={`${Route.viewProjectTestCases(
+							project.projectShortCode
+						)}?section=${testCase.sectionID}`}
+						className="mt-1 inline-block text-sm text-gray-500 hover:text-gray-900 hover:underline"
+					>
+						{sectionPath(sections, testCase.sectionID)}
+					</Link>
+				)}
 			</div>
 
 			<div className="space-y-8">

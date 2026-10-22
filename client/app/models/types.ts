@@ -16,6 +16,17 @@ export interface TestCase {
 	modifyDate?: number
 	// deleted while used by test runs, which keep its results
 	isArchived?: boolean
+	// the suite or section it's filed in
+	sectionID?: string
+}
+
+// a folder of test cases; the ones without a parent are the project's suites
+export interface TestCaseSection {
+	sectionID: string
+	parentID?: string
+	name: string
+	// order among its siblings
+	position: number
 }
 
 export interface JiraLink {
@@ -232,6 +243,7 @@ export interface CreateTestCase extends Record<string, any> {
 	description: string
 	testInstructions: string
 	propertyValues: Record<string, string>
+	sectionID?: string
 }
 
 export interface PropertyValue {
@@ -395,6 +407,7 @@ export interface ProjectTestCasesOutletContext {
 	project: Project
 	testCases: TestCase[]
 	properties: PropertyConfiguration[]
+	sections: TestCaseSection[]
 }
 
 export interface TestCaseOutletContext {
@@ -402,6 +415,7 @@ export interface TestCaseOutletContext {
 	testCase: TestCase
 	properties: PropertyConfiguration[]
 	propertyValues: PropertyValue[]
+	sections: TestCaseSection[]
 }
 
 export interface ProjectTestRunsOutletContext {

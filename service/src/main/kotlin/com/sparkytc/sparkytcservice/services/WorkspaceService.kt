@@ -53,6 +53,7 @@ class WorkspaceService(
     private val timeTrackingService: TimeTrackingService,
     private val testCaseResultService: TestCaseResultService,
     private val attachmentService: AttachmentService,
+    private val sectionService: TestCaseSectionService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -155,6 +156,7 @@ class WorkspaceService(
         testCase.title = updateDTO.title
         testCase.description = Tools.sanitize(updateDTO.description)
         testCase.testInstructions = Tools.sanitize(updateDTO.testInstructions)
+        updateDTO.sectionID?.let { testCase.section = sectionService.sectionFor(testCase.project, it) }
         testCase.updatedBy = CurrentUser.get()
         testCaseRepository.save(testCase)
 
@@ -187,7 +189,7 @@ class WorkspaceService(
         for ((index, testCase) in batch.testCases.withIndex()) {
             testCaseNumber += 1
             try {
-                createTestCaseModel(project, testCaseNumber, testCase)
+                createTestCaseModel(project, testCaseNumber, testCase.copy(sectionID = testCase.sectionID ?: batch.sectionID))
             } catch (e: IllegalArgumentException) {
                 throw IllegalArgumentException("Test case ${index + 1}: ${e.message}", e)
             }
@@ -207,6 +209,7 @@ class WorkspaceService(
             testInstructions = Tools.sanitize(testCase.testInstructions),
             createdBy = CurrentUser.get(),
             updatedBy = CurrentUser.get(),
+            section = sectionService.sectionFor(project, testCase.sectionID),
         )
         testCaseRepository.save(newTestCaseModel)
 

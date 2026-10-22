@@ -432,6 +432,29 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.13")
                 }
                 SchemaVersion.VERSION_0_0_13 -> {
+                    // suites (sections without a parent) and nested sections that file the test cases
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_sections (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            parent_id BIGINT REFERENCES test_case_sections(id),
+                            name TEXT NOT NULL,
+                            position INT NOT NULL DEFAULT 0
+                        )
+                    """.trimIndent())
+                    jdbcTemplate.execute("CREATE INDEX test_case_sections_project_idx ON test_case_sections (project_id)")
+                    // every existing test case goes to a Default suite of its project
+                    jdbcTemplate.execute("INSERT INTO test_case_sections (project_id, name, position) SELECT id, 'Default', 0 FROM workspace_projects")
+                    jdbcTemplate.execute("ALTER TABLE test_cases ADD COLUMN section_id BIGINT REFERENCES test_case_sections(id)")
+                    jdbcTemplate.execute("UPDATE test_cases tc SET section_id = s.id FROM test_case_sections s WHERE s.project_id = tc.project_id")
+                    jdbcTemplate.execute("ALTER TABLE test_cases ALTER COLUMN section_id SET NOT NULL")
+                    jdbcTemplate.execute("CREATE INDEX test_cases_section_idx ON test_cases (section_id)")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.14")
+                }
+                SchemaVersion.VERSION_0_0_14 -> {
                     break
                 }
             }

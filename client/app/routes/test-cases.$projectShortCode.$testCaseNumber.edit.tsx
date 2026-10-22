@@ -50,7 +50,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 export default function EditTestCase() {
 	const navigate = useNavigate()
 	const submit = useSubmit()
-	const { testCase, properties } = useOutletContext<TestCaseOutletContext>()
+	const { testCase, properties, sections } =
+		useOutletContext<TestCaseOutletContext>()
 	const actionData = useActionData<ErrorResponse>()
 	const isAdmin = useIsAdmin()
 
@@ -88,6 +89,7 @@ export default function EditTestCase() {
 
 			<TestCaseForm
 				properties={properties}
+				sections={sections}
 				defaultValues={testCase}
 				mode={TestCaseFormMode.edit}
 				onCancel={() => navigate('..')}

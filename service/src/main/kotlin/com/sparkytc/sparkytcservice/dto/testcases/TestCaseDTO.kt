@@ -21,5 +21,6 @@ data class TestCaseDTO(
     val updatedBy: String? = null,
     val modifyDate: Date? = null,
     @JsonProperty("isArchived")
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val sectionID: UUID? = null,
 )

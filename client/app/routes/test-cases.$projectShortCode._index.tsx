@@ -1,12 +1,44 @@
-import { Link, useNavigate, useOutletContext } from '@remix-run/react'
+import {
+	Link,
+	useNavigate,
+	useOutletContext,
+	useSearchParams,
+} from '@remix-run/react'
 import { ProjectTestCasesOutletContext, TestCase } from '~/models/types'
 import { Table, type Column } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
+import { SectionTree } from '~/components/SectionTree'
+import {
+	groupBySection,
+	sectionAndDescendants,
+	sectionPath,
+} from '~/utility/Sections'
 
 export default function TestCasesIndex() {
-	const { project, testCases, properties } =
+	const { project, testCases, properties, sections } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const navigate = useNavigate()
+	// the chosen section is kept in the address so it survives going back from a test case
+	const [searchParams, setSearchParams] = useSearchParams()
+	const selectedID = sections.some(
+		(section) => section.sectionID === searchParams.get('section')
+	)
+		? (searchParams.get('section') as string)
+		: undefined
+
+	const selectSection = (sectionID?: string) =>
+		setSearchParams(sectionID ? { section: sectionID } : {}, {
+			replace: true,
+			preventScrollReset: true,
+		})
+
+	const visibleIDs = selectedID
+		? sectionAndDescendants(sections, selectedID)
+		: undefined
+	const isVisible = (testCase: TestCase) =>
+		!visibleIDs || (!!testCase.sectionID && visibleIDs.has(testCase.sectionID))
+	const visibleTestCases = testCases.filter(isVisible)
+	const groups = groupBySection(sections, visibleTestCases)
 
 	// Find property configuration IDs for priority and type
 	const priorityConfig = properties.find(
@@ -52,19 +84,30 @@ export default function TestCasesIndex() {
 		},
 	]
 
+	const tree = (
+		<SectionTree
+			projectShortCode={project.projectShortCode}
+			sections={sections}
+			testCases={testCases}
+			selectedID={selectedID}
+			onSelect={selectSection}
+		/>
+	)
+	const newTestCasePath = selectedID ? `new?section=${selectedID}` : 'new'
+
 	return (
 		<div>
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<h2 className="text-2xl font-semibold text-gray-900">Test Cases</h2>
 				<div className="flex flex-wrap items-center gap-3">
 					<Link
-						to="import"
+						to={selectedID ? `import?section=${selectedID}` : 'import'}
 						className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
 					>
 						Import CSV
 					</Link>
 					<Link
-						to="new"
+						to={newTestCasePath}
 						className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
 					>
 						New Test Case
@@ -72,14 +115,62 @@ export default function TestCasesIndex() {
 				</div>
 			</div>
 
-			<Table
-				tableRows={testCases.map((testCase) => ({
-					id: testCase.testCaseID,
-					data: testCase,
-				}))}
-				columns={columns}
-				onRowClick={(testCase) => navigate(testCase.testCaseNumber.toString())}
-			/>
+			<div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+				{/* on phones and tablets the tree folds above the list */}
+				<details className="rounded-md border border-gray-200 bg-white lg:hidden">
+					<summary className="cursor-pointer px-3 py-2 text-sm font-medium text-gray-900">
+						Suites and sections
+						{selectedID && (
+							<span className="ml-2 font-normal text-gray-500">
+								{sectionPath(sections, selectedID)}
+							</span>
+						)}
+					</summary>
+					<div className="border-t border-gray-200 p-2">{tree}</div>
+				</details>
+				<aside className="hidden w-72 shrink-0 rounded-md border border-gray-200 bg-white p-2 lg:block">
+					<h3 className="px-2 pb-1 text-xs font-medium uppercase tracking-wider text-gray-500">
+						Suites and sections
+					</h3>
+					{tree}
+				</aside>
+
+				<div className="min-w-0 flex-1 space-y-8">
+					{groups.length === 0 && (
+						<p className="text-sm text-gray-500">
+							No test cases here yet.{' '}
+							<Link
+								to={newTestCasePath}
+								className="text-brand-600 hover:underline"
+							>
+								Create one
+							</Link>
+						</p>
+					)}
+					{groups.map((group) => (
+						<section key={group.section?.sectionID ?? 'unfiled'}>
+							<h3 className="mb-2 text-sm font-semibold text-gray-700">
+								{group.section
+									? sectionPath(sections, group.section.sectionID)
+									: 'No section'}
+								<span className="ml-2 font-normal text-gray-500">
+									{group.testCases.length}
+								</span>
+							</h3>
+							<Table
+								tableRows={group.testCases.map((testCase) => ({
+									id: testCase.testCaseID,
+									data: testCase,
+								}))}
+								columns={columns}
+								onRowClick={(testCase) =>
+									navigate(testCase.testCaseNumber.toString())
+								}
+							/>
+						</section>
+					))}
+				</div>
+			</div>
 		</div>
 	)
 }

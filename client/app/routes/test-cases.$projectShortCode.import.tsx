@@ -4,6 +4,7 @@ import {
 	useNavigate,
 	useNavigation,
 	useOutletContext,
+	useSearchParams,
 	useSubmit,
 } from '@remix-run/react'
 import { useState } from 'react'
@@ -17,6 +18,7 @@ import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { BackButton } from '~/components/BackButton'
+import { SectionSelect } from '~/components/SectionSelect'
 import {
 	buildTestCaseTemplateCSV,
 	importTestCasesFromCSV,
@@ -31,21 +33,32 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			throw 'Project short code is required'
 		}
 
-		const { testCases } = (await request.json()) as {
+		const { testCases, sectionID } = (await request.json()) as {
 			testCases: CreateTestCase[]
+			sectionID?: string
 		}
 		await api.post(APIRoute.batchCreateTestCases(projectShortCode), {
-			body: { testCases },
+			body: { testCases, sectionID: sectionID || null },
 		})
-		return redirect(Route.viewProjectTestCases(projectShortCode))
+		return redirect(
+			`${Route.viewProjectTestCases(projectShortCode)}${
+				sectionID ? `?section=${sectionID}` : ''
+			}`
+		)
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), { status: 400 })
 	}
 }
 
 export default function ImportTestCases() {
-	const { project, properties } =
+	const { project, properties, sections } =
 		useOutletContext<ProjectTestCasesOutletContext>()
+	const [searchParams] = useSearchParams()
+	const [sectionID, setSectionID] = useState(
+		searchParams.get('section') ??
+			sections.find((section) => !section.parentID)?.sectionID ??
+			''
+	)
 	const navigate = useNavigate()
 	const navigation = useNavigation()
 	const submit = useSubmit()
@@ -92,7 +105,7 @@ export default function ImportTestCases() {
 	const handleImport = () => {
 		if (!result || !canImport) return
 		submit(
-			{ testCases: result.rows.map((row) => row.testCase) },
+			{ testCases: result.rows.map((row) => row.testCase), sectionID },
 			{ method: 'POST', encType: 'application/json' }
 		)
 	}
@@ -116,6 +129,21 @@ export default function ImportTestCases() {
 			</div>
 
 			{actionData && <ErrorMessage message={actionData.message} />}
+
+			<div className="flex flex-wrap items-center gap-2">
+				<label
+					htmlFor="importSection"
+					className="text-sm font-medium text-gray-700"
+				>
+					Import into
+				</label>
+				<SectionSelect
+					id="importSection"
+					sections={sections}
+					value={sectionID}
+					onChange={setSectionID}
+				/>
+			</div>
 
 			<div className="flex flex-wrap items-center gap-3">
 				<label className="inline-flex cursor-pointer items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">

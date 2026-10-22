@@ -24,6 +24,8 @@ import com.sparkytc.sparkytcservice.services.BuildResultsService
 import com.sparkytc.sparkytcservice.dto.time.UpdateTestRunTimeDTO
 import com.sparkytc.sparkytcservice.services.JiraService
 import com.sparkytc.sparkytcservice.services.TestCaseResultService
+import com.sparkytc.sparkytcservice.services.TestCaseSectionService
+import com.sparkytc.sparkytcservice.dto.sections.*
 import com.sparkytc.sparkytcservice.services.TimeTrackingService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
@@ -55,6 +57,7 @@ class WorkspaceController(
     private val buildResultsService: BuildResultsService,
     private val timeTrackingService: TimeTrackingService,
     private val testCaseResultService: TestCaseResultService,
+    private val sectionService: TestCaseSectionService,
 ) {
 
     @GetMapping("/projects")
@@ -155,6 +158,38 @@ class WorkspaceController(
     @GetMapping("/projects/{projectShortCode}/dashboard")
     fun retrieveProjectDashboard(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveProjectDashboard(projectShortCode)))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/sections")
+    fun retrieveSections(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = sectionService.retrieveSections(projectShortCode)))
+    }
+
+    @PostMapping("/projects/{projectShortCode}/sections")
+    fun createSection(@PathVariable projectShortCode: String, @RequestBody request: CreateTestCaseSectionDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = sectionService.createSection(projectShortCode, request)))
+    }
+
+    @PutMapping("/sections/{sectionID}")
+    fun updateSection(@PathVariable sectionID: UUID, @RequestBody request: UpdateTestCaseSectionDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = sectionService.updateSection(sectionID, request)))
+    }
+
+    @PostMapping("/sections/{sectionID}/reorder")
+    fun reorderSection(@PathVariable sectionID: UUID, @RequestBody request: ReorderTestCaseSectionDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = sectionService.reorderSection(sectionID, request)))
+    }
+
+    @DeleteMapping("/sections/{sectionID}")
+    fun deleteSection(@PathVariable sectionID: UUID): ResponseEntity<Any> {
+        sectionService.deleteSection(sectionID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PutMapping("/test-cases/section")
+    fun moveTestCases(@RequestBody request: MoveTestCasesDTO): ResponseEntity<Any> {
+        sectionService.moveTestCases(request)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
     @GetMapping("test-cases/{projectShortCode}")

@@ -4,12 +4,14 @@ import {
 	PropertyType,
 	TestCase,
 	CreateTestCase,
+	TestCaseSection,
 } from '../models/types'
 import { useState } from 'react'
 import { useRef, useEffect } from 'react'
 import { SelectDropdown } from './SelectDropdown'
 import { ErrorMessage } from './ErrorMessage'
 import { PropertyInput } from './PropertyInput'
+import { SectionSelect } from './SectionSelect'
 
 export enum TestCaseFormMode {
 	create,
@@ -18,6 +20,9 @@ export enum TestCaseFormMode {
 
 interface TestCaseFormProps {
 	properties: PropertyConfiguration[]
+	sections: TestCaseSection[]
+	// where a new test case is filed, e.g. the section open in the list
+	defaultSectionID?: string
 	defaultValues?: TestCase
 	mode: TestCaseFormMode
 	onCancel: () => void
@@ -28,6 +33,8 @@ interface TestCaseFormProps {
 
 export function TestCaseForm({
 	properties,
+	sections,
+	defaultSectionID,
 	defaultValues = undefined,
 	mode,
 	onCancel,
@@ -51,6 +58,13 @@ export function TestCaseForm({
 			}
 			return {}
 		}
+	)
+
+	const [sectionID, setSectionID] = useState(
+		defaultValues?.sectionID ??
+			defaultSectionID ??
+			sections.find((section) => !section.parentID)?.sectionID ??
+			''
 	)
 
 	const handlePropertyChange = (propertyID: string, value?: string) => {
@@ -77,6 +91,7 @@ export function TestCaseForm({
 			description: formData.get('description') as string,
 			testInstructions: formData.get('testInstructions') as string,
 			propertyValues,
+			...(sectionID ? { sectionID } : {}),
 		}
 
 		onSubmit(testCase)
@@ -101,6 +116,22 @@ export function TestCaseForm({
 					defaultValue={defaultValues?.title}
 					className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
 					placeholder="Enter test case title"
+				/>
+			</div>
+
+			<div>
+				<label
+					htmlFor="sectionID"
+					className="block text-base font-semibold text-gray-700"
+				>
+					Section
+				</label>
+				<SectionSelect
+					id="sectionID"
+					sections={sections}
+					value={sectionID}
+					onChange={setSectionID}
+					className="mt-1 w-full sm:w-auto"
 				/>
 			</div>
 
@@ -135,14 +166,9 @@ export function TestCaseForm({
 							</div>
 							<PropertyInput
 								property={property}
-								initialValue={
-									propertyValues[property.propertyConfigurationID]
-								}
+								initialValue={propertyValues[property.propertyConfigurationID]}
 								onChange={(value) =>
-									handlePropertyChange(
-										property.propertyConfigurationID,
-										value
-									)
+									handlePropertyChange(property.propertyConfigurationID, value)
 								}
 								onUnset={() =>
 									handlePropertyChange(
