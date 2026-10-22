@@ -9,6 +9,10 @@ import { Table, type Column } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
 import { SectionTree } from '~/components/SectionTree'
 import { ExportMenu } from '~/components/ExportMenu'
+import { BulkEditBar, SelectToggle } from '~/components/BulkEditBar'
+import { Checkbox } from '~/components/Checkbox'
+import { useIsAdmin } from '~/utility/CurrentUser'
+import { useState } from 'react'
 import { downloadTable, testCaseRows } from '~/utility/TestCaseExport'
 import {
 	hasAllLabels,
@@ -26,6 +30,22 @@ export default function TestCasesIndex() {
 	const { project, testCases, properties, sections } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const navigate = useNavigate()
+	const isAdmin = useIsAdmin()
+	// while selecting, a click on a row chooses it for the bulk actions instead of opening it
+	const [isSelecting, setIsSelecting] = useState(false)
+	const [selectedIDs, setSelectedIDs] = useState<Set<string>>(new Set())
+	// select all calls it for each row, so it builds on the latest selection
+	const toggleSelected = (testCase: TestCase) =>
+		setSelectedIDs((previous) => {
+			const next = new Set(previous)
+			if (next.has(testCase.testCaseID)) next.delete(testCase.testCaseID)
+			else next.add(testCase.testCaseID)
+			return next
+		})
+	const changeSelecting = (selecting: boolean) => {
+		setIsSelecting(selecting)
+		setSelectedIDs(new Set())
+	}
 	// the chosen section is kept in the address so it survives going back from a test case
 	const [searchParams, setSearchParams] = useSearchParams()
 	const selectedID = sections.some(
@@ -54,6 +74,10 @@ export default function TestCasesIndex() {
 		(testCase) => isVisible(testCase) && hasAllLabels(testCase, selectedLabels)
 	)
 	const groups = groupBySection(sections, visibleTestCases)
+	// only the ones on screen, so a filter never changes hidden test cases
+	const selectedTestCases = visibleTestCases.filter((testCase) =>
+		selectedIDs.has(testCase.testCaseID)
+	)
 
 	// Find property configuration IDs for priority and type
 	const priorityConfig = properties.find(
@@ -61,7 +85,15 @@ export default function TestCasesIndex() {
 	)
 	const typeConfig = properties.find((p) => p.title.toLowerCase() === 'type')
 
+	const selectColumn: Column<TestCase> = {
+		key: 'select',
+		render: (testCase) => (
+			<Checkbox isSelected={selectedIDs.has(testCase.testCaseID)} />
+		),
+	}
+
 	const columns: Column<TestCase>[] = [
+		...(isSelecting ? [selectColumn] : []),
 		{
 			header: 'ID',
 			key: 'testCaseNumber',
@@ -129,6 +161,7 @@ export default function TestCasesIndex() {
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<h2 className="text-2xl font-semibold text-gray-900">Test Cases</h2>
 				<div className="flex flex-wrap items-center gap-3">
+					<SelectToggle isSelecting={isSelecting} onChange={changeSelecting} />
 					<ExportMenu
 						onExport={(format) =>
 							downloadTable(
@@ -216,14 +249,30 @@ export default function TestCasesIndex() {
 								tableRows={group.testCases.map((testCase) => ({
 									id: testCase.testCaseID,
 									data: testCase,
+									isSelected: isSelecting
+										? selectedIDs.has(testCase.testCaseID)
+										: undefined,
 								}))}
 								columns={columns}
+								allowSelectAll={isSelecting}
 								onRowClick={(testCase) =>
-									navigate(testCase.testCaseNumber.toString())
+									isSelecting
+										? toggleSelected(testCase)
+										: navigate(testCase.testCaseNumber.toString())
 								}
 							/>
 						</section>
 					))}
+					{isSelecting && (
+						<BulkEditBar
+							selected={selectedTestCases}
+							testCases={testCases}
+							sections={sections}
+							properties={properties}
+							isAdmin={isAdmin}
+							onClear={() => setSelectedIDs(new Set())}
+						/>
+					)}
 				</div>
 			</div>
 		</div>

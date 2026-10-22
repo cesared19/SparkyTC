@@ -335,6 +335,13 @@ export interface PropertyConfigurationResponse {
 	data: PropertyConfiguration[]
 }
 
+// how many test cases a bulk edit changed; deleting archives the ones used in test runs
+export interface BulkEditResult {
+	updated: number
+	archived: number
+	deleted: number
+}
+
 export interface FetchResponse<T> {
 	data: T
 }

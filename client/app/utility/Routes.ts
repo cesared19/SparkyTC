@@ -80,6 +80,10 @@ export class Route {
 		return '/sections'
 	}
 
+	static get bulkEdit() {
+		return '/bulk-edit'
+	}
+
 	static get sharedSteps() {
 		return '/shared-steps'
 	}
@@ -309,6 +313,18 @@ export class APIRoute {
 
 	static get moveTestCases() {
 		return `${this.baseAPIURL}/api/v1/workspace/test-cases/section`
+	}
+
+	static get bulkEditTestCases() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/bulk`
+	}
+
+	static get bulkDeleteTestCases() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-cases/bulk-delete`
+	}
+
+	static get bulkAssignTestCaseRuns() {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/bulk-assignee`
 	}
 
 	static batchCreateTestCases(projectShortCode: string) {

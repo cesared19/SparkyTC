@@ -27,6 +27,10 @@ import com.sparkytc.sparkytcservice.services.TestCaseResultService
 import com.sparkytc.sparkytcservice.services.TestCaseSectionService
 import com.sparkytc.sparkytcservice.services.StepService
 import com.sparkytc.sparkytcservice.services.TestPlanService
+import com.sparkytc.sparkytcservice.services.BulkEditService
+import com.sparkytc.sparkytcservice.dto.bulk.BulkAssignTestCaseRunsDTO
+import com.sparkytc.sparkytcservice.dto.bulk.BulkDeleteTestCasesDTO
+import com.sparkytc.sparkytcservice.dto.bulk.BulkEditTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.plans.SaveTestPlanDTO
 import com.sparkytc.sparkytcservice.dto.steps.SaveSharedStepDTO
 import com.sparkytc.sparkytcservice.dto.sections.*
@@ -64,6 +68,7 @@ class WorkspaceController(
     private val sectionService: TestCaseSectionService,
     private val stepService: StepService,
     private val testPlanService: TestPlanService,
+    private val bulkEditService: BulkEditService,
 ) {
 
     @GetMapping("/projects")
@@ -233,6 +238,23 @@ class WorkspaceController(
     fun deleteSection(@PathVariable sectionID: UUID): ResponseEntity<Any> {
         sectionService.deleteSection(sectionID)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PutMapping("/test-cases/bulk")
+    fun bulkEditTestCases(@RequestBody request: BulkEditTestCasesDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = bulkEditService.editTestCases(request)))
+    }
+
+    // deleting test cases is restricted to admins, one at a time or several
+    @AdminOnly
+    @PostMapping("/test-cases/bulk-delete")
+    fun bulkDeleteTestCases(@RequestBody request: BulkDeleteTestCasesDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = bulkEditService.deleteTestCases(request)))
+    }
+
+    @PutMapping("/test-case-runs/bulk-assignee")
+    fun bulkAssignTestCaseRuns(@RequestBody request: BulkAssignTestCaseRunsDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = bulkEditService.assignTestCaseRuns(request)))
     }
 
     @PutMapping("/test-cases/section")

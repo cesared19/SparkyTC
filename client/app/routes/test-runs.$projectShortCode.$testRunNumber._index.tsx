@@ -24,7 +24,13 @@ import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '../components/DateDisplay'
 import { requireAPI } from '~/utility/API.server'
 import { useIsAdmin } from '~/utility/CurrentUser'
-import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
+import {
+	isTestRunClosed,
+	TestCaseAssignment,
+	TestRunAssignees,
+} from '~/components/Assignments'
+import { BulkAssignBar, SelectToggle } from '~/components/BulkEditBar'
+import { Checkbox } from '~/components/Checkbox'
 import { TestRunBuild } from '~/components/Builds'
 import { TestRunReportButton } from '~/components/TestRunReportButton'
 import { RerunDialog } from '~/components/RerunDialog'
@@ -88,6 +94,30 @@ export default function TestRunDetails() {
 	const [showRerun, setShowRerun] = useState(false)
 	const submit = useSubmit()
 	const isAdmin = useIsAdmin()
+	// admins assign several test cases at once while the run is open
+	const canAssign = isAdmin && !isTestRunClosed(testRun)
+	const [isSelecting, setIsSelecting] = useState(false)
+	const [selectedIDs, setSelectedIDs] = useState<Set<string>>(new Set())
+	const isChoosing = canAssign && isSelecting
+	const toggleSelected = (testCaseRun: TestCaseRun) =>
+		setSelectedIDs((previous) => {
+			const next = new Set(previous)
+			if (next.has(testCaseRun.testCaseRunID))
+				next.delete(testCaseRun.testCaseRunID)
+			else next.add(testCaseRun.testCaseRunID)
+			return next
+		})
+	const changeSelecting = (selecting: boolean) => {
+		setIsSelecting(selecting)
+		setSelectedIDs(new Set())
+	}
+	// the run's assignees first
+	const runAssigneeIDs = new Set(testRun.assignees.map((user) => user.userID))
+	const assignOptions = [...projectUsers].sort(
+		(a, b) =>
+			Number(runAssigneeIDs.has(b.userID)) -
+			Number(runAssigneeIDs.has(a.userID))
+	)
 
 	const allMenuItems: ActionMenuItem[] = (() => {
 		const deleteItem: ActionMenuItem = {
@@ -206,7 +236,15 @@ export default function TestRunDetails() {
 		),
 	}
 
+	const selectColumn: Column<TestCaseRun> = {
+		key: 'select',
+		render: (testCaseRun) => (
+			<Checkbox isSelected={selectedIDs.has(testCaseRun.testCaseRunID)} />
+		),
+	}
+
 	const columns: Column<TestCaseRun>[] = [
+		...(isChoosing ? [selectColumn] : []),
 		{
 			header: 'ID',
 			key: 'id',
@@ -351,17 +389,37 @@ export default function TestRunDetails() {
 				</div>
 			</div>
 
-			<h3 className="text-lg font-medium text-gray-900 mb-4">Test Cases</h3>
+			<div className="mb-4 flex items-center justify-between gap-3">
+				<h3 className="text-lg font-medium text-gray-900">Test Cases</h3>
+				{canAssign && (
+					<SelectToggle isSelecting={isSelecting} onChange={changeSelecting} />
+				)}
+			</div>
 			<Table
 				tableRows={testCaseRuns.map((testCaseRun) => ({
 					id: testCaseRun.testCaseRunID,
 					data: testCaseRun,
+					isSelected: isChoosing
+						? selectedIDs.has(testCaseRun.testCaseRunID)
+						: undefined,
 				}))}
 				columns={columns}
+				allowSelectAll={isChoosing}
 				onRowClick={(testCaseRun) =>
-					navigate(testCaseRun.testCase.testCaseNumber.toString())
+					isChoosing
+						? toggleSelected(testCaseRun)
+						: navigate(testCaseRun.testCase.testCaseNumber.toString())
 				}
 			/>
+			{isChoosing && (
+				<BulkAssignBar
+					selected={testCaseRuns.filter((testCaseRun) =>
+						selectedIDs.has(testCaseRun.testCaseRunID)
+					)}
+					users={assignOptions}
+					onClear={() => setSelectedIDs(new Set())}
+				/>
+			)}
 			{showRerun && (
 				<RerunDialog
 					testRun={testRun}

@@ -227,7 +227,7 @@ class WorkspaceService(
     }
 
     /** Trimmed labels without repeats, ignoring case: the first spelling wins. */
-    private fun cleanLabels(labels: List<String>): MutableSet<String> {
+    fun cleanLabels(labels: List<String>): MutableSet<String> {
         val cleaned = linkedMapOf<String, String>()
         for (label in labels) {
             val name = label.trim().replace(Regex("\\s+"), " ")
