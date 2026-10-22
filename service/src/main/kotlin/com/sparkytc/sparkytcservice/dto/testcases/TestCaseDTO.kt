@@ -23,4 +23,5 @@ data class TestCaseDTO(
     @JsonProperty("isArchived")
     val isArchived: Boolean = false,
     val sectionID: UUID? = null,
+    val labels: List<String> = emptyList(),
 )

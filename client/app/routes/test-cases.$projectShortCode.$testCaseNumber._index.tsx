@@ -8,6 +8,7 @@ import { JiraIssuesPanel } from '~/components/JiraIssuesPanel'
 import { TestCaseHistory } from '~/components/TestCaseResults'
 import { Route } from '~/utility/Routes'
 import { sectionPath } from '~/utility/Sections'
+import { LabelChip } from '~/components/LabelInput'
 
 export default function TestCaseDetails() {
 	const { project, testCase, propertyValues, sections } =
@@ -33,6 +34,13 @@ export default function TestCaseDetails() {
 						{project.projectShortCode}-{testCase.testCaseNumber}
 					</span>
 				</div>
+				{(testCase.labels?.length ?? 0) > 0 && (
+					<div className="mt-2 flex flex-wrap gap-1.5">
+						{testCase.labels?.map((label) => (
+							<LabelChip key={label} label={label} />
+						))}
+					</div>
+				)}
 				{testCase.sectionID && (
 					<Link
 						to={`${Route.viewProjectTestCases(

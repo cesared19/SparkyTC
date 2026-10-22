@@ -9,6 +9,12 @@ import { Table, type Column } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
 import { SectionTree } from '~/components/SectionTree'
 import {
+	hasAllLabels,
+	LabelChip,
+	LabelFilter,
+	projectLabels,
+} from '~/components/LabelInput'
+import {
 	groupBySection,
 	sectionAndDescendants,
 	sectionPath,
@@ -26,18 +32,25 @@ export default function TestCasesIndex() {
 		? (searchParams.get('section') as string)
 		: undefined
 
+	// several labels show the test cases that have all of them
+	const selectedLabels = searchParams.getAll('label')
+	const updateSearch = (sectionID: string | undefined, labels: string[]) => {
+		const next = new URLSearchParams()
+		if (sectionID) next.set('section', sectionID)
+		labels.forEach((label) => next.append('label', label))
+		setSearchParams(next, { replace: true, preventScrollReset: true })
+	}
 	const selectSection = (sectionID?: string) =>
-		setSearchParams(sectionID ? { section: sectionID } : {}, {
-			replace: true,
-			preventScrollReset: true,
-		})
+		updateSearch(sectionID, selectedLabels)
 
 	const visibleIDs = selectedID
 		? sectionAndDescendants(sections, selectedID)
 		: undefined
 	const isVisible = (testCase: TestCase) =>
 		!visibleIDs || (!!testCase.sectionID && visibleIDs.has(testCase.sectionID))
-	const visibleTestCases = testCases.filter(isVisible)
+	const visibleTestCases = testCases.filter(
+		(testCase) => isVisible(testCase) && hasAllLabels(testCase, selectedLabels)
+	)
 	const groups = groupBySection(sections, visibleTestCases)
 
 	// Find property configuration IDs for priority and type
@@ -59,6 +72,20 @@ export default function TestCasesIndex() {
 			key: 'title',
 			mobile: 'title',
 			render: (testCase) => testCase.title,
+		},
+		{
+			header: 'Labels',
+			key: 'labels',
+			render: (testCase) =>
+				(testCase.labels?.length ?? 0) > 0 ? (
+					<span className="flex flex-wrap gap-1">
+						{testCase.labels?.map((label) => (
+							<LabelChip key={label} label={label} />
+						))}
+					</span>
+				) : (
+					'-'
+				),
 		},
 		{
 			header: 'Priority',
@@ -136,6 +163,11 @@ export default function TestCasesIndex() {
 				</aside>
 
 				<div className="min-w-0 flex-1 space-y-8">
+					<LabelFilter
+						labels={projectLabels(testCases)}
+						selected={selectedLabels}
+						onChange={(labels) => updateSearch(selectedID, labels)}
+					/>
 					{groups.length === 0 && (
 						<p className="text-sm text-gray-500">
 							No test cases here yet.{' '}

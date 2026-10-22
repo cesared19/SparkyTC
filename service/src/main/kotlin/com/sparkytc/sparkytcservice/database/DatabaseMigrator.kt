@@ -455,6 +455,18 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.14")
                 }
                 SchemaVersion.VERSION_0_0_14 -> {
+                    // free labels to find test cases across suites
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_labels (
+                            test_case_id BIGINT NOT NULL REFERENCES test_cases(id) ON DELETE CASCADE,
+                            name TEXT NOT NULL,
+                            PRIMARY KEY (test_case_id, name)
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.15")
+                }
+                SchemaVersion.VERSION_0_0_15 -> {
                     break
                 }
             }

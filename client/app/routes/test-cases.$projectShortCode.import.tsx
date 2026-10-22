@@ -121,8 +121,8 @@ export default function ImportTestCases() {
 				<p className="mt-2 text-sm text-gray-600">
 					Upload a .csv file to create multiple test cases at once. The first
 					row must contain the column names: <b>Title</b> (required),{' '}
-					<b>Description</b>, <b>Test Instructions</b> and optionally one column
-					per property (
+					<b>Description</b>, <b>Test Instructions</b>, <b>Labels</b> (separated
+					by commas) and optionally one column per property (
 					{properties.map((property) => property.title).join(', ')}). Empty
 					required properties use their default value.
 				</p>

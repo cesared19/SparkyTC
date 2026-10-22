@@ -11,6 +11,7 @@ import { TestCaseForm, TestCaseFormMode } from '~/components/TestCaseForm'
 import { ProjectTestCasesOutletContext, ErrorResponse } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
+import { projectLabels } from '~/components/LabelInput'
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	const api = await requireAPI(request)
@@ -34,7 +35,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function NewTestCase() {
-	const { properties, sections } =
+	const { properties, sections, testCases } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const [searchParams] = useSearchParams()
 	const navigate = useNavigate()
@@ -50,6 +51,7 @@ export default function NewTestCase() {
 				<TestCaseForm
 					properties={properties}
 					sections={sections}
+					labelSuggestions={projectLabels(testCases)}
 					defaultSectionID={searchParams.get('section') ?? undefined}
 					mode={TestCaseFormMode.create}
 					onCancel={() => navigate('..')}

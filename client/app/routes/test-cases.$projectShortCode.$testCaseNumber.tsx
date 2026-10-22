@@ -5,6 +5,7 @@ import {
 	TestCaseOutletContext,
 } from '~/models/types'
 import { Tools } from '~/utility/Tools'
+import { projectLabels } from '~/components/LabelInput'
 
 export default function TestCaseDetailsRoot() {
 	const params = useParams()
@@ -33,6 +34,7 @@ export default function TestCaseDetailsRoot() {
 		properties,
 		propertyValues,
 		sections,
+		labels: projectLabels(testCases),
 	}
 
 	return <Outlet context={context} />

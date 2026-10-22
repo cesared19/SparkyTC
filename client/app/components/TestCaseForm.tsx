@@ -12,6 +12,7 @@ import { SelectDropdown } from './SelectDropdown'
 import { ErrorMessage } from './ErrorMessage'
 import { PropertyInput } from './PropertyInput'
 import { SectionSelect } from './SectionSelect'
+import { LabelInput } from './LabelInput'
 
 export enum TestCaseFormMode {
 	create,
@@ -23,6 +24,8 @@ interface TestCaseFormProps {
 	sections: TestCaseSection[]
 	// where a new test case is filed, e.g. the section open in the list
 	defaultSectionID?: string
+	// the labels already used in the project
+	labelSuggestions?: string[]
 	defaultValues?: TestCase
 	mode: TestCaseFormMode
 	onCancel: () => void
@@ -35,6 +38,7 @@ export function TestCaseForm({
 	properties,
 	sections,
 	defaultSectionID,
+	labelSuggestions = [],
 	defaultValues = undefined,
 	mode,
 	onCancel,
@@ -67,6 +71,8 @@ export function TestCaseForm({
 			''
 	)
 
+	const [labels, setLabels] = useState<string[]>(defaultValues?.labels ?? [])
+
 	const handlePropertyChange = (propertyID: string, value?: string) => {
 		setPropertyValues((prev) => {
 			if (value) {
@@ -92,6 +98,7 @@ export function TestCaseForm({
 			testInstructions: formData.get('testInstructions') as string,
 			propertyValues,
 			...(sectionID ? { sectionID } : {}),
+			labels,
 		}
 
 		onSubmit(testCase)
@@ -133,6 +140,25 @@ export function TestCaseForm({
 					onChange={setSectionID}
 					className="mt-1 w-full sm:w-auto"
 				/>
+			</div>
+
+			<div>
+				<label
+					htmlFor="labels"
+					className="block text-base font-semibold text-gray-700"
+				>
+					Labels
+				</label>
+				<LabelInput
+					id="labels"
+					labels={labels}
+					suggestions={labelSuggestions}
+					onChange={setLabels}
+				/>
+				<p className="mt-1 text-xs text-gray-500">
+					Free labels to find test cases across suites, e.g. smoke or payments.
+					Press Enter or type a comma to add one.
+				</p>
 			</div>
 
 			{/* Description Field */}

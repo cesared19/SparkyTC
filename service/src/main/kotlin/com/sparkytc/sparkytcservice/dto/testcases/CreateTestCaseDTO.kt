@@ -9,4 +9,6 @@ data class CreateTestCaseDTO(
     val propertyValues: Map<UUID, String>,
     // the project's first suite when empty; on an update, empty keeps the current one
     val sectionID: UUID? = null,
+    // on an update, null keeps the current labels
+    val labels: List<String>? = null,
 )

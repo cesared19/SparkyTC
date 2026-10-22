@@ -157,6 +157,7 @@ class WorkspaceService(
         testCase.description = Tools.sanitize(updateDTO.description)
         testCase.testInstructions = Tools.sanitize(updateDTO.testInstructions)
         updateDTO.sectionID?.let { testCase.section = sectionService.sectionFor(testCase.project, it) }
+        updateDTO.labels?.let { testCase.labels = cleanLabels(it) }
         testCase.updatedBy = CurrentUser.get()
         testCaseRepository.save(testCase)
 
@@ -210,11 +211,26 @@ class WorkspaceService(
             createdBy = CurrentUser.get(),
             updatedBy = CurrentUser.get(),
             section = sectionService.sectionFor(project, testCase.sectionID),
+            labels = cleanLabels(testCase.labels.orEmpty()),
         )
         testCaseRepository.save(newTestCaseModel)
 
         updateTestCasePropertyValues(newTestCaseModel, testCase.propertyValues)
         return newTestCaseModel
+    }
+
+    /** Trimmed labels without repeats, ignoring case: the first spelling wins. */
+    private fun cleanLabels(labels: List<String>): MutableSet<String> {
+        val cleaned = linkedMapOf<String, String>()
+        for (label in labels) {
+            val name = label.trim().replace(Regex("\\s+"), " ")
+            if (name.isEmpty()) continue
+            require(name.length <= 50) { "Labels must be at most 50 characters: $name" }
+            require(!name.contains(',')) { "Labels can't contain commas: $name" }
+            cleaned.putIfAbsent(name.lowercase(), name)
+        }
+        require(cleaned.size <= 20) { "A test case can have at most 20 labels" }
+        return cleaned.values.toMutableSet()
     }
 
     @Transactional

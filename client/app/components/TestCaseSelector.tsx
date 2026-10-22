@@ -13,6 +13,12 @@ import { Project } from '~/models/project'
 import { Checkbox } from './Checkbox'
 import { SectionSelect } from './SectionSelect'
 import {
+	hasAllLabels,
+	LabelChip,
+	LabelFilter,
+	projectLabels,
+} from './LabelInput'
+import {
 	flattenTree,
 	sectionAndDescendants,
 	sectionPath,
@@ -45,6 +51,7 @@ export default function TestCaseSelector({
 	const [searchQuery, setSearchQuery] = useState('')
 	// a suite or section, with the sections nested in it
 	const [sectionFilter, setSectionFilter] = useState('')
+	const [labelFilter, setLabelFilter] = useState<string[]>([])
 	const sectionIDs = sectionFilter
 		? sectionAndDescendants(sections, sectionFilter)
 		: undefined
@@ -112,7 +119,12 @@ export default function TestCaseSelector({
 			!sectionIDs ||
 			(!!testCase.sectionID && sectionIDs.has(testCase.sectionID))
 
-		return matchesAllFilters && matchesSearch && matchesSection
+		return (
+			matchesAllFilters &&
+			matchesSearch &&
+			matchesSection &&
+			hasAllLabels(testCase, labelFilter)
+		)
 	})
 	const filteredTestCases = [...matchingTestCases].sort(
 		(a, b) =>
@@ -268,6 +280,13 @@ export default function TestCaseSelector({
 						<div className="text-xs text-gray-500">
 							{sectionPath(sections, testCase.sectionID)}
 						</div>
+						{(testCase.labels?.length ?? 0) > 0 && (
+							<div className="mt-1 flex flex-wrap gap-1">
+								{testCase.labels?.map((label) => (
+									<LabelChip key={label} label={label} />
+								))}
+							</div>
+						)}
 						{testCase.description && (
 							<div className="text-sm text-gray-500">
 								{testCase.description}
@@ -319,6 +338,12 @@ export default function TestCaseSelector({
 					}
 				/>
 			</div>
+
+			<LabelFilter
+				labels={projectLabels(testCases)}
+				selected={labelFilter}
+				onChange={setLabelFilter}
+			/>
 
 			{/* Display existing filters */}
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

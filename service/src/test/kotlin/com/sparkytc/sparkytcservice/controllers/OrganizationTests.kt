@@ -114,6 +114,25 @@ class OrganizationTests {
     }
 
     @Test
+    fun `test cases have free labels`() {
+        val dto = testCaseDTO("Checkout", null).copy(labels = listOf(" smoke ", "Smoke", "Payments", ""))
+        send(post("/api/v1/workspace/test-cases/PRJ"), dto)
+        val testCase = testCases().single()
+        // trimmed, without repeats ignoring case, the first spelling wins
+        assertEquals(listOf("Payments", "smoke"), testCase.get("labels").map { it.asText() })
+
+        // an update without labels keeps them, an empty list clears them
+        val id = testCase.get("testCaseID").asText()
+        send(put("/api/v1/workspace/test-cases/$id"), dto.copy(labels = null))
+        assertEquals(2, testCases().single().get("labels").size())
+        send(put("/api/v1/workspace/test-cases/$id"), dto.copy(labels = listOf("a,b")))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value(Matchers.containsString("commas")))
+        send(put("/api/v1/workspace/test-cases/$id"), dto.copy(labels = emptyList()))
+        assertEquals(0, testCases().single().get("labels").size())
+    }
+
+    @Test
     fun `an import goes to the chosen section`() {
         val imported = createSection("Imported", null)
         send(post("/api/v1/workspace/test-cases/PRJ/batch"), BatchCreateTestCasesDTO(

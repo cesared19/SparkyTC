@@ -54,6 +54,12 @@ class TestCase(
     @JoinColumn(name = "section_id")
     var section: TestCaseSection? = null,
 
+    // free labels such as smoke or payments, to find test cases across suites
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "test_case_labels", joinColumns = [JoinColumn(name = "test_case_id")])
+    @Column(name = "name")
+    var labels: MutableSet<String> = mutableSetOf(),
+
     // deleted while used by test runs: hidden from the project, kept for the runs' results
     @Column(name = "is_archived", nullable = false)
     var isArchived: Boolean = false,
@@ -78,6 +84,6 @@ class TestCase(
             propertyValueMap[propertyValue.propertyConfiguration.externalID] = propertyValue.value
         }
 
-        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate, isArchived, section?.externalID)
+        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate, isArchived, section?.externalID, labels.sortedBy { it.lowercase() })
     }
 }

@@ -18,6 +18,8 @@ export interface TestCase {
 	isArchived?: boolean
 	// the suite or section it's filed in
 	sectionID?: string
+	// free labels such as smoke or payments
+	labels?: string[]
 }
 
 // a folder of test cases; the ones without a parent are the project's suites
@@ -244,6 +246,7 @@ export interface CreateTestCase extends Record<string, any> {
 	testInstructions: string
 	propertyValues: Record<string, string>
 	sectionID?: string
+	labels?: string[]
 }
 
 export interface PropertyValue {
@@ -416,6 +419,8 @@ export interface TestCaseOutletContext {
 	properties: PropertyConfiguration[]
 	propertyValues: PropertyValue[]
 	sections: TestCaseSection[]
+	// every label used in the project
+	labels: string[]
 }
 
 export interface ProjectTestRunsOutletContext {
