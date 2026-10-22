@@ -417,8 +417,8 @@ function TestCaseRunView({
 							onClick={() => setSelectedStatus(TestCaseRunStatus.skip)}
 							className={`px-4 py-2 text-sm font-medium rounded-md ${
 								selectedStatus === TestCaseRunStatus.skip
-									? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-600'
-									: 'bg-gray-50 text-gray-700 hover:bg-yellow-50 hover:text-yellow-700'
+									? 'bg-cyan-100 text-cyan-800 ring-1 ring-cyan-600'
+									: 'bg-gray-50 text-gray-700 hover:bg-cyan-50 hover:text-cyan-700'
 							}`}
 						>
 							Skip

@@ -21,7 +21,7 @@
 	/* chart lines for pass and fail rates, checked for color vision deficiencies against the surface */
 	--color-chart-pass: 21 128 61;
 	--color-chart-fail: 248 113 113;
-	--color-chart-skip: 161 98 7;
+	--color-chart-skip: 8 145 178;
 	--color-chart-blocked: 124 58 237;
 
 	/* brand: crimson from the logo (#c01c37) */
@@ -61,7 +61,7 @@
 
 	--color-chart-pass: 22 163 74;
 	--color-chart-fail: 185 28 28;
-	--color-chart-skip: 217 119 6;
+	--color-chart-skip: 8 145 178;
 	--color-chart-blocked: 139 92 246;
 
 	/* brand: buttons keep the logo crimson, text and tints are lightened for contrast */
@@ -125,6 +125,13 @@ body {
 .dark .bg-yellow-100 {
 	background-color: rgb(133 77 14 / 0.45);
 }
+.dark .bg-cyan-50,
+.dark .hover\:bg-cyan-50:hover {
+	background-color: rgb(22 78 99 / 0.3);
+}
+.dark .bg-cyan-100 {
+	background-color: rgb(21 94 117 / 0.45);
+}
 .dark .bg-violet-50,
 .dark .hover\:bg-violet-50:hover {
 	background-color: rgb(76 29 149 / 0.3);
@@ -155,6 +162,10 @@ body {
 .dark .text-yellow-800,
 .dark .hover\:text-yellow-700:hover {
 	color: rgb(253 230 138);
+}
+.dark .text-cyan-800,
+.dark .hover\:text-cyan-700:hover {
+	color: rgb(165 243 252);
 }
 .dark .text-violet-800,
 .dark .hover\:text-violet-700:hover {

@@ -49,7 +49,7 @@ interface DayResults {
 const COLORS = {
 	pass: '#15803d',
 	fail: '#f87171',
-	skip: '#a16207',
+	skip: '#0891b2',
 	blocked: '#7c3aed',
 	pending: '#d1d5db',
 	page: '#f1f5f9',
@@ -360,7 +360,8 @@ const STATUS_SEGMENTS = [
 		key: 'skipped' as const,
 		label: 'Skipped',
 		color: COLORS.skip,
-		ink: '#ffffff',
+		// white on cyan is below 4.5:1
+		ink: COLORS.text,
 	},
 	{
 		key: 'pending' as const,
@@ -878,7 +879,7 @@ const PDF_STATUS_COLORS: Record<
 > = {
 	[TestCaseRunStatus.pass]: { fill: COLORS.pass, ink: '#ffffff' },
 	[TestCaseRunStatus.fail]: { fill: COLORS.failTile, ink: '#ffffff' },
-	[TestCaseRunStatus.skip]: { fill: COLORS.skip, ink: '#ffffff' },
+	[TestCaseRunStatus.skip]: { fill: COLORS.skip, ink: COLORS.text },
 	[TestCaseRunStatus.blocked]: { fill: COLORS.blocked, ink: '#ffffff' },
 	[TestCaseRunStatus.pending]: { fill: COLORS.pending, ink: COLORS.text },
 }
