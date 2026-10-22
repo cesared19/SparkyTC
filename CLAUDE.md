@@ -11,7 +11,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - **Backend:** Spring Boot 3 + Kotlin (JDK 21), en `service/`. Paquete `com.sparkytc.sparkytcservice`, configuración con prefijo `sparkytc.*`.
 - **Frontend:** Remix + React + Tailwind, en `client/`. Todas las llamadas a la API pasan por el servidor Remix con la sesión del usuario (`requireAPI` / `requireUser` / `requireAdmin`).
 - **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.17). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
-- **Deploy:** Docker Compose (`docker-compose.yml`). El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
+- **Deploy:** Docker Compose (`docker-compose.yml`); la imagen del cliente usa Node 22. El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
 
 ## Funcionalidades existentes (v1.0.0)
 
@@ -53,8 +53,10 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 ## Pendientes conocidos
 
 - Publicar la release v1.0.0 en GitHub (la etiqueta todavía no existe).
-- Más adelante: HTTPS en el servidor y convertir la app en PWA.
+- 2.0.1: limpiar el lint heredado (imports sin usar o duplicados, `any`, espacios y tabs, labels sin control asociado).
+- Más adelante: HTTPS en el servidor y convertir la app en PWA; migrar de Remix 2 a React Router 7 y de ESLint 8 a 9.
+- Rendimiento: Hibernate carga las colecciones por lotes (`default_batch_fetch_size`); al listar runs con sus resultados, usar `findAllByTestRunIn` (`BuildResultsService.testCaseRunsByRun`) en vez de una consulta por run. La página de un run carga solo ese run (`/projects/{code}/test-runs/{number}`).
 
 ## Versión en curso
 
-- **2.0.0** (rama `claude/v2.0.0`), etapa C — hechos: padding del formulario de nuevo caso en modo oscuro; test plans; exportación CSV/Excel; edición masiva.
+- **2.0.0** (rama `claude/v2.0.0`), etapa C — hechos: padding del formulario de nuevo caso en modo oscuro; test plans; exportación CSV/Excel; edición masiva; optimización de consultas, limpieza de código obsoleto, Node 22 y capturas nuevas del README (proyecto de muestra Web Store).

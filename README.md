@@ -10,9 +10,9 @@ SparkyTC is based on [Cherry](https://github.com/bennettadam/cherry) by Adam Ben
 
 ### Project Management
 
-![Project Management](./documentation/assets/project-list.png)
+![Project Dashboard](./documentation/assets/project-list.png)
 
-Manage your team's projects and test cases in a structured way.
+Manage your team's projects and test cases in a structured way. Each project opens on its dashboard, with the results of the current build.
 
 ### Test Case Creation and Organization
 
@@ -28,6 +28,8 @@ Create and organize your test cases for each of your projects.
 -  **During a run**, a test case written as steps lists them to be marked as pass, fail, blocked or skip, with an optional actual result. The result is suggested from the steps (any failed step suggests Fail, then Blocked), and each result keeps how every step went, shown in the run, the report PDF and the steps to reproduce of Jira bugs.
 
 ### Test Plans
+
+![Test Plan](./documentation/assets/test-plan.png)
 
 A test plan is a template of the test cases to run again and again, e.g. *Regression* or *Smoke*. It chooses its test cases by suites and sections (including the sections nested inside them), by labels, or one by one, and the plan's page shows them grouped by section. **Start test run** opens a new test run with the plan's test cases already chosen; they are worked out again each time, so test cases added later to a chosen section or label are included. Test runs remember the plan they came from, and keep their results if the plan is deleted (admins only).
 
