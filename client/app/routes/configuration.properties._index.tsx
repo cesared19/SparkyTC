@@ -1,11 +1,9 @@
-import { useOutletContext } from '@remix-run/react'
-import { Link } from '@remix-run/react'
+import { useOutletContext, Link, useNavigate } from '@remix-run/react'
 import {
 	PropertyConfiguration,
 	PropertyConfigurationOutletContext,
 } from '~/models/types'
 import { Table, type Column } from '~/components/Table'
-import { useNavigate } from '@remix-run/react'
 import { Tools } from '~/utility/Tools'
 
 export default function ConfigurationProperties() {

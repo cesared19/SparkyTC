@@ -24,6 +24,10 @@ export function ProjectShell({
 	// on phones the project list opens as a drawer
 	const [isListOpen, setIsListOpen] = useState(false)
 	useEffect(() => setIsListOpen(false), [location.pathname])
+	const settingsTab = {
+		to: Route.projectSettings(currentProject.projectShortCode),
+		label: 'Settings',
+	}
 	const tabs = [
 		{
 			to: Route.viewProjectDashboard(currentProject.projectShortCode),
@@ -46,14 +50,7 @@ export function ProjectShell({
 			to: Route.viewProjectBuilds(currentProject.projectShortCode),
 			label: 'Builds',
 		},
-		...(isAdmin
-			? [
-					{
-						to: Route.projectSettings(currentProject.projectShortCode),
-						label: 'Settings',
-					},
-			  ]
-			: []),
+		...(isAdmin ? [settingsTab] : []),
 	]
 
 	return (

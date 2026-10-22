@@ -64,7 +64,6 @@ export default function TestCaseSelector({
 	)
 	const sectionIndex = (testCase: TestCase) =>
 		sectionOrder.get(testCase.sectionID ?? '') ?? Infinity
-	const [showFilters, setShowFilters] = useState(false)
 
 	// Instead of storing a single string per property,
 	// store a FilterValue for maximum flexibility.
@@ -108,12 +107,11 @@ export default function TestCaseSelector({
 		)
 
 		// Also match the overall search on title/description
-		const matchesSearch = searchQuery
-			? testCase.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			  (testCase.description?.toLowerCase() || '').includes(
-					searchQuery.toLowerCase()
-			  )
-			: true
+		const query = searchQuery.toLowerCase()
+		const matchesSearch =
+			!searchQuery ||
+			testCase.title.toLowerCase().includes(query) ||
+			(testCase.description?.toLowerCase() || '').includes(query)
 
 		const matchesSection =
 			!sectionIDs ||
@@ -153,13 +151,13 @@ export default function TestCaseSelector({
 			...prev,
 			[propertyID]: initialFilterValue,
 		}))
-		setShowFilters(false)
 	}
 
 	const handleRemoveProperty = (propertyID: string) => {
 		setSelectedPropertyIDs((prev) => prev.filter((id) => id !== propertyID))
 		setSelectedFilters((prev) => {
-			const { [propertyID]: _removed, ...rest } = prev
+			const rest = { ...prev }
+			delete rest[propertyID]
 			return rest
 		})
 	}

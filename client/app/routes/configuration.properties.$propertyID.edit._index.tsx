@@ -1,8 +1,4 @@
-import {
-	type ActionFunctionArgs,
-	type LoaderFunctionArgs,
-	redirect,
-} from '@remix-run/node'
+import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import { useActionData, useOutletContext, useSubmit } from '@remix-run/react'
 import type { PropertyFormData } from '~/components/PropertyForm'
 import PropertyForm, { PropertyFormMode } from '~/components/PropertyForm'
@@ -60,9 +56,7 @@ export default function EditProperty() {
 	return (
 		<div>
 			<div className="mb-6">
-				<h2 className="text-2xl font-semibold text-gray-900">
-					Edit Property
-				</h2>
+				<h2 className="text-2xl font-semibold text-gray-900">Edit Property</h2>
 			</div>
 
 			<PropertyForm

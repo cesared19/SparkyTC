@@ -1,6 +1,6 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 1.7.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.0.0 está en `main`.
 
 **Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
@@ -42,7 +42,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 - **Antes de hacer push:**
   - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 81).
-  - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint ya tiene 55 problemas heredados de `main` (42 errores, 13 warnings); el criterio es no agregar nuevos.
+  - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint está en 0 problemas (desde 2.0.1); debe seguir así. Los payloads que se envían con `useSubmit`/`fetcher.submit` son alias `type`, no interfaces que extienden `Record<string, any>`.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
 - **Formato del cliente:** Prettier con `--use-tabs --single-quote --no-semi`; sigue el estilo del código existente.
@@ -53,10 +53,9 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 ## Pendientes conocidos
 
 - Publicar la release v1.0.0 en GitHub (la etiqueta todavía no existe).
-- 2.0.1: limpiar el lint heredado (imports sin usar o duplicados, `any`, espacios y tabs, labels sin control asociado).
 - Más adelante: HTTPS en el servidor y convertir la app en PWA; migrar de Remix 2 a React Router 7 y de ESLint 8 a 9.
 - Rendimiento: Hibernate carga las colecciones por lotes (`default_batch_fetch_size`); al listar runs con sus resultados, usar `findAllByTestRunIn` (`BuildResultsService.testCaseRunsByRun`) en vez de una consulta por run. La página de un run carga solo ese run (`/projects/{code}/test-runs/{number}`).
 
 ## Versión en curso
 
-- **2.0.0** (rama `claude/v2.0.0`), etapa C — hechos: padding del formulario de nuevo caso en modo oscuro; test plans; exportación CSV/Excel; edición masiva; optimización de consultas, limpieza de código obsoleto, Node 22 y capturas nuevas del README (proyecto de muestra Web Store).
+- **2.0.1** (rama `claude/v2.0.1`) — hecho: lint en 0 (imports sin usar o duplicados, payloads sin `any`, ternarios sin mezcla de espacios y tabs, etiquetas asociadas a su control). Se corrigió de paso `UpdateTestRun`, que no declaraba `trackTime`.

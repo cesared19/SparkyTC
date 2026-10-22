@@ -39,7 +39,7 @@ export interface TestCaseStep {
 }
 
 // a step sent when saving a test case
-export interface StepInput {
+export type StepInput = {
 	action?: string
 	expected?: string
 	sharedStepID?: string
@@ -62,7 +62,7 @@ export interface TestCaseRunStep {
 }
 
 // how a step went in one result
-export interface StepResult {
+export type StepResult = {
 	stepID: string
 	status?: TestCaseRunStatus
 	actual?: string
@@ -103,7 +103,7 @@ export interface JiraTransition {
 }
 
 // a linked issue to close on a pass or reopen on a fail
-export interface JiraIssueTransition {
+export type JiraIssueTransition = {
 	issueKey: string
 	transitionID: string
 	assigneeAccountID?: string
@@ -134,7 +134,7 @@ export interface JiraUser {
 	avatarURL?: string
 }
 
-export interface CreateJiraIssue extends Record<string, any> {
+export type CreateJiraIssue = {
 	summary: string
 	stepsToReproduce: string
 	expectedResult: string
@@ -286,7 +286,7 @@ export interface TestCaseAttachment {
 	uploadedBy?: string
 }
 
-export interface CreateTestCase extends Record<string, any> {
+export type CreateTestCase = {
 	title: string
 	description: string
 	testInstructions: string
@@ -343,11 +343,6 @@ export interface BulkEditResult {
 }
 
 export interface FetchResponse<T> {
-	data: T
-}
-
-export interface UpdateRequestBody<T> extends Record<string, any> {
-	id: string
 	data: T
 }
 
@@ -488,17 +483,18 @@ export interface TestCaseHistoryEntry {
 	testRunCreationDate: number
 }
 
-export interface UpdateTestCaseRunDetails extends Record<string, any> {
+export type UpdateTestCaseRunDetails = {
 	title: string
 	description?: string
 	testInstructions?: string
 	applyToTestCase: boolean
 }
 
-export interface UpdateTestRun extends Record<string, any> {
+export type UpdateTestRun = {
 	title: string
 	description?: string
 	status: TestRunStatus
+	trackTime?: boolean
 }
 
 export interface ProjectTestCasesOutletContext {
@@ -535,7 +531,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	sections: TestCaseSection[]
 }
 
-export interface ErrorResponse extends Record<string, any> {
+export type ErrorResponse = {
 	message: string
 }
 

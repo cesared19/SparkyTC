@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs, redirect, json } from '@remix-run/node'
+import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
 	useActionData,
 	useNavigate,

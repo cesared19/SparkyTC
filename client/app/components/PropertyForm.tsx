@@ -6,7 +6,7 @@ import { Tools } from '../utility/Tools'
 import { ErrorMessage } from './ErrorMessage'
 import { v4 as uuid } from 'uuid'
 
-export interface PropertyFormData extends Record<string, any> {
+export type PropertyFormData = {
 	title: string
 	propertyType: PropertyType
 	isRequired: boolean
@@ -137,9 +137,8 @@ export default function PropertyForm({
 	const getDefaultValueForType = () => {
 		switch (selectedType) {
 			case PropertyType.singleSelectList:
-				return selectOptions.find(
-					(opt) => opt.id === selectedDefaultValueId
-				)?.value
+				return selectOptions.find((opt) => opt.id === selectedDefaultValueId)
+					?.value
 			case PropertyType.text:
 			case PropertyType.number:
 				return textDefaultValue || undefined
@@ -153,6 +152,7 @@ export default function PropertyForm({
 			case PropertyType.singleSelectList:
 				return (
 					<SelectDropdown
+						id="defaultValue"
 						options={getDefaultValueOptions()}
 						value={getCurrentDefaultValue()}
 						onChange={handleDefaultValueChange}
@@ -166,6 +166,7 @@ export default function PropertyForm({
 			case PropertyType.text:
 				return (
 					<input
+						id="defaultValue"
 						type="text"
 						value={textDefaultValue}
 						onChange={(e) => setTextDefaultValue(e.target.value)}
@@ -180,6 +181,7 @@ export default function PropertyForm({
 			case PropertyType.number:
 				return (
 					<input
+						id="defaultValue"
 						type="number"
 						value={textDefaultValue}
 						onChange={(e) => setTextDefaultValue(e.target.value)}
@@ -243,8 +245,8 @@ export default function PropertyForm({
 		}
 
 		return (
-			selectOptions.find((opt) => opt.id === selectedDefaultValueId)
-				?.value || ''
+			selectOptions.find((opt) => opt.id === selectedDefaultValueId)?.value ||
+			''
 		)
 	}
 
@@ -324,8 +326,7 @@ export default function PropertyForm({
 								</svg>
 							</span>
 							<div className="absolute left-full top-1/2 ml-2 hidden w-64 -translate-y-1/2 rounded-md bg-gray-900 px-3 py-1 text-sm text-white group-hover:block z-10">
-								To change the type, delete this property and create a
-								new one
+								To change the type, delete this property and create a new one
 								<div className="absolute left-0 top-1/2 -ml-1 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
 							</div>
 						</div>
@@ -335,9 +336,8 @@ export default function PropertyForm({
 					<SelectDropdown
 						options={propertyTypeOptions.map((opt) => opt.label)}
 						value={
-							propertyTypeOptions.find(
-								(opt) => opt.value === selectedType
-							)?.label
+							propertyTypeOptions.find((opt) => opt.value === selectedType)
+								?.label
 						}
 						onChange={(label) => {
 							const option = propertyTypeOptions.find(
@@ -365,9 +365,9 @@ export default function PropertyForm({
 						<div className="flex-1">
 							<div className="flex items-center mb-2">
 								<div className="flex flex-grow items-center justify-between gap-4">
-									<label className="block text-sm font-medium text-gray-700">
+									<span className="block text-sm font-medium text-gray-700">
 										Options
-									</label>
+									</span>
 									<button
 										type="button"
 										onClick={addOption}
@@ -386,10 +386,7 @@ export default function PropertyForm({
 													type="text"
 													value={option.value}
 													onChange={(e) =>
-														updateOption(
-															option.id,
-															e.target.value
-														)
+														updateOption(option.id, e.target.value)
 													}
 													required
 													placeholder={`Option ${index + 1}`}
@@ -422,7 +419,10 @@ export default function PropertyForm({
 						</div>
 						<div className="w-64">
 							<div className="mb-2">
-								<label className="block text-sm font-medium text-gray-700">
+								<label
+									htmlFor="defaultValue"
+									className="block text-sm font-medium text-gray-700"
+								>
 									Default Value
 								</label>
 							</div>
@@ -432,7 +432,10 @@ export default function PropertyForm({
 				</div>
 			) : (
 				<div>
-					<label className="block text-sm font-medium text-gray-700">
+					<label
+						htmlFor="defaultValue"
+						className="block text-sm font-medium text-gray-700"
+					>
 						Default Value
 					</label>
 					{renderDefaultValueInput()}

@@ -57,9 +57,9 @@ export default function TestCaseDetails() {
 			<div className="space-y-8">
 				<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
 					<div>
-						<label className="block text-base font-semibold text-gray-700">
+						<h3 className="block text-base font-semibold text-gray-700">
 							Created
-						</label>
+						</h3>
 						<DateDisplay
 							date={testCase.creationDate}
 							className="mt-1 text-sm text-gray-700"
@@ -78,9 +78,9 @@ export default function TestCaseDetails() {
 					</div>
 
 					<div>
-						<label className="block text-base font-semibold text-gray-700">
+						<h3 className="block text-base font-semibold text-gray-700">
 							Description
-						</label>
+						</h3>
 						<div className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
 							{testCase.description ? (
 								<LinkifiedText text={testCase.description} />
