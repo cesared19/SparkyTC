@@ -20,6 +20,12 @@ Manage your team's projects and test cases in a structured way.
 
 Create and organize your test cases for each of your projects.
 
+-  **Suites and sections**: each project has suites, and sections nested inside them without a limit. Every test case lives in one section, and keeps its number when moved. The test case list shows the tree with how many test cases each section holds; sections are added, renamed, moved between suites, reordered and deleted once empty. Test cases that existed before 1.7.0 are in a **Default** suite.
+-  **Labels**: free labels such as `smoke` or `payments`, several per test case, to find test cases across suites. The test case list and the test run's test case selector filter by labels (a test case must have all the chosen ones) and by section.
+-  **Text or steps**: a test case is written as free text or as steps, each with an action and an expected result. Switching keeps the content: the text becomes the first step, and the steps become numbered text.
+-  **Shared steps**: steps used by several test cases, such as signing in, kept in the project's **Shared steps** library and inserted in a test case as a block. Editing one changes every test case that uses it; test runs already created keep their copy, and a shared step in use can't be deleted.
+-  **During a run**, a test case written as steps lists them to be marked as pass, fail, blocked or skip, with an optional actual result. The result is suggested from the steps (any failed step suggests Fail, then Blocked), and each result keeps how every step went, shown in the run, the report PDF and the steps to reproduce of Jira bugs.
+
 ### Test Runs
 
 #### Creation
@@ -71,9 +77,10 @@ From a project's test case list, click **Import CSV**. The first row of the file
 | `Title`             | Yes      |                                                                                                       |
 | `Description`       | No       |                                                                                                       |
 | `Test Instructions` | No       | Line breaks are kept when the value is quoted                                                         |
+| `Labels`            | No       | Several labels separated by commas or semicolons                                                      |
 | _Property title_    | No       | One column per property (e.g. `Priority`, `Type`). Empty required properties use their default value |
 
-Comma, semicolon and tab separated files are supported, and column names and select options are matched case-insensitively. Use **Download template** on the import page to get a file with the columns for your current properties. The rows are previewed and validated before importing, and the import is all-or-nothing.
+Comma, semicolon and tab separated files are supported, and column names and select options are matched case-insensitively. Use **Download template** on the import page to get a file with the columns for your current properties. The rows are previewed and validated before importing, and the import is all-or-nothing. The imported test cases go to the section chosen on the import page.
 
 ### Test case attachments
 
