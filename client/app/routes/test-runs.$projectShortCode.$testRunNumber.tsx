@@ -7,6 +7,7 @@ import type {
 	ProjectTestCaseRunsOutletContext,
 	TestRun,
 	TestRunTime,
+	TestCaseSection,
 	ProjectTestRunsOutletContext,
 	TestCaseRun,
 	PropertyConfiguration,
@@ -25,22 +26,31 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Test run number is required', { status: 400 })
 	}
 
-	const [response, propertiesResponse, usersResponse, buildsResponse, runs] =
-		await Promise.all([
-			api.get<FetchResponse<TestCaseRun[]>>(
-				APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
-			),
-			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
-			api.get<FetchResponse<UserSummary[]>>(
-				APIRoute.projectUsers(projectShortCode)
-			),
-			api.get<FetchResponse<ProjectBuild[]>>(
-				APIRoute.projectBuilds(projectShortCode)
-			),
-			api.get<FetchResponse<TestRun[]>>(
-				APIRoute.projectTestRuns(projectShortCode)
-			),
-		])
+	const [
+		response,
+		propertiesResponse,
+		usersResponse,
+		buildsResponse,
+		runs,
+		sectionsResponse,
+	] = await Promise.all([
+		api.get<FetchResponse<TestCaseRun[]>>(
+			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
+		),
+		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
+		api.get<FetchResponse<UserSummary[]>>(
+			APIRoute.projectUsers(projectShortCode)
+		),
+		api.get<FetchResponse<ProjectBuild[]>>(
+			APIRoute.projectBuilds(projectShortCode)
+		),
+		api.get<FetchResponse<TestRun[]>>(
+			APIRoute.projectTestRuns(projectShortCode)
+		),
+		api.get<FetchResponse<TestCaseSection[]>>(
+			APIRoute.projectSections(projectShortCode)
+		),
+	])
 	const testRun = runs.data.find((run) => run.testRunNumber === testRunNumber)
 	if (!testRun) {
 		throw new Response('Test run not found', { status: 404 })
@@ -55,6 +65,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		projectUsers: usersResponse.data,
 		builds: buildsResponse.data,
 		time: time.data,
+		sections: sectionsResponse.data,
 	}
 }
 
@@ -66,6 +77,7 @@ export default function TestRunsIndex() {
 		projectUsers,
 		builds,
 		time,
+		sections,
 	} = useLoaderData<typeof loader>()
 	const { project, testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
 	const testRun = testRuns.find(
@@ -83,6 +95,7 @@ export default function TestRunsIndex() {
 		projectUsers,
 		builds,
 		time,
+		sections,
 	}
 
 	return <Outlet context={outletContext} />

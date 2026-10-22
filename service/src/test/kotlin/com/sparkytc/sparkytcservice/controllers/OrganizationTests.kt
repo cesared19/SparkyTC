@@ -142,6 +142,22 @@ class OrganizationTests {
             sectionID = UUID.fromString(imported),
         ))
         assertEquals(listOf(imported, imported), testCases().map { it.get("sectionID").asText() })
+
+        // a row's section path wins, creating the sections that don't exist and reusing the ones that do
+        send(post("/api/v1/workspace/test-cases/PRJ/batch"), BatchCreateTestCasesDTO(
+            testCases = listOf(
+                testCaseDTO("Third", null).copy(sectionPath = "Mobile / Login"),
+                testCaseDTO("Fourth", null).copy(sectionPath = " mobile/ LOGIN "),
+                testCaseDTO("Fifth", null).copy(sectionPath = "Imported"),
+            ),
+            sectionID = UUID.fromString(imported),
+        ))
+        val byTitle = testCases().associate { it.get("title").asText() to it.get("sectionID").asText() }
+        assertEquals(byTitle["Third"], byTitle["Fourth"])
+        assertEquals(imported, byTitle["Fifth"])
+        val login = sections().single { it.get("sectionID").asText() == byTitle["Third"] }
+        assertEquals("Login", login.get("name").asText())
+        assertEquals("Mobile", sections().single { it.get("sectionID").asText() == login.get("parentID").asText() }.get("name").asText())
     }
 
     @Test

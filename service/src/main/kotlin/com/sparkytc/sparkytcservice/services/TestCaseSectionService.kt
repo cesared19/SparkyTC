@@ -127,6 +127,19 @@ class TestCaseSectionService(
         return sectionID?.let { requireSection(project, it) } ?: defaultSection(project)
     }
 
+    /** The section at a path such as "Mobile / Login", creating the suite and sections that don't exist yet. */
+    fun sectionForPath(project: WorkspaceProject, path: String): TestCaseSection {
+        val names = path.split("/").map { it.trim() }.filter { it.isNotEmpty() }
+        require(names.isNotEmpty()) { "The section path is empty" }
+        var parent: TestCaseSection? = null
+        for (name in names) {
+            val siblings = siblings(project, parent)
+            parent = siblings.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                ?: sectionRepository.save(TestCaseSection(project = project, parent = parent, name = requireName(name), position = siblings.size))
+        }
+        return parent!!
+    }
+
     private fun defaultSection(project: WorkspaceProject): TestCaseSection {
         return siblings(project, null).firstOrNull()
             ?: sectionRepository.save(TestCaseSection(project = project, name = "Default"))

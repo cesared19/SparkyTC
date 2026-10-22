@@ -51,7 +51,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function ImportTestCases() {
-	const { project, properties, sections } =
+	const { project, properties, sections, sharedSteps } =
 		useOutletContext<ProjectTestCasesOutletContext>()
 	const [searchParams] = useSearchParams()
 	const [sectionID, setSectionID] = useState(
@@ -87,7 +87,7 @@ export default function ImportTestCases() {
 
 		setFileName(file.name)
 		const text = await file.text()
-		setResult(importTestCasesFromCSV(text, properties))
+		setResult(importTestCasesFromCSV(text, properties, sharedSteps))
 	}
 
 	const handleDownloadTemplate = () => {
@@ -122,7 +122,9 @@ export default function ImportTestCases() {
 					Upload a .csv file to create multiple test cases at once. The first
 					row must contain the column names: <b>Title</b> (required),{' '}
 					<b>Description</b>, <b>Test Instructions</b>, <b>Labels</b> (separated
-					by commas) and optionally one column per property (
+					by commas), <b>Section</b> (a path such as Mobile / Login, created if
+					missing), <b>Format</b> and <b>Steps</b> (numbered, as exported) and
+					optionally one column per property (
 					{properties.map((property) => property.title).join(', ')}). Empty
 					required properties use their default value.
 				</p>

@@ -214,7 +214,8 @@ class WorkspaceService(
             testInstructions = Tools.sanitize(testCase.testInstructions),
             createdBy = CurrentUser.get(),
             updatedBy = CurrentUser.get(),
-            section = sectionService.sectionFor(project, testCase.sectionID),
+            section = testCase.sectionPath?.takeIf { it.isNotBlank() }?.let { sectionService.sectionForPath(project, it) }
+                ?: sectionService.sectionFor(project, testCase.sectionID),
             labels = cleanLabels(testCase.labels.orEmpty()),
         )
         testCaseRepository.save(newTestCaseModel)

@@ -28,6 +28,8 @@ import { TestCaseAssignment, TestRunAssignees } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
 import { TestRunReportButton } from '~/components/TestRunReportButton'
 import { RerunDialog } from '~/components/RerunDialog'
+import { ExportMenu } from '~/components/ExportMenu'
+import { downloadTable, runResultRows } from '~/utility/TestCaseExport'
 import { useState } from 'react'
 import { formatDuration, TestRunTimeSection } from '~/components/TimeTracking'
 import { TestCaseRunStatus } from '~/models/types'
@@ -72,8 +74,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function TestRunDetails() {
-	const { project, testRun, testCaseRuns, projectUsers, builds, time } =
-		useOutletContext<ProjectTestCaseRunsOutletContext>()
+	const {
+		project,
+		testRun,
+		testCaseRuns,
+		projectUsers,
+		builds,
+		time,
+		sections,
+	} = useOutletContext<ProjectTestCaseRunsOutletContext>()
 
 	const navigate = useNavigate()
 	const [showRerun, setShowRerun] = useState(false)
@@ -321,6 +330,17 @@ export default function TestRunDetails() {
 					)}
 				</div>
 				<div className="flex items-start gap-2 self-end sm:self-start">
+					<ExportMenu
+						label="Export results"
+						onExport={(format) =>
+							downloadTable(
+								`${project.projectShortCode}-test-run-${testRun.testRunNumber}-results`,
+								`Test run ${testRun.testRunNumber}`,
+								runResultRows(project, testRun, testCaseRuns, sections),
+								format
+							)
+						}
+					/>
 					<TestRunReportButton
 						project={project}
 						testRun={testRun}

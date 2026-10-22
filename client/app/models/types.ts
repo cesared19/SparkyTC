@@ -292,6 +292,8 @@ export interface CreateTestCase extends Record<string, any> {
 	testInstructions: string
 	propertyValues: Record<string, string>
 	sectionID?: string
+	// a section by its path, e.g. "Mobile / Login", created if missing (imports)
+	sectionPath?: string
 	labels?: string[]
 	format?: TestCaseFormat
 	steps?: StepInput[]
@@ -524,6 +526,7 @@ export interface ProjectTestCaseRunsOutletContext {
 	projectUsers: UserSummary[]
 	builds: ProjectBuild[]
 	time: TestRunTime
+	sections: TestCaseSection[]
 }
 
 export interface ErrorResponse extends Record<string, any> {
