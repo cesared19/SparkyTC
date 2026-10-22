@@ -47,7 +47,7 @@ export default function NewTestCase() {
 			<div className="mb-6 flex items-center justify-between">
 				<h2 className="text-2xl font-semibold text-gray-900">New Test Case</h2>
 			</div>
-			<div className="rounded-lg border-gray-200 bg-white">
+			<div>
 				<TestCaseForm
 					properties={properties}
 					sections={sections}
