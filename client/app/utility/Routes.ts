@@ -64,10 +64,6 @@ export class Route {
 		return `/jira-similar?${params.toString()}`
 	}
 
-	static importTestCases(projectShortCode: string) {
-		return `/test-cases/${projectShortCode}/import`
-	}
-
 	static attachment(attachmentID: string) {
 		return `/attachments/${attachmentID}`
 	}
@@ -86,10 +82,6 @@ export class Route {
 
 	static get sharedSteps() {
 		return '/shared-steps'
-	}
-
-	static viewSharedSteps(projectShortCode: string) {
-		return `/test-cases/${projectShortCode}/shared-steps`
 	}
 
 	static resultEvidence(resultID: string) {
@@ -160,10 +152,6 @@ export class Route {
 		testCaseNumber: number
 	) {
 		return `/test-runs/${projectShortCode}/${testRunNumber}/${testCaseNumber}`
-	}
-
-	static get login() {
-		return '/login'
 	}
 
 	static get logout() {
@@ -311,8 +299,8 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/workspace/shared-steps/${sharedStepID}`
 	}
 
-	static get moveTestCases() {
-		return `${this.baseAPIURL}/api/v1/workspace/test-cases/section`
+	static projectTestRun(projectShortCode: string, testRunNumber: number) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/test-runs/${testRunNumber}`
 	}
 
 	static get bulkEditTestCases() {

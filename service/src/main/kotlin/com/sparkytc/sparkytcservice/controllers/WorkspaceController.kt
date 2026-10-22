@@ -257,12 +257,6 @@ class WorkspaceController(
         return ResponseEntity.ok(DataResponse(data = bulkEditService.assignTestCaseRuns(request)))
     }
 
-    @PutMapping("/test-cases/section")
-    fun moveTestCases(@RequestBody request: MoveTestCasesDTO): ResponseEntity<Any> {
-        sectionService.moveTestCases(request)
-        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
-    }
-
     @GetMapping("test-cases/{projectShortCode}")
     fun retrieveTestCases(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         val testCases = workspaceService.retrieveTestCases(projectShortCode)
@@ -365,6 +359,11 @@ class WorkspaceController(
     fun retrieveTestRuns(@PathVariable projectShortCode: String): ResponseEntity<Any> {
         val testRuns = workspaceService.retrieveTestRuns(projectShortCode)
         return ResponseEntity.ok(DataResponse(data = testRuns))
+    }
+
+    @GetMapping("/projects/{projectShortCode}/test-runs/{testRunNumber}")
+    fun retrieveTestRun(@PathVariable projectShortCode: String, @PathVariable testRunNumber: Long): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = workspaceService.retrieveTestRun(projectShortCode, testRunNumber)))
     }
 
     @PostMapping("/test-runs/{testRunID}/rerun")

@@ -3,7 +3,7 @@ import { APIRoute } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
 
-// creates, renames, moves, reorders and deletes suites and sections, and moves test cases between them
+// creates, renames, moves, reorders and deletes suites and sections
 export async function action({ request }: ActionFunctionArgs) {
 	const api = await requireAPI(request)
 	try {
@@ -26,11 +26,6 @@ export async function action({ request }: ActionFunctionArgs) {
 				break
 			case 'delete':
 				await api.delete(APIRoute.section(body.sectionID))
-				break
-			case 'moveTestCases':
-				await api.put(APIRoute.moveTestCases, {
-					body: { testCaseIDs: body.testCaseIDs, sectionID: body.sectionID },
-				})
 				break
 			default:
 				throw 'Invalid request'

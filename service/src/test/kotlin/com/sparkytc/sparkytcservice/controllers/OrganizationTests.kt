@@ -100,7 +100,7 @@ class OrganizationTests {
         assertEquals(listOf("Single sign-on", "Login"), mobileChildren.map { it.get("name").asText() })
 
         val loginCase = testCases().first { it.get("title").asText() == "Login works" }
-        send(put("/api/v1/workspace/test-cases/section"), mapOf("testCaseIDs" to listOf(loginCase.get("testCaseID").asText()), "sectionID" to login))
+        send(put("/api/v1/workspace/test-cases/bulk"), mapOf("testCaseIDs" to listOf(loginCase.get("testCaseID").asText()), "sectionID" to login))
         val moved = testCases().first { it.get("title").asText() == "Login works" }
         assertEquals(login, moved.get("sectionID").asText())
         assertEquals(1, moved.get("testCaseNumber").asInt())
@@ -251,6 +251,9 @@ class OrganizationTests {
         val run = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))[0]
         assertEquals(planID, run.get("testPlanID").asText())
         assertEquals("Regression", run.get("testPlanName").asText())
+        // a test run's page loads just that run
+        assertEquals("Regression 1", data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/1"))).get("title").asText())
+        admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/99")).andExpect(status().isBadRequest)
 
         send(delete("/api/v1/workspace/test-plans/$planID"), null).andExpect(status().isOk)
         assertEquals(0, data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-plans"))).size())

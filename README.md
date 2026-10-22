@@ -295,7 +295,7 @@ You should see both the client and backend services running successfully.
 
 ### Prerequisites
 
--  Node.js >= 20.0.0
+-  Node.js >= 22.0.0
 -  npm or yarn
 -  JDK 21 or later
 -  Kotlin 1.9.x

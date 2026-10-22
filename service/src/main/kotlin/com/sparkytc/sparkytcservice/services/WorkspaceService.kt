@@ -110,8 +110,9 @@ class WorkspaceService(
             }
 
         val testRuns = testRunRepository.findAllByProject(project).sortedByDescending { it.testRunNumber }
+        val testCaseRunsByRun = buildResultsService.testCaseRunsByRun(testRuns)
         val summaries = testRuns.associateWith { testRun ->
-            buildResultsService.summary(testRun, testCaseRunRepository.findAllByTestRun(testRun))
+            buildResultsService.summary(testRun, testCaseRunsByRun[testRun.id].orEmpty())
         }
 
         val activeStatuses = setOf(TestRunStatus.PENDING, TestRunStatus.IN_PROGRESS)
@@ -394,6 +395,16 @@ class WorkspaceService(
         projectAccessService.requireAccess(project)
         val testRuns = testRunRepository.findAllByProject(project)
         return testRuns.map { it.toDTO() }
+    }
+
+    @Transactional
+    fun retrieveTestRun(projectShortCode: String, testRunNumber: Long): TestRunDTO {
+        val project = projectRepository.findByProjectShortCode(projectShortCode)
+        requireNotNull(project) { "No project found for id $projectShortCode" }
+        projectAccessService.requireAccess(project)
+        val testRun = testRunRepository.findByProjectAndTestRunNumber(project, testRunNumber)
+        requireNotNull(testRun) { "No test run found" }
+        return testRun.toDTO()
     }
 
     @Transactional

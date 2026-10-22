@@ -1,7 +1,6 @@
 package com.sparkytc.sparkytcservice.services
 
 import com.sparkytc.sparkytcservice.dto.sections.CreateTestCaseSectionDTO
-import com.sparkytc.sparkytcservice.dto.sections.MoveTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.sections.ReorderTestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.TestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.UpdateTestCaseSectionDTO
@@ -104,22 +103,6 @@ class TestCaseSectionService(
         sectionRepository.delete(section)
         sectionRepository.flush()
         renumber(project, section.parent)
-    }
-
-    @Transactional
-    fun moveTestCases(request: MoveTestCasesDTO) {
-        require(request.testCaseIDs.isNotEmpty()) { "Choose the test cases to move" }
-        val testCases = request.testCaseIDs.distinct().map { testCaseID ->
-            val testCase = testCaseRepository.findByExternalID(testCaseID)
-            requireNotNull(testCase) { "No test case found with id $testCaseID" }
-            testCase
-        }
-        val project = testCases.first().project
-        require(testCases.all { it.project.id == project.id }) { "The test cases must belong to the same project" }
-        projectAccessService.requireAccess(project)
-        val section = requireSection(project, request.sectionID)
-        testCases.forEach { it.section = section }
-        testCaseRepository.saveAll(testCases)
     }
 
     /** The section a test case is filed in: the chosen one, or the project's first suite, created if needed. */

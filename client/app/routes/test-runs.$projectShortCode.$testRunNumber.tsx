@@ -26,13 +26,24 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Test run number is required', { status: 400 })
 	}
 
+	// the test run first, so an unknown number is a 404
+	const testRunResponse = await api
+		.get<FetchResponse<TestRun>>(
+			APIRoute.projectTestRun(projectShortCode, testRunNumber)
+		)
+		.catch(() => undefined)
+	const testRun = testRunResponse?.data
+	if (!testRun) {
+		throw new Response('Test run not found', { status: 404 })
+	}
+
 	const [
 		response,
 		propertiesResponse,
 		usersResponse,
 		buildsResponse,
-		runs,
 		sectionsResponse,
+		time,
 	] = await Promise.all([
 		api.get<FetchResponse<TestCaseRun[]>>(
 			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
@@ -44,22 +55,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		api.get<FetchResponse<ProjectBuild[]>>(
 			APIRoute.projectBuilds(projectShortCode)
 		),
-		api.get<FetchResponse<TestRun[]>>(
-			APIRoute.projectTestRuns(projectShortCode)
-		),
 		api.get<FetchResponse<TestCaseSection[]>>(
 			APIRoute.projectSections(projectShortCode)
 		),
+		api.get<FetchResponse<TestRunTime>>(
+			APIRoute.testRunTime(testRun.testRunID)
+		),
 	])
-	const testRun = runs.data.find((run) => run.testRunNumber === testRunNumber)
-	if (!testRun) {
-		throw new Response('Test run not found', { status: 404 })
-	}
-	const time = await api.get<FetchResponse<TestRunTime>>(
-		APIRoute.testRunTime(testRun.testRunID)
-	)
 	return {
-		testRunNumber,
+		testRun,
 		testCaseRuns: response.data,
 		properties: propertiesResponse.data,
 		projectUsers: usersResponse.data,
@@ -71,7 +75,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export default function TestRunsIndex() {
 	const {
-		testRunNumber,
+		testRun,
 		testCaseRuns,
 		properties,
 		projectUsers,
@@ -79,13 +83,7 @@ export default function TestRunsIndex() {
 		time,
 		sections,
 	} = useLoaderData<typeof loader>()
-	const { project, testRuns } = useOutletContext<ProjectTestRunsOutletContext>()
-	const testRun = testRuns.find(
-		(testRun) => testRun.testRunNumber === testRunNumber
-	)
-	if (!testRun) {
-		return <p>Test run not found</p>
-	}
+	const { project } = useOutletContext<ProjectTestRunsOutletContext>()
 
 	const outletContext: ProjectTestCaseRunsOutletContext = {
 		project,

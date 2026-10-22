@@ -73,10 +73,16 @@ class BuildResultsService(
         )
     }
 
+    /** The test cases of several runs in one query, by test run id. */
+    fun testCaseRunsByRun(testRuns: Collection<TestRun>): Map<Long, List<TestCaseRun>> {
+        if (testRuns.isEmpty()) return emptyMap()
+        return testCaseRunRepository.findAllByTestRunIn(testRuns).groupBy { it.testRun.id }
+    }
+
     private fun runsWithResults(project: WorkspaceProject): List<Pair<TestRun, List<TestCaseRun>>> {
-        return testRunRepository.findAllByProject(project)
-            .sortedBy { it.testRunNumber }
-            .map { it to testCaseRunRepository.findAllByTestRun(it) }
+        val testRuns = testRunRepository.findAllByProject(project).sortedBy { it.testRunNumber }
+        val byRun = testCaseRunsByRun(testRuns)
+        return testRuns.map { it to byRun[it.id].orEmpty() }
     }
 
     private fun results(build: ProjectBuildDTO?, runs: List<Pair<TestRun, List<TestCaseRun>>>): BuildResultsDTO {

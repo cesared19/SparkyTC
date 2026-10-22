@@ -1,7 +1,6 @@
 import { type LoaderFunctionArgs } from '@remix-run/node'
 import { useLoaderData, Outlet } from '@remix-run/react'
 import { APIRoute } from '~/utility/Routes'
-import { TestRun } from '~/models/types'
 import type {
 	FetchResponse,
 	ProjectTestRunsOutletContext,
@@ -26,18 +25,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Project not found', { status: 404 })
 	}
 
-	const testRunsData = await api.get<FetchResponse<TestRun[]>>(
-		APIRoute.projectTestRuns(projectShortCode)
-	)
-	return { project, projects: projectData.data, testRuns: testRunsData.data }
+	return { project, projects: projectData.data }
 }
 
 export default function TestRunsIndex() {
-	const { project, projects, testRuns } = useLoaderData<typeof loader>()
+	const { project, projects } = useLoaderData<typeof loader>()
 
 	const outletContext: ProjectTestRunsOutletContext = {
 		project,
-		testRuns,
 	}
 
 	return (

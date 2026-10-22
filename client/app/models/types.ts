@@ -522,7 +522,6 @@ export interface TestCaseOutletContext {
 
 export interface ProjectTestRunsOutletContext {
 	project: Project
-	testRuns: TestRun[]
 }
 
 export interface ProjectTestCaseRunsOutletContext {
