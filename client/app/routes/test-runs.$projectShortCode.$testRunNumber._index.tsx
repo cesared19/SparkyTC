@@ -12,6 +12,7 @@ import {
 	TestRun,
 	TestRunStatus,
 	TestCaseRunStatus,
+	TestCaseFormat,
 } from '~/models/types'
 import type { UpdateTestRun, TestCaseRun } from '~/models/types'
 import { ActionMenu, type ActionMenuItem } from '~/components/ActionMenu'
@@ -29,6 +30,8 @@ import {
 } from '~/components/Assignments'
 import { BulkAssignBar, SelectToggle } from '~/components/BulkEditBar'
 import { Checkbox } from '~/components/Checkbox'
+import { SavedResultNotice } from '~/components/SavedResultNotice'
+import { stepResultsSummaryText } from '~/components/StepsView'
 import { TestRunBuild } from '~/components/Builds'
 import { TestRunReportButton } from '~/components/TestRunReportButton'
 import { RerunDialog } from '~/components/RerunDialog'
@@ -240,6 +243,20 @@ export default function TestRunDetails() {
 		),
 	}
 
+	// how the steps went in the latest result, for test cases written as steps
+	const hasSteps = testCaseRuns.some(
+		(testCaseRun) => testCaseRun.format === TestCaseFormat.steps
+	)
+	const stepsColumn: Column<TestCaseRun> = {
+		header: 'Steps',
+		key: 'steps',
+		render: (testCaseRun) => (
+			<span className="text-sm text-gray-700">
+				{stepResultsSummaryText(testCaseRun) ?? '-'}
+			</span>
+		),
+	}
+
 	const columns: Column<TestCaseRun>[] = [
 		...(isChoosing ? [selectColumn] : []),
 		{
@@ -283,6 +300,7 @@ export default function TestRunDetails() {
 			),
 		},
 		...(testRun.trackTime ? [timeColumn] : []),
+		...(hasSteps ? [stepsColumn] : []),
 		{
 			header: 'Completed by',
 			key: 'completedBy',
@@ -302,6 +320,13 @@ export default function TestRunDetails() {
 		<div>
 			<div className="flex items-center justify-between mb-4">
 				<BackButton />
+			</div>
+			<div className="mb-4 empty:hidden">
+				<SavedResultNotice
+					project={project}
+					testRunNumber={testRun.testRunNumber}
+					testCaseRuns={testCaseRuns}
+				/>
 			</div>
 			<div className="mb-6 flex flex-col-reverse items-start justify-between gap-3 sm:flex-row">
 				<div>

@@ -1,5 +1,7 @@
 import {
 	StepResult,
+	TestCaseFormat,
+	TestCaseRun,
 	TestCaseRunStatus,
 	TestCaseRunStep,
 	TestCaseStep,
@@ -274,4 +276,34 @@ export function StepResultsSummary({
 			})}
 		</ol>
 	)
+}
+
+/** The step results of a test case's latest result, in the order of its steps. */
+export function latestStepResults(testCaseRun: TestCaseRun) {
+	const latest = testCaseRun.results[testCaseRun.results.length - 1]
+	const stepResults = latest?.stepResults ?? []
+	return (testCaseRun.steps ?? []).map((step) => ({
+		step,
+		result: stepResults.find((item) => item.stepID === step.stepID),
+	}))
+}
+
+const STEP_SUMMARY_ORDER: { status: TestCaseRunStatus; label: string }[] = [
+	{ status: TestCaseRunStatus.fail, label: 'failed' },
+	{ status: TestCaseRunStatus.blocked, label: 'blocked' },
+	{ status: TestCaseRunStatus.skip, label: 'skipped' },
+]
+
+/** e.g. "4/5 passed · 1 failed", or undefined before a result with steps. */
+export function stepResultsSummaryText(testCaseRun: TestCaseRun) {
+	if (testCaseRun.format !== TestCaseFormat.steps) return undefined
+	const latest = latestStepResults(testCaseRun)
+	if (latest.every(({ result }) => !result?.status)) return undefined
+	const count = (status: TestCaseRunStatus) =>
+		latest.filter(({ result }) => result?.status === status).length
+	const parts = [`${count(TestCaseRunStatus.pass)}/${latest.length} passed`]
+	for (const { status, label } of STEP_SUMMARY_ORDER) {
+		if (count(status) > 0) parts.push(`${count(status)} ${label}`)
+	}
+	return parts.join(' · ')
 }

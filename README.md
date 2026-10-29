@@ -142,6 +142,9 @@ When creating a test run the current build is preselected.
 -  **Several results per test case**: every save adds a result with its status, comment and evidence, and the newest one is the test case's status. The test case run page lists all of them; results can't be edited, and admins can delete one recorded by mistake, which puts the test case back to its previous result.
 -  **Evidence per result**: screenshots and videos chosen when saving a result (or added later by whoever recorded it, or an admin) stay with that result. The *Images and Videos* of a test case are reference material shared by every run.
 -  **History**: the test case page lists every result of the test case in the project's test runs, and the test case run page shows the latest ones from other runs.
+-  **Drafts**: what a tester marks and writes for a test case (the result, each step and its actual result, and the comment) is kept on the server as they go, until they save the result. Leaving the page, closing the browser or switching devices loses nothing, and *start over* discards it. Drafts are personal; evidence files are added when the result is saved.
+-  **Saving**: the result can be chosen next to *Save result* too, which says what's missing when it can't save yet. After saving, the next pending test case opens with a notice of the result just saved.
+-  **Steps in the run**: for test cases written as steps, the run's table shows how the steps went in the latest result (e.g. *4/5 passed · 1 failed*), and the exported results add *Steps* and *Step results* columns with each step's status and actual result.
 -  **Re-run**: *Re-run test cases* in the test run's menu creates a new run with the test cases that ended as failed and blocked (skipped and pending are optional), for the chosen build. It keeps the assignees and who took each test case.
 
 ### Test run report

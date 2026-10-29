@@ -88,6 +88,10 @@ export class Route {
 		return `/test-case-result-evidence/${resultID}`
 	}
 
+	static resultDraft(testCaseRunID: string) {
+		return `/test-case-run-drafts/${testCaseRunID}`
+	}
+
 	static testCaseResult(resultID: string) {
 		return `/test-case-results/${resultID}`
 	}
@@ -443,6 +447,10 @@ export class APIRoute {
 
 	static testCaseRun(testCaseRunID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}`
+	}
+
+	static testCaseRunDraft(testCaseRunID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/test-case-runs/${testCaseRunID}/draft`
 	}
 
 	static testCaseRunDetails(testCaseRunID: string) {

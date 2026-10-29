@@ -28,6 +28,8 @@ import com.sparkytc.sparkytcservice.services.TestCaseSectionService
 import com.sparkytc.sparkytcservice.services.StepService
 import com.sparkytc.sparkytcservice.services.TestPlanService
 import com.sparkytc.sparkytcservice.services.BulkEditService
+import com.sparkytc.sparkytcservice.services.ResultDraftService
+import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunDraftDTO
 import com.sparkytc.sparkytcservice.dto.bulk.BulkAssignTestCaseRunsDTO
 import com.sparkytc.sparkytcservice.dto.bulk.BulkDeleteTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.bulk.BulkEditTestCasesDTO
@@ -69,6 +71,7 @@ class WorkspaceController(
     private val stepService: StepService,
     private val testPlanService: TestPlanService,
     private val bulkEditService: BulkEditService,
+    private val resultDraftService: ResultDraftService,
 ) {
 
     @GetMapping("/projects")
@@ -250,6 +253,23 @@ class WorkspaceController(
     @PostMapping("/test-cases/bulk-delete")
     fun bulkDeleteTestCases(@RequestBody request: BulkDeleteTestCasesDTO): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = bulkEditService.deleteTestCases(request)))
+    }
+
+    // the current user's unsaved result for a test case in a run; empty when there's none
+    @GetMapping("/test-case-runs/{testCaseRunID}/draft")
+    fun retrieveResultDraft(@PathVariable testCaseRunID: UUID): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = resultDraftService.retrieveDraft(testCaseRunID) ?: TestCaseRunDraftDTO()))
+    }
+
+    @PutMapping("/test-case-runs/{testCaseRunID}/draft")
+    fun saveResultDraft(@PathVariable testCaseRunID: UUID, @RequestBody request: TestCaseRunDraftDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = resultDraftService.saveDraft(testCaseRunID, request) ?: TestCaseRunDraftDTO()))
+    }
+
+    @DeleteMapping("/test-case-runs/{testCaseRunID}/draft")
+    fun discardResultDraft(@PathVariable testCaseRunID: UUID): ResponseEntity<Any> {
+        resultDraftService.discardDraft(testCaseRunID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
     @PutMapping("/test-case-runs/bulk-assignee")
