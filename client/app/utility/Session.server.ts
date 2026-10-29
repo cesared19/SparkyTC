@@ -45,7 +45,7 @@ export async function createUserSession(token: string, redirectTo: string) {
 // Add new resource routes here.
 const RESOURCE_ROUTES = [
 	/^\/(assignments|builds|bulk-edit|jira-assignees|jira-issue-types|jira-issues|jira-similar|jira-transitions|jira-users|logout|notifications|preferences|sections|shared-steps|timers)$/,
-	/^\/(attachments|jira-links|test-case-attachments|test-case-history|test-case-jira-links|test-case-result-evidence|test-case-results)\//,
+	/^\/(attachments|jira-links|test-case-attachments|test-case-history|test-case-jira-links|test-case-result-evidence|test-case-results|test-case-run-drafts)\//,
 ]
 
 function isPagePath(path: string) {

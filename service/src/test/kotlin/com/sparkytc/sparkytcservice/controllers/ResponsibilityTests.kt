@@ -119,6 +119,34 @@ class ResponsibilityTests {
     }
 
     @Test
+    fun `an unsaved result is kept as a personal draft until it is saved`() {
+        createTestRun(assignees = listOf("ana", "beto"))
+        val first = testCaseRunIDs()[0]
+        val draftURL = "/api/v1/workspace/test-case-runs/$first/draft"
+
+        // steps of other test cases are ignored
+        put(ana, draftURL, mapOf("status" to "FAIL", "notes" to "Halfway", "stepResults" to listOf(mapOf("stepID" to UUID.randomUUID(), "status" to "PASS"))))
+        val draft = data(ana, draftURL)
+        assertEquals("FAIL", draft.get("status").asText())
+        assertEquals("Halfway", draft.get("notes").asText())
+        assertEquals(0, draft.get("stepResults").size())
+
+        // drafts are personal, and nothing is recorded yet
+        assertTrue(data(beto, draftURL).get("status")?.isNull ?: true)
+        assertEquals("PENDING", testCaseRuns()[0].get("status").asText())
+
+        // saving the result removes the draft
+        put(ana, "/api/v1/workspace/test-case-runs/$first", UpdateTestCaseRunDTO(TestCaseRunStatus.FAIL, "Halfway"))
+        assertTrue(data(ana, draftURL).get("status")?.isNull ?: true)
+
+        // a draft emptied by the user is removed too
+        put(beto, draftURL, mapOf("notes" to "Something"))
+        assertEquals("Something", data(beto, draftURL).get("notes").asText())
+        put(beto, draftURL, mapOf("notes" to "  "))
+        assertTrue(data(beto, draftURL).get("notes")?.isNull ?: true)
+    }
+
+    @Test
     fun `admins assign many test cases of a run at once`() {
         createTestRun(assignees = listOf("ana", "beto"))
         val ids = testCaseRunIDs()

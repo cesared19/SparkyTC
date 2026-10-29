@@ -15,6 +15,10 @@ import { toCSV } from '~/utility/CSV'
 import { sectionPath } from '~/utility/Sections'
 import { Tools } from '~/utility/Tools'
 import { buildXlsx } from '~/utility/Xlsx'
+import {
+	latestStepResults,
+	stepResultsSummaryText,
+} from '~/components/StepsView'
 
 export type ExportFormat = 'csv' | 'xlsx'
 
@@ -146,6 +150,10 @@ export function runResultRows(
 	testCaseRuns: TestCaseRun[],
 	sections: TestCaseSection[]
 ): (string | number)[][] {
+	// the steps columns only when some test case is written as steps
+	const hasSteps = testCaseRuns.some(
+		(run) => run.format === TestCaseFormat.steps
+	)
 	const header = [
 		'ID',
 		'Title',
@@ -155,6 +163,7 @@ export function runResultRows(
 		'Recorded by',
 		'Recorded at',
 		'Results recorded',
+		...(hasSteps ? ['Steps', 'Step results'] : []),
 		...(testRun.trackTime ? ['Time (minutes)'] : []),
 		'Jira issues',
 		'Build',
@@ -168,11 +177,27 @@ export function runResultRows(
 		run.status === TestCaseRunStatus.pending ? '' : run.executedBy ?? '',
 		run.executedAt ? new Date(run.executedAt).toLocaleString('en-US') : '',
 		run.results.length,
+		...(hasSteps
+			? [stepResultsSummaryText(run) ?? '', stepResultLines(run)]
+			: []),
 		...(testRun.trackTime ? [Math.round(run.timeSeconds / 6) / 10] : []),
 		(run.testCase.jiraLinks ?? []).map((link) => link.issueKey).join(', '),
 		testRun.build?.buildNumber ?? '',
 	])
 	return [header, ...rows]
+}
+
+/** Each step of the latest result: "1. PASS Open the page", then "   Actual: ..." when written. */
+function stepResultLines(run: TestCaseRun) {
+	if (run.format !== TestCaseFormat.steps) return ''
+	return latestStepResults(run)
+		.map(({ step, result }, index) => {
+			const status = result?.status ? STATUS_NAMES[result.status] : 'Not marked'
+			const lines = [`${index + 1}. ${status}: ${step.action}`]
+			if (result?.actual) lines.push(`   Actual: ${result.actual}`)
+			return lines.join('\n')
+		})
+		.join('\n')
 }
 
 /** Downloads rows as a .csv (UTF-8, readable by Excel) or an .xlsx file. */

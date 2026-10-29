@@ -42,6 +42,12 @@ import { TestCaseAssignment } from '~/components/Assignments'
 import { TestRunBuild } from '~/components/Builds'
 import { TestCaseTimer } from '~/components/TimeTracking'
 import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
+import { ResultChooser } from '~/components/ResultChooser'
+import {
+	SavedResultNotice,
+	withSavedResult,
+} from '~/components/SavedResultNotice'
+import { type DraftState, useResultDraft } from '~/utility/ResultDraft'
 import {
 	RunStepsChecklist,
 	runStepsText,
@@ -78,6 +84,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	try {
 		const projectShortCode = params.projectShortCode
 		const testRunNumber = Number(params.testRunNumber)
+		const savedTestCaseNumber = Number(params.testCaseNumber)
 		if (!projectShortCode || !testRunNumber) {
 			throw new Error('Invalid project short code or test run number')
 		}
@@ -122,9 +129,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			FetchResponse<TestCaseRun | undefined>
 		>(APIRoute.nextTestCaseRun(testCaseRunID))
 		const nextNumber = nextTestCaseRun.data?.testCase.testCaseNumber
-		const next = nextNumber
+		const nextPage = nextNumber
 			? Route.viewTestCaseRun(projectShortCode, testRunNumber, nextNumber)
 			: Route.viewTestRun(projectShortCode, testRunNumber)
+		// the next page confirms which result was saved
+		const next = withSavedResult(nextPage, savedTestCaseNumber)
 
 		// the page uploads the evidence to the new result, then moves on
 		if (hasEvidence && result.data?.resultID) {
@@ -156,15 +165,24 @@ export default function TestCaseRunDetails() {
 	}
 
 	return (
-		<TestCaseRunView
-			key={testCaseRun.testCaseRunID}
-			project={project}
-			testRun={testRun}
-			testCaseRun={testCaseRun}
-			properties={properties}
-			projectUsers={projectUsers}
-			builds={builds}
-		/>
+		<>
+			<div className="mb-4 empty:hidden">
+				<SavedResultNotice
+					project={project}
+					testRunNumber={testRun.testRunNumber}
+					testCaseRuns={testCaseRuns}
+				/>
+			</div>
+			<TestCaseRunView
+				key={testCaseRun.testCaseRunID}
+				project={project}
+				testRun={testRun}
+				testCaseRun={testCaseRun}
+				properties={properties}
+				projectUsers={projectUsers}
+				builds={builds}
+			/>
+		</>
 	)
 }
 
@@ -216,6 +234,7 @@ function TestCaseRunView({
 	)
 	// how each step went, for test cases written as steps
 	const [stepResults, setStepResults] = useState<Record<string, StepResult>>({})
+	const [notes, setNotes] = useState('')
 	const isSteps = testCaseRun.format === TestCaseFormat.steps
 	const changeStepResults = (results: Record<string, StepResult>) => {
 		setStepResults(results)
@@ -239,9 +258,49 @@ function TestCaseRunView({
 		(result) => result.status || result.actual?.trim()
 	)
 
+	// what the tester marks and writes is kept as a draft until the result is saved
+	const draft = useResultDraft(testCaseRun.testCaseRunID, !isLocked)
+	const [restoredAt, setRestoredAt] = useState<number>()
+	const isDraftReady = draft.loaded !== undefined
+	useEffect(() => {
+		if (!draft.loaded) return
+		setSelectedStatus(draft.loaded.status ?? TestCaseRunStatus.pending)
+		setNotes(draft.loaded.notes ?? '')
+		setStepResults(
+			Object.fromEntries(
+				draft.loaded.stepResults.map((result) => [result.stepID, result])
+			)
+		)
+		setRestoredAt(draft.loaded.updatedAt ?? Date.now())
+	}, [draft.loaded])
+	const { saveLater } = draft
+	useEffect(() => {
+		// nothing is kept before the earlier draft is back, so it isn't overwritten
+		if (!isDraftReady || isLocked) return
+		saveLater({
+			status:
+				selectedStatus === TestCaseRunStatus.pending
+					? undefined
+					: selectedStatus,
+			notes,
+			stepResults: markedSteps,
+		})
+		// markedSteps changes with stepResults
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isDraftReady, isLocked, selectedStatus, notes, stepResults, saveLater])
+
+	const discardDraft = () => {
+		draft.discard()
+		setSelectedStatus(TestCaseRunStatus.pending)
+		setStepResults({})
+		setNotes('')
+		setRestoredAt(undefined)
+	}
+
 	const handleSave = () => {
 		const form = document.getElementById('testCaseForm') as HTMLFormElement
-		const notes = new FormData(form).get('notes') as string
+		// the result replaces the draft
+		draft.cancel()
 
 		const minutes = Number(new FormData(form).get('manualMinutes') || 0)
 		const testCaseRunUpdate: UpdateTestCaseRun = {
@@ -310,6 +369,14 @@ function TestCaseRunView({
 	}, [fetcher.state, fetcher.data])
 
 	const isSaving = fetcher.state !== 'idle' || isUploadingEvidence
+	// why the result can't be saved yet, shown next to the button
+	const saveBlocker = isLocked
+		? 'This test case is assigned to someone else'
+		: selectedStatus === TestCaseRunStatus.pending
+		? 'Choose Pass, Fail, Blocked or Skip to save the result'
+		: !jiraTransitions
+		? 'Choose a transition for each Jira issue to update'
+		: undefined
 
 	return (
 		<div className="space-y-6">
@@ -398,55 +465,26 @@ function TestCaseRunView({
 							<TestCaseRunStatusBadge status={testCaseRun.status} />
 						</span>
 					</div>
-					<fieldset
+					{restoredAt && (
+						<p className="mb-3 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+							Your unsaved result from {new Date(restoredAt).toLocaleString()}{' '}
+							is back. Save it when you&apos;re done, or{' '}
+							<button
+								type="button"
+								onClick={discardDraft}
+								className="font-medium underline"
+							>
+								start over
+							</button>
+							.
+						</p>
+					)}
+					<ResultChooser
+						value={selectedStatus}
+						onChange={setSelectedStatus}
 						disabled={isLocked}
-						className="flex flex-wrap gap-3 disabled:opacity-50"
-					>
-						<button
-							type="button"
-							onClick={() => setSelectedStatus(TestCaseRunStatus.pass)}
-							className={`px-4 py-2 text-sm font-medium rounded-md ${
-								selectedStatus === TestCaseRunStatus.pass
-									? 'bg-green-100 text-green-800 ring-1 ring-green-600'
-									: 'bg-gray-50 text-gray-700 hover:bg-green-50 hover:text-green-700'
-							}`}
-						>
-							Pass
-						</button>
-						<button
-							type="button"
-							onClick={() => setSelectedStatus(TestCaseRunStatus.fail)}
-							className={`px-4 py-2 text-sm font-medium rounded-md ${
-								selectedStatus === TestCaseRunStatus.fail
-									? 'bg-red-100 text-red-800 ring-1 ring-red-600'
-									: 'bg-gray-50 text-gray-700 hover:bg-red-50 hover:text-red-700'
-							}`}
-						>
-							Fail
-						</button>
-						<button
-							type="button"
-							onClick={() => setSelectedStatus(TestCaseRunStatus.blocked)}
-							className={`px-4 py-2 text-sm font-medium rounded-md ${
-								selectedStatus === TestCaseRunStatus.blocked
-									? 'bg-violet-100 text-violet-800 ring-1 ring-violet-600'
-									: 'bg-gray-50 text-gray-700 hover:bg-violet-50 hover:text-violet-700'
-							}`}
-						>
-							Blocked
-						</button>
-						<button
-							type="button"
-							onClick={() => setSelectedStatus(TestCaseRunStatus.skip)}
-							className={`px-4 py-2 text-sm font-medium rounded-md ${
-								selectedStatus === TestCaseRunStatus.skip
-									? 'bg-cyan-100 text-cyan-800 ring-1 ring-cyan-600'
-									: 'bg-gray-50 text-gray-700 hover:bg-cyan-50 hover:text-cyan-700'
-							}`}
-						>
-							Skip
-						</button>
-					</fieldset>
+						label="Result"
+					/>
 					<JiraResultTransitions
 						testCaseRunID={testCaseRun.testCaseRunID}
 						testCaseID={testCaseRun.testCase.testCaseID}
@@ -611,6 +649,8 @@ function TestCaseRunView({
 						<textarea
 							id="resultNotes"
 							name="notes"
+							value={notes}
+							onChange={(event) => setNotes(event.target.value)}
 							className="w-full min-h-[100px] p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
 							placeholder="What happened? The comment is saved with this result"
 						/>
@@ -668,31 +708,39 @@ function TestCaseRunView({
 						)}
 				</form>
 
-				<div className="flex justify-end">
-					<button
-						type="button"
-						onClick={handleSave}
-						disabled={
-							isLocked ||
-							!jiraTransitions ||
-							isSaving ||
-							selectedStatus === TestCaseRunStatus.pending
-						}
-						title={
-							selectedStatus === TestCaseRunStatus.pending
-								? 'Choose a result first'
-								: jiraTransitions
-								? undefined
-								: 'Choose a transition for each Jira issue to update'
-						}
-						className="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{isUploadingEvidence
-							? 'Uploading evidence...'
-							: fetcher.state !== 'idle'
-							? 'Saving...'
-							: 'Save result'}
-					</button>
+				{/* the result is chosen here too, so saving doesn't need scrolling back up on phones */}
+				<div className="space-y-3 rounded-md border border-gray-200 bg-white p-4">
+					<div className="flex flex-wrap items-center gap-3">
+						<span className="text-sm font-medium text-gray-700">Result</span>
+						<ResultChooser
+							value={selectedStatus}
+							onChange={setSelectedStatus}
+							disabled={isLocked}
+							label="Result to save"
+						/>
+					</div>
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<DraftStatus
+							state={draft.state}
+							savedAt={draft.savedAt}
+							isLocked={isLocked}
+						/>
+						<button
+							type="button"
+							onClick={handleSave}
+							disabled={!!saveBlocker || isSaving}
+							className="ml-auto rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{isUploadingEvidence
+								? 'Uploading evidence...'
+								: fetcher.state !== 'idle'
+								? 'Saving...'
+								: 'Save result'}
+						</button>
+					</div>
+					{saveBlocker && !isLocked && (
+						<p className="text-right text-xs text-gray-500">{saveBlocker}</p>
+					)}
 				</div>
 
 				<section>
@@ -873,5 +921,49 @@ function TestCaseRunDetailsEditor({
 				</button>
 			</div>
 		</form>
+	)
+}
+
+function shortTime(date: number) {
+	return new Date(date).toLocaleTimeString([], {
+		hour: 'numeric',
+		minute: '2-digit',
+	})
+}
+
+/** Whether what the tester marks and writes is kept, next to the Save button. */
+function DraftStatus({
+	state,
+	savedAt,
+	isLocked,
+}: {
+	state: DraftState
+	savedAt?: number
+	isLocked: boolean
+}) {
+	if (isLocked) return null
+	const time = savedAt ? shortTime(savedAt) : undefined
+	const text: Record<DraftState, string | undefined> = {
+		idle: time ? `Draft kept at ${time}` : undefined,
+		saving: 'Keeping your draft...',
+		saved: time ? `Draft kept at ${time}` : 'Draft kept',
+		error: "Couldn't keep your draft. It'll try again with your next change.",
+	}
+	if (!text[state]) {
+		return (
+			<span className="text-xs text-gray-500">
+				Your progress is kept as you go, until you save the result.
+			</span>
+		)
+	}
+	return (
+		<span
+			role="status"
+			className={`text-xs ${
+				state === 'error' ? 'text-red-600' : 'text-gray-500'
+			}`}
+		>
+			{text[state]}
+		</span>
 	)
 }

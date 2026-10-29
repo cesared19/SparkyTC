@@ -68,6 +68,14 @@ export type StepResult = {
 	actual?: string
 }
 
+// a result being prepared, kept on the server until it's saved
+export type ResultDraft = {
+	status?: TestCaseRunStatus
+	notes?: string
+	stepResults: StepResult[]
+	updatedAt?: number
+}
+
 // a folder of test cases; the ones without a parent are the project's suites
 export interface TestCaseSection {
 	sectionID: string

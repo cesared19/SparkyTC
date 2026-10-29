@@ -57,6 +57,7 @@ class WorkspaceService(
     private val sectionService: TestCaseSectionService,
     private val stepService: StepService,
     private val testPlanService: TestPlanService,
+    private val resultDraftService: ResultDraftService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -593,6 +594,7 @@ class WorkspaceService(
         // every recording adds a result, the latest one is the test case's status
         val result = testCaseResultService.record(testCaseRun, updateDTO.status, updateDTO.notes, actor)
         stepService.recordStepResults(result, testCaseRun, updateDTO.stepResults)
+        resultDraftService.discard(testCaseRun, actor)
         timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
 
         val testRun = testCaseRun.testRun

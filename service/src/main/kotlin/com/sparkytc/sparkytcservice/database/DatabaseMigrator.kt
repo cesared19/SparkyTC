@@ -569,6 +569,23 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.17")
                 }
                 SchemaVersion.VERSION_0_0_17 -> {
+                    // what a tester has marked and written for a test case before saving the result, one per user
+                    jdbcTemplate.execute("""
+                        CREATE TABLE test_case_run_drafts (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            modify_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            test_case_run_id BIGINT NOT NULL REFERENCES test_case_runs(id) ON DELETE CASCADE,
+                            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            status TEXT,
+                            notes TEXT,
+                            step_results TEXT,
+                            UNIQUE (test_case_run_id, user_id)
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.18")
+                }
+                SchemaVersion.VERSION_0_0_18 -> {
                     break
                 }
             }

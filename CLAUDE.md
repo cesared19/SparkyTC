@@ -1,6 +1,6 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.0.1 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.1.0 está en `main`.
 
 **Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
@@ -10,7 +10,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 - **Backend:** Spring Boot 3 + Kotlin (JDK 21), en `service/`. Paquete `com.sparkytc.sparkytcservice`, configuración con prefijo `sparkytc.*`.
 - **Frontend:** Remix + React + Tailwind, en `client/`. Todas las llamadas a la API pasan por el servidor Remix con la sesión del usuario (`requireAPI` / `requireUser` / `requireAdmin`).
-- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.17). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
+- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.18). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
 - **Deploy:** Docker Compose (`docker-compose.yml`); la imagen del cliente usa Node 22. El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
 
 ## Funcionalidades existentes (v1.0.0)
@@ -37,20 +37,21 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - Edición masiva (desde 2.0.0): botón Select en la lista de casos; mover de sección, agregar/quitar labels, fijar una propiedad, cambiar formato (`StepService.convertFormat`) y, solo admins, borrar (archiva los usados). En un run abierto los admins asignan varios casos. Todo o nada (`BulkEditService`, `/test-cases/bulk`, `/test-cases/bulk-delete`, `/test-case-runs/bulk-assignee`, ruta de recurso `/bulk-edit`, `BulkEditBar`).
 - Lista de test runs (desde 2.1.0): el backend la entrega del más nuevo al más viejo (sin `ORDER BY` salía en el orden físico de la tabla, que cambia al actualizar); el selector Sort by ordena en el cliente (abiertos primero por defecto, más nuevos, más viejos, título o build; `TestRunSort.ts`), se guarda en `?sort=` y en `localStorage`. Muestra la columna Build.
 - Layout (desde 2.1.0): la app mide `h-app` (`100dvh`, con `100vh` de respaldo; en iOS `100vh` es más alto que lo visible) y el contenido se desplaza dentro de áreas con `overflow-auto`, que deben llevar `relative`: si no, los elementos `sr-only` (absolutos) se ubican respecto al documento, lo estiran y la página entera se desplaza dejando espacio en blanco. Ninguna página debe tener `document.scrollingElement.scrollHeight` mayor que la ventana.
+- Borradores de resultado (desde 2.1.1): lo que el tester marca y escribe en un caso del run (resultado, pasos con su actual, comentario) se guarda en el servidor mientras trabaja (`test_case_run_drafts`, uno por usuario y caso, 0.0.18; `ResultDraftService`, `/test-case-runs/{id}/draft`) y se borra al guardar el resultado. El cliente lo carga y guarda con `fetch` directo a la ruta de recurso `/test-case-run-drafts/$id` (`useResultDraft`, ~0.8 s tras cada cambio y al salir con `keepalive`), no con un fetcher, para no recargar el run en cada tecla. "Save result" tiene el selector de resultado al lado (`ResultChooser`) y dice qué falta; al guardar se pasa al siguiente caso con `?saved=<número>` (`SavedResultNotice`). La tabla del run y la exportación de resultados muestran los pasos del último resultado (`stepResultsSummaryText`).
 - Responsivo (desde 1.3.0): en móvil la barra superior es un menú, la lista de proyectos es un panel lateral y las tablas (`Table`) se muestran como tarjetas hasta `lg`; la página Users usa `useMediaQuery` para no duplicar sus formularios. Revisa los cambios de interfaz también a 390 px y 820 px.
 - Modo claro, oscuro o del sistema. Paleta de marca carmesí `#C01C37`, con la escala de grises y la escala `brand` definidas como variables CSS en `client/app/tailwind.css`.
 
 ## Cómo trabajar
 
 - **Antes de hacer push:**
-  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 82).
+  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 83).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint está en 0 problemas (desde 2.0.1); debe seguir así. Los payloads que se envían con `useSubmit`/`fetcher.submit` son alias `type`, no interfaces que extienden `Record<string, any>`.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
 - **Formato del cliente:** Prettier con `--use-tabs --single-quote --no-semi`; sigue el estilo del código existente.
 - **Flujo de trabajo:** un PR por versión. El usuario decide cuándo abrir y cuándo fusionar el PR (no abrirlo ni fusionarlo por iniciativa propia).
 - **Versionado:** al preparar una versión, actualiza `version` en `service/build.gradle.kts`, `client/package.json` y `client/package-lock.json`, y el `README.md` cuando corresponda.
-- **Releases:** etiquetas con formato `vX.Y.Z` (v1.0.0 y v2.0.1 publicadas). Esta sesión no puede crear releases ni subir etiquetas: se preparan las notas (en inglés, con lo nuevo desde la release anterior, cómo actualizar y el enlace `compare/vA...vB`) y el usuario la publica en GitHub.
+- **Releases:** etiquetas con formato `vX.Y.Z` (v1.0.0, v2.0.1 y v2.1.0 publicadas). Esta sesión no puede crear releases ni subir etiquetas: se preparan las notas (en inglés, con lo nuevo desde la release anterior, cómo actualizar y el enlace `compare/vA...vB`) y el usuario la publica en GitHub.
 - **Al recibir una lista de trabajo:** proponer un orden (bugs primero) y preguntar lo que no quede claro antes de empezar.
 
 ## Pendientes conocidos
@@ -60,5 +61,5 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Versión en curso
 
-- **2.1.0** (rama `claude/v2.1.0`) — hecho: orden de la lista de test runs (y columna Build); la página ya no se desplaza entera más allá del contenido (áreas de scroll `relative`, altura `100dvh` en teléfonos).
+- **2.1.1** (rama `claude/v2.1.1`), feedback de un tester — hecho: borradores del resultado en el servidor; guardar más claro (selector junto al botón, motivo visible) con aviso al pasar al siguiente caso; pasos del último resultado en la tabla del run y en la exportación.
 - **Propuesta pendiente de decisiones** (trazabilidad y administración): References y reporte de cobertura; auditoría y roles (Viewer, Lead); revisión y aprobación de casos; HTTPS y SSO.
