@@ -53,6 +53,8 @@ Document the results of each test case with a status and any notes or observatio
 
 View the progress of your test run and see the results of each test case. While the run is open, admins can click **Select** above its test cases to assign several of them to a user at once.
 
+The **Test Runs** list shows each run's status, build and creation date. **Sort by** orders it with the open runs first (the default), newest or oldest first, by title or by build; the browser remembers the last order chosen.
+
 ### Additional Features
 
 -  Custom property configuration for test cases
