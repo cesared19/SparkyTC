@@ -133,7 +133,11 @@ export function ProjectShell({
 						))}
 					</nav>
 				</div>
-				<div className="flex-1 overflow-auto p-4 md:p-6">{children}</div>
+				{/* relative keeps hidden, absolutely positioned elements (sr-only) inside this scrolling area;
+				otherwise they stretch the page and it scrolls as a whole, leaving blank space */}
+				<div className="relative flex-1 overflow-auto p-4 md:p-6">
+					{children}
+				</div>
 			</div>
 		</div>
 	)
@@ -192,7 +196,7 @@ export function ProjectList({
 					</Link>
 				)}
 			</div>
-			<nav className="flex-1 space-y-0.5 overflow-auto px-2 pb-4">
+			<nav className="relative flex-1 space-y-0.5 overflow-auto px-2 pb-4">
 				{projects.map((project) => {
 					const isCurrent =
 						project.projectShortCode === currentProject?.projectShortCode

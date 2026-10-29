@@ -118,7 +118,7 @@ export default function Users() {
 	}, [created])
 
 	return (
-		<main className="flex-1 overflow-auto p-4 md:p-6">
+		<main className="relative flex-1 overflow-auto p-4 md:p-6">
 			<div className="space-y-8">
 				<div>
 					<h2 className="text-2xl font-semibold text-gray-900">Users</h2>

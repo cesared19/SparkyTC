@@ -15,7 +15,7 @@ export default function ConfigurationLayout() {
 				title="Configuration"
 				items={[{ to: '/configuration/properties', label: 'Properties' }]}
 			/>
-			<div className="flex-1 overflow-auto p-4 md:p-6">
+			<div className="relative flex-1 overflow-auto p-4 md:p-6">
 				<Outlet />
 			</div>
 		</div>
