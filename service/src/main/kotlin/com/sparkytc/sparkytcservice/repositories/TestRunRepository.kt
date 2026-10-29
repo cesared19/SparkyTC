@@ -11,6 +11,9 @@ interface TestRunRepository : JpaRepository<TestRun, Long> {
 
     fun findAllByProject(project: WorkspaceProject): List<TestRun>
 
+    // newest first; without an order the database returns them in storage order, which changes as runs are updated
+    fun findAllByProjectOrderByTestRunNumberDesc(project: WorkspaceProject): List<TestRun>
+
     fun findTopByProjectOrderByTestRunNumberDesc(project: WorkspaceProject): TestRun?
 
     fun findByProjectAndTestRunNumber(project: WorkspaceProject, testRunNumber: Long): TestRun?

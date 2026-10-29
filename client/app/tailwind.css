@@ -178,3 +178,11 @@ body {
 .dark .border-red-300 {
 	border-color: rgb(153 27 27 / 0.7);
 }
+
+/* The height of the visible window. 100vh on phones is the height with the
+browser bars hidden, so the app was taller than the screen and the whole page
+scrolled; 100dvh follows the bars. 100vh stays for browsers without dvh. */
+.h-app {
+	height: 100vh;
+	height: 100dvh;
+}

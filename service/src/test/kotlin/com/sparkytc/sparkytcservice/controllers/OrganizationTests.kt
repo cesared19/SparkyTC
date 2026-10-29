@@ -310,6 +310,20 @@ class OrganizationTests {
         assertEquals(listOf("Profile"), testCases().map { it.get("title").asText() })
     }
 
+    @Test
+    fun `test runs are listed newest first even after older ones are updated`() {
+        send(post("/api/v1/workspace/test-cases/PRJ"), testCaseDTO("Login", null))
+        val testCaseID = testCases().single().get("testCaseID").asText()
+        for (title in listOf("First", "Second", "Third")) {
+            send(post("/api/v1/workspace/test-runs/PRJ"), mapOf("title" to title, "description" to null, "testCaseIDs" to listOf(testCaseID)))
+        }
+        // updating the oldest run moves its row in the table, which used to move it in the list
+        val first = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/1")))
+        send(put("/api/v1/workspace/test-runs/${first.get("testRunID").asText()}"), mapOf("title" to "First (renamed)", "description" to null, "status" to "IN_PROGRESS"))
+        val numbers = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ"))).map { it.get("testRunNumber").asInt() }
+        assertEquals(listOf(3, 2, 1), numbers)
+    }
+
     private fun createSection(name: String, parentID: String?): String {
         return data(send(post("/api/v1/workspace/projects/PRJ/sections"), mapOf("name" to name, "parentID" to parentID))).get("sectionID").asText()
     }
