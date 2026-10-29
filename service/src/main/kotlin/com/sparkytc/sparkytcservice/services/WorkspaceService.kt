@@ -393,7 +393,7 @@ class WorkspaceService(
         val project = projectRepository.findByProjectShortCode(projectShortCode)
         requireNotNull(project) { "No project found for id $projectShortCode" }
         projectAccessService.requireAccess(project)
-        val testRuns = testRunRepository.findAllByProject(project)
+        val testRuns = testRunRepository.findAllByProjectOrderByTestRunNumberDesc(project)
         return testRuns.map { it.toDTO() }
     }
 
