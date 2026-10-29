@@ -91,7 +91,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function App() {
 	const { user } = useLoaderData<typeof loader>()
 	return (
-		<div className="flex h-screen flex-col">
+		<div className="flex h-app flex-col">
 			{user && <TopNavigation user={user} />}
 			<Outlet />
 		</div>
@@ -109,7 +109,7 @@ export function ErrorBoundary() {
 		: 'An unexpected error occurred'
 
 	return (
-		<div className="flex h-screen items-center justify-center p-6">
+		<div className="flex h-app items-center justify-center p-6">
 			<div className="max-w-md space-y-4 text-center">
 				<h1 className="text-xl font-semibold text-gray-900">
 					Something went wrong
