@@ -285,6 +285,16 @@ export interface ProjectBuild {
 	createdBy?: string
 }
 
+/** A token another app (like co-bord) uses to read the project through the integration API. */
+export interface ProjectApiToken {
+	tokenID: string
+	name: string
+	tokenPrefix: string
+	creationDate: number
+	createdBy?: string
+	lastUsedAt?: number
+}
+
 export interface TestCaseAttachment {
 	attachmentID: string
 	creationDate: number

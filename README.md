@@ -184,6 +184,25 @@ API tokens are created at https://id.atlassian.com/manage-profile/security/api-t
 -  When recording a **Pass**, the tester can close the linked issues that aren't done; when recording a **Fail**, they can reopen the linked issues that are done and optionally assign them to someone else so they find out (see below).
 -  The links use the address you open SparkyTC with (e.g. `http://192.168.1.20:3000`). Set `SPARKYTC_PUBLIC_URL` in the client service to override it, for example when a domain is added.
 
+### Integration API (co-bord)
+
+Other apps can read a project through a read-only API, for example [co-bord](https://github.com/cesared19/co-bord) to show which board steps are covered by test cases and how they did.
+
+-  An admin creates a token in the project's **Settings**, under **API tokens**, and copies it right away: it is shown only once. Each token reads only its project and can't change anything. **Revoke** stops it at once; the list shows when each token was last used.
+-  Requests send the token as `Authorization: Bearer stc_...` to `/api/integration/v1`:
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /project` | The project, its builds and the current build |
+| `GET /sections` | Suites and sections, with their path and how many test cases they hold (nested ones included) |
+| `GET /test-cases?query=&limit=` | Test cases whose number or title match, with their section and labels |
+| `GET /test-plans` | Test plans and how many test cases they have now |
+| `POST /results` | For the given `testCaseNumbers`, `sectionIDs` and `testPlanIDs`: the latest executed result of each test case in a `build` (the current build by default), and counts for sections and plans. Items that no longer exist are listed as missing. |
+
+-  The latest result follows the same rule as the build results: the last executed result of each test case among the build's test runs; results not run in that build are `NOT_RUN`. Archived test cases are left out.
+-  Every item has a `webPath` to open it in SparkyTC.
+-  The backend is only published on `127.0.0.1:8080`. Apps in other Docker Compose projects on the same server reach it by joining the SparkyTC network (`docker network ls` shows its name, such as `sparkytc_app-network`) and calling `http://backend-service:8080`.
+
 ## Architecture Overview
 
 SparkyTC follows a three-tier architecture:

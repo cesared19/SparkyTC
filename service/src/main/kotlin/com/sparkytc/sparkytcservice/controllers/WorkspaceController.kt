@@ -39,6 +39,8 @@ import com.sparkytc.sparkytcservice.dto.sections.*
 import com.sparkytc.sparkytcservice.services.TimeTrackingService
 import com.sparkytc.sparkytcservice.services.ProjectBuildService
 import com.sparkytc.sparkytcservice.services.WorkspaceService
+import com.sparkytc.sparkytcservice.services.ApiTokenService
+import com.sparkytc.sparkytcservice.dto.integration.CreateProjectApiTokenDTO
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.Resource
 import org.springframework.http.ContentDisposition
@@ -72,6 +74,7 @@ class WorkspaceController(
     private val testPlanService: TestPlanService,
     private val bulkEditService: BulkEditService,
     private val resultDraftService: ResultDraftService,
+    private val apiTokenService: ApiTokenService,
 ) {
 
     @GetMapping("/projects")
@@ -96,6 +99,25 @@ class WorkspaceController(
     @PutMapping("/projects/{projectShortCode}/settings")
     fun updateProjectSettings(@PathVariable projectShortCode: String, @RequestBody request: UpdateProjectSettingsDTO): ResponseEntity<Any> {
         return ResponseEntity.ok(DataResponse(data = workspaceService.updateProjectSettings(projectShortCode, request)))
+    }
+
+    @AdminOnly
+    @GetMapping("/projects/{projectShortCode}/api-tokens")
+    fun retrieveApiTokens(@PathVariable projectShortCode: String): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = apiTokenService.retrieveTokens(projectShortCode)))
+    }
+
+    @AdminOnly
+    @PostMapping("/projects/{projectShortCode}/api-tokens")
+    fun createApiToken(@PathVariable projectShortCode: String, @RequestBody request: CreateProjectApiTokenDTO): ResponseEntity<Any> {
+        return ResponseEntity.ok(DataResponse(data = apiTokenService.createToken(projectShortCode, request)))
+    }
+
+    @AdminOnly
+    @DeleteMapping("/api-tokens/{tokenID}")
+    fun revokeApiToken(@PathVariable tokenID: UUID): ResponseEntity<Any> {
+        apiTokenService.revokeToken(tokenID)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 
     @GetMapping("/projects/{projectShortCode}/builds")

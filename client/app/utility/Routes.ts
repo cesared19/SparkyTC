@@ -39,6 +39,10 @@ export class Route {
 		return '/builds'
 	}
 
+	static get apiTokens() {
+		return '/api-tokens'
+	}
+
 	static jiraIssueTypes(projectKey: string) {
 		return `/jira-issue-types?${new URLSearchParams({ projectKey }).toString()}`
 	}
@@ -153,7 +157,7 @@ export class Route {
 	static viewTestCaseRun(
 		projectShortCode: string,
 		testRunNumber: number,
-		testCaseNumber: number
+		testCaseNumber: number,
 	) {
 		return `/test-runs/${projectShortCode}/${testRunNumber}/${testCaseNumber}`
 	}
@@ -210,6 +214,14 @@ export class APIRoute {
 
 	static build(buildID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/builds/${buildID}`
+	}
+
+	static projectApiTokens(projectShortCode: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/projects/${projectShortCode}/api-tokens`
+	}
+
+	static apiToken(tokenID: string) {
+		return `${this.baseAPIURL}/api/v1/workspace/api-tokens/${tokenID}`
 	}
 
 	static timer(testCaseRunID: string, action: 'start' | 'pause') {
@@ -359,7 +371,7 @@ export class APIRoute {
 		return `${
 			this.baseAPIURL
 		}/api/v1/workspace/jira/projects/${encodeURIComponent(
-			projectKey
+			projectKey,
 		)}/reporter-permission`
 	}
 
@@ -381,7 +393,7 @@ export class APIRoute {
 		return `${
 			this.baseAPIURL
 		}/api/v1/workspace/jira/projects/${encodeURIComponent(
-			projectKey
+			projectKey,
 		)}/issue-types`
 	}
 
@@ -405,19 +417,19 @@ export class APIRoute {
 		return `${
 			this.baseAPIURL
 		}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issues/${encodeURIComponent(
-			issueKey
+			issueKey,
 		)}/transitions`
 	}
 
 	static jiraAssignableUsers(
 		testCaseRunID: string,
 		issueKey: string,
-		query: string
+		query: string,
 	) {
 		return `${
 			this.baseAPIURL
 		}/api/v1/workspace/test-case-runs/${testCaseRunID}/jira-issues/${encodeURIComponent(
-			issueKey
+			issueKey,
 		)}/assignable-users?${new URLSearchParams({ query }).toString()}`
 	}
 
