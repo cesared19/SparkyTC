@@ -586,6 +586,24 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.18")
                 }
                 SchemaVersion.VERSION_0_0_18 -> {
+                    // tokens other apps (like co-bord) use to read one project through the integration API
+                    jdbcTemplate.execute("""
+                        CREATE TABLE project_api_tokens (
+                            id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                            external_id UUID NOT NULL DEFAULT gen_random_uuid(),
+                            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            name TEXT NOT NULL,
+                            token_hash TEXT NOT NULL UNIQUE,
+                            token_prefix TEXT NOT NULL,
+                            created_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                            last_used_at TIMESTAMP
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.19")
+                }
+                SchemaVersion.VERSION_0_0_19 -> {
                     break
                 }
             }

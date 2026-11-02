@@ -10,6 +10,7 @@ import {
 	useNavigation,
 } from '@remix-run/react'
 import { useEffect, useState } from 'react'
+import { ApiTokens } from '~/components/ApiTokens'
 import { BuildManager } from '~/components/Builds'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { ProjectShell } from '~/components/ProjectShell'
@@ -20,6 +21,7 @@ import {
 	JiraFailureMode,
 	JiraIssueType,
 	JiraSpace,
+	ProjectApiToken,
 	ProjectBuild,
 } from '~/models/types'
 import { requireAdmin } from '~/utility/Authorization.server'
@@ -34,14 +36,19 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		api.get<FetchResponse<JiraConfiguration>>(APIRoute.jiraConfiguration),
 	])
 	const project = projects.data.find(
-		(p) => p.projectShortCode === params.projectShortCode
+		(p) => p.projectShortCode === params.projectShortCode,
 	)
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
 	}
-	const builds = await api.get<FetchResponse<ProjectBuild[]>>(
-		APIRoute.projectBuilds(projectShortCode)
-	)
+	const [builds, apiTokens] = await Promise.all([
+		api.get<FetchResponse<ProjectBuild[]>>(
+			APIRoute.projectBuilds(projectShortCode),
+		),
+		api.get<FetchResponse<ProjectApiToken[]>>(
+			APIRoute.projectApiTokens(projectShortCode),
+		),
+	])
 
 	// the spaces and issue types are listed from Jira, falling back to typing them
 	let spaces: JiraSpace[] | null = null
@@ -60,7 +67,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			try {
 				issueTypes = (
 					await api.get<FetchResponse<JiraIssueType[]>>(
-						APIRoute.jiraIssueTypes(spaceKey)
+						APIRoute.jiraIssueTypes(spaceKey),
 					)
 				).data
 			} catch {
@@ -75,6 +82,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		project,
 		jira: jira.data,
 		builds: builds.data,
+		apiTokens: apiTokens.data,
 		spaces,
 		spacesError,
 		issueTypes,
@@ -128,6 +136,7 @@ export default function ProjectSettings() {
 		project,
 		jira,
 		builds,
+		apiTokens,
 		spaces,
 		spacesError,
 		issueTypes,
@@ -225,6 +234,21 @@ export default function ProjectSettings() {
 				<BuildManager
 					projectShortCode={project.projectShortCode}
 					builds={builds}
+				/>
+			</section>
+
+			<section id="api-tokens" className="mt-10 max-w-2xl space-y-3">
+				<div>
+					<h2 className="text-lg font-semibold text-gray-900">API tokens</h2>
+					<p className="mt-1 text-sm text-gray-500">
+						Other apps, like co-bord, use a token to read this project: its
+						suites, test cases, test plans and their latest results. Tokens can
+						only read, and only this project.
+					</p>
+				</div>
+				<ApiTokens
+					projectShortCode={project.projectShortCode}
+					tokens={apiTokens}
 				/>
 			</section>
 		</ProjectShell>
@@ -420,7 +444,7 @@ function JiraTargetFields({
 /** Whether the shared Jira account can report issues in other users' names, null when unknown. */
 async function reporterPermission(
 	api: Awaited<ReturnType<typeof requireAdmin>>['api'],
-	spaceKey: string
+	spaceKey: string,
 ) {
 	try {
 		const response = await api.get<

@@ -1,6 +1,6 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.1.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.1.1 está en `main`.
 
 **Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
@@ -10,7 +10,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 - **Backend:** Spring Boot 3 + Kotlin (JDK 21), en `service/`. Paquete `com.sparkytc.sparkytcservice`, configuración con prefijo `sparkytc.*`.
 - **Frontend:** Remix + React + Tailwind, en `client/`. Todas las llamadas a la API pasan por el servidor Remix con la sesión del usuario (`requireAPI` / `requireUser` / `requireAdmin`).
-- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.18). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
+- **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.19). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
 - **Deploy:** Docker Compose (`docker-compose.yml`); la imagen del cliente usa Node 22. El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
 
 ## Funcionalidades existentes (v1.0.0)
@@ -38,13 +38,14 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - Lista de test runs (desde 2.1.0): el backend la entrega del más nuevo al más viejo (sin `ORDER BY` salía en el orden físico de la tabla, que cambia al actualizar); el selector Sort by ordena en el cliente (abiertos primero por defecto, más nuevos, más viejos, título o build; `TestRunSort.ts`), se guarda en `?sort=` y en `localStorage`. Muestra la columna Build.
 - Layout (desde 2.1.0): la app mide `h-app` (`100dvh`, con `100vh` de respaldo; en iOS `100vh` es más alto que lo visible) y el contenido se desplaza dentro de áreas con `overflow-auto`, que deben llevar `relative`: si no, los elementos `sr-only` (absolutos) se ubican respecto al documento, lo estiran y la página entera se desplaza dejando espacio en blanco. Ninguna página debe tener `document.scrollingElement.scrollHeight` mayor que la ventana.
 - Borradores de resultado (desde 2.1.1): lo que el tester marca y escribe en un caso del run (resultado, pasos con su actual, comentario) se guarda en el servidor mientras trabaja (`test_case_run_drafts`, uno por usuario y caso, 0.0.18; `ResultDraftService`, `/test-case-runs/{id}/draft`) y se borra al guardar el resultado. El cliente lo carga y guarda con `fetch` directo a la ruta de recurso `/test-case-run-drafts/$id` (`useResultDraft`, ~0.8 s tras cada cambio y al salir con `keepalive`), no con un fetcher, para no recargar el run en cada tecla. "Save result" tiene el selector de resultado al lado (`ResultChooser`) y dice qué falta; al guardar se pasa al siguiente caso con `?saved=<número>` (`SavedResultNotice`). La tabla del run y la exportación de resultados muestran los pasos del último resultado (`stepResultsSummaryText`).
+- API de integración (desde 2.2.0): tokens por proyecto (`project_api_tokens`, 0.0.19; solo se guarda el hash SHA-256 y un prefijo; se muestran una vez) que crean y revocan los admins en Settings (`ApiTokenService`, `ApiTokens.tsx`, ruta de recurso `/api-tokens`). `/api/integration/v1/**` usa `IntegrationTokenInterceptor` (no la sesión) y lee solo el proyecto del token: proyecto y builds, secciones con su ruta, casos, planes y `POST /results` con el último resultado ejecutado en una build (la actual por defecto) y conteos por sección y plan (`IntegrationService`; los casos de un plan siguen la regla de `planTestCases`). La usa co-bord.
 - Responsivo (desde 1.3.0): en móvil la barra superior es un menú, la lista de proyectos es un panel lateral y las tablas (`Table`) se muestran como tarjetas hasta `lg`; la página Users usa `useMediaQuery` para no duplicar sus formularios. Revisa los cambios de interfaz también a 390 px y 820 px.
 - Modo claro, oscuro o del sistema. Paleta de marca carmesí `#C01C37`, con la escala de grises y la escala `brand` definidas como variables CSS en `client/app/tailwind.css`.
 
 ## Cómo trabajar
 
 - **Antes de hacer push:**
-  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 83).
+  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 86).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint está en 0 problemas (desde 2.0.1); debe seguir así. Los payloads que se envían con `useSubmit`/`fetcher.submit` son alias `type`, no interfaces que extienden `Record<string, any>`.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
@@ -61,5 +62,5 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Versión en curso
 
-- **2.1.1** (rama `claude/v2.1.1`), feedback de un tester — hecho: borradores del resultado en el servidor; guardar más claro (selector junto al botón, motivo visible) con aviso al pasar al siguiente caso; pasos del último resultado en la tabla del run y en la exportación.
+- **2.2.0**: API de integración con tokens por proyecto, para co-bord (vincular pasos de tableros con casos, suites y planes, y su cobertura).
 - **Propuesta pendiente de decisiones** (trazabilidad y administración): References y reporte de cobertura; auditoría y roles (Viewer, Lead); revisión y aprobación de casos; HTTPS y SSO.
