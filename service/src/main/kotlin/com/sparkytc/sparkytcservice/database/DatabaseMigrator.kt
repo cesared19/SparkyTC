@@ -604,6 +604,31 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.19")
                 }
                 SchemaVersion.VERSION_0_0_19 -> {
+                    // tokens that can also create sections, test cases and test plans; existing ones only read
+                    jdbcTemplate.execute("ALTER TABLE project_api_tokens ADD COLUMN can_write BOOLEAN NOT NULL DEFAULT FALSE")
+                    // revoked tokens are kept, so what they created still says who created it
+                    jdbcTemplate.execute("ALTER TABLE project_api_tokens ADD COLUMN revoked_at TIMESTAMP")
+
+                    // what a token created, instead of a user
+                    for (table in listOf("test_cases", "test_case_sections", "test_plans")) {
+                        jdbcTemplate.execute("ALTER TABLE $table ADD COLUMN created_by_token_id BIGINT REFERENCES project_api_tokens(id) ON DELETE SET NULL")
+                    }
+
+                    // the other app's reference to what it created, so retries don't create it twice
+                    jdbcTemplate.execute("ALTER TABLE test_cases ADD COLUMN source_ref TEXT")
+                    jdbcTemplate.execute("""
+                        CREATE UNIQUE INDEX test_cases_source_ref_idx ON test_cases (project_id, source_ref)
+                        WHERE source_ref IS NOT NULL AND NOT is_archived
+                    """.trimIndent())
+                    jdbcTemplate.execute("ALTER TABLE test_plans ADD COLUMN source_ref TEXT")
+                    jdbcTemplate.execute("""
+                        CREATE UNIQUE INDEX test_plans_source_ref_idx ON test_plans (project_id, source_ref)
+                        WHERE source_ref IS NOT NULL
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.20")
+                }
+                SchemaVersion.VERSION_0_0_20 -> {
                     break
                 }
             }

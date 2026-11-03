@@ -26,7 +26,7 @@ class ApiTokenService(
 
     @Transactional
     fun retrieveTokens(projectShortCode: String): List<ProjectApiTokenDTO> {
-        return tokenRepository.findAllByProjectOrderByCreationDateDesc(project(projectShortCode)).map { it.toDTO() }
+        return tokenRepository.findAllByProjectAndRevokedAtIsNullOrderByCreationDateDesc(project(projectShortCode)).map { it.toDTO() }
     }
 
     @Transactional
@@ -43,6 +43,7 @@ class ApiTokenService(
             tokenHash = hash(secret),
             tokenPrefix = secret.take(PREFIX.length + 6),
             createdBy = CurrentUser.get(),
+            canWrite = request.canWrite,
         )
         tokenRepository.save(token)
         return CreatedProjectApiTokenDTO(token.toDTO(), secret)
@@ -51,22 +52,24 @@ class ApiTokenService(
     @Transactional
     fun revokeToken(tokenID: UUID) {
         val token = tokenRepository.findByExternalID(tokenID)
-        requireNotNull(token) { "No token found" }
-        tokenRepository.delete(token)
+        require(token != null && token.revokedAt == null) { "No token found" }
+        token.revokedAt = Date()
+        tokenRepository.save(token)
     }
 
-    /** The project a token gives access to, or null for an unknown token. Notes when it was last used. */
+    /** The token, with its project loaded, or null for an unknown or revoked one. Notes when it was last used. */
     @Transactional
-    fun authenticate(secret: String): WorkspaceProject? {
+    fun authenticate(secret: String): ProjectApiToken? {
         if (!secret.startsWith(PREFIX)) return null
-        val token = tokenRepository.findByTokenHash(hash(secret)) ?: return null
+        val token = tokenRepository.findByTokenHash(hash(secret))?.takeIf { it.revokedAt == null } ?: return null
         val now = Date()
         // once a minute is enough to tell whether a token is in use
         if (token.lastUsedAt == null || now.time - token.lastUsedAt!!.time > 60_000) {
             token.lastUsedAt = now
             tokenRepository.save(token)
         }
-        return token.project.also { it.projectShortCode }
+        token.project.projectShortCode
+        return token
     }
 
     private fun project(projectShortCode: String): WorkspaceProject {

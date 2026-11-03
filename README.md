@@ -186,9 +186,9 @@ API tokens are created at https://id.atlassian.com/manage-profile/security/api-t
 
 ### Integration API (co-bord)
 
-Other apps can read a project through a read-only API, for example [co-bord](https://github.com/cesared19/co-bord) to show which board steps are covered by test cases and how they did.
+Other apps can read a project through an API, and create test cases in it, for example [co-bord](https://github.com/cesared19/co-bord) to show which board steps are covered by test cases and how they did, and to create test cases and plans from its boards.
 
--  An admin creates a token in the project's **Settings**, under **API tokens**, and copies it right away: it is shown only once. Each token reads only its project and can't change anything. **Revoke** stops it at once; the list shows when each token was last used.
+-  An admin creates a token in the project's **Settings**, under **API tokens**, choosing its permission, and copies it right away: it is shown only once. A **Read** token reads the project; a **Read and write** token can also create sections, test cases and test plans. No token edits or deletes anything, and each one works only on its project. **Revoke** stops a token at once; the list shows each token's permission and when it was last used. Tokens created before 2.3.0 are Read tokens.
 -  Requests send the token as `Authorization: Bearer stc_...` to `/api/integration/v1`:
 
 | Endpoint | Returns |
@@ -198,6 +198,18 @@ Other apps can read a project through a read-only API, for example [co-bord](htt
 | `GET /test-cases?query=&limit=` | Test cases whose number or title match, with their section and labels |
 | `GET /test-plans` | Test plans and how many test cases they have now |
 | `POST /results` | For the given `testCaseNumbers`, `sectionIDs` and `testPlanIDs`: the latest executed result of each test case in a `build` (the current build by default), and counts for sections and plans. Items that no longer exist are listed as missing. |
+
+`GET /project` also returns the token's `permissions`: `["read"]` or `["read", "write"]`. A Read and write token can also call:
+
+| Endpoint | Body | Creates |
+| --- | --- | --- |
+| `POST /sections` | `{ "path": "Suite / Section / Subsection" }` | The parts of the path that don't exist yet (matched ignoring case), returning the last section like `GET /sections` |
+| `POST /test-cases` | `{ "title", "description"?, "testInstructions"?, "sectionPath"?, "labels"?, "format"?: "TEXT" \| "STEPS", "steps"?: [{ "action", "expected"? }], "sourceRef"? }` | A test case, returned like `GET /test-cases` with its number and `webPath`. Without `sectionPath` it goes to the project's first suite; required properties take their default values; `format` is `STEPS` when steps are sent without one. |
+| `POST /test-plans` | `{ "name", "description"?, "sectionIDs"?, "labels"?, "testCaseNumbers"?, "sourceRef"? }` | A test plan, returned like `GET /test-plans`. It needs at least one section, label or test case. |
+
+-  **`sourceRef`** is the app's own reference, up to 200 characters, such as `cobord:<boardId>:<elementId>`. Creating a test case or plan with a `sourceRef` the project already has returns the existing one instead of a new one, with `"created": false` (`true` when it was created), so retries never create duplicates. An archived test case frees its reference.
+-  What a token creates shows the token as its author, e.g. *co-bord (API token)*, also after the token is revoked.
+-  Validation follows the app: a title is required (up to 500 characters through the API), labels are trimmed and kept once ignoring case (up to 50 characters, no commas), and section and plan names take up to 200 characters. Invalid requests get a 400 with a message, and a Read token gets a 403.
 
 -  The latest result follows the same rule as the build results: the last executed result of each test case among the build's test runs; results not run in that build are `NOT_RUN`. Archived test cases are left out.
 -  Every item has a `webPath` to open it in SparkyTC.

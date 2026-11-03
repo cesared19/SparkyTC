@@ -3,6 +3,7 @@ package com.sparkytc.sparkytcservice.services
 import com.sparkytc.sparkytcservice.auth.CurrentUser
 import com.sparkytc.sparkytcservice.dto.plans.SaveTestPlanDTO
 import com.sparkytc.sparkytcservice.dto.plans.TestPlanDTO
+import com.sparkytc.sparkytcservice.models.ProjectApiToken
 import com.sparkytc.sparkytcservice.models.TestPlan
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import com.sparkytc.sparkytcservice.repositories.TestCaseRepository
@@ -33,6 +34,14 @@ class TestPlanService(
         val plan = TestPlan(project = project, name = "", createdBy = CurrentUser.get())
         apply(plan, request)
         return testPlanRepository.save(plan).toDTO()
+    }
+
+    /** A test plan another app creates through the integration API, credited to its token. */
+    @Transactional
+    fun createTestPlanByToken(project: WorkspaceProject, request: SaveTestPlanDTO, token: ProjectApiToken, sourceRef: String?): TestPlan {
+        val plan = TestPlan(project = project, name = "", createdByToken = token, sourceRef = sourceRef)
+        apply(plan, request)
+        return testPlanRepository.save(plan)
     }
 
     @Transactional

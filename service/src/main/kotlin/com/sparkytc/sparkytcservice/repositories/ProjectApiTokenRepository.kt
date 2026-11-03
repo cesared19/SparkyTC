@@ -8,5 +8,5 @@ import java.util.UUID
 interface ProjectApiTokenRepository : JpaRepository<ProjectApiToken, Long> {
     fun findByTokenHash(tokenHash: String): ProjectApiToken?
     fun findByExternalID(externalID: UUID): ProjectApiToken?
-    fun findAllByProjectOrderByCreationDateDesc(project: WorkspaceProject): List<ProjectApiToken>
+    fun findAllByProjectAndRevokedAtIsNullOrderByCreationDateDesc(project: WorkspaceProject): List<ProjectApiToken>
 }

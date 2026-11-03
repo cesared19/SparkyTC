@@ -1,15 +1,19 @@
 package com.sparkytc.sparkytcservice.auth
 
 /**
- * The project of the API token used for the current integration request. Set by the
- * IntegrationTokenInterceptor and cleared once the request completes.
+ * The project API token used for the current integration request: its project and whether it can write. Set by
+ * the IntegrationTokenInterceptor and cleared once the request completes.
  */
 object CurrentIntegrationProject {
-    private val projectID = ThreadLocal<Long?>()
+    data class Token(val tokenID: Long, val projectID: Long, val canWrite: Boolean)
 
-    fun get(): Long = requireNotNull(projectID.get()) { "No project token" }
+    private val token = ThreadLocal<Token?>()
 
-    fun set(value: Long) = projectID.set(value)
+    fun get(): Long = token().projectID
 
-    fun clear() = projectID.remove()
+    fun token(): Token = requireNotNull(token.get()) { "No project token" }
+
+    fun set(value: Token) = token.set(value)
+
+    fun clear() = token.remove()
 }

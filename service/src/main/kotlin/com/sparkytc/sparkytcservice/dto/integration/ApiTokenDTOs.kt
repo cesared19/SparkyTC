@@ -10,9 +10,10 @@ data class ProjectApiTokenDTO(
     val creationDate: Date,
     val createdBy: String?,
     val lastUsedAt: Date?,
+    val canWrite: Boolean = false,
 )
 
-data class CreateProjectApiTokenDTO(val name: String?)
+data class CreateProjectApiTokenDTO(val name: String?, val canWrite: Boolean = false)
 
 /** The new token, with the secret that is shown only this once. */
 data class CreatedProjectApiTokenDTO(val token: ProjectApiTokenDTO, val secret: String)

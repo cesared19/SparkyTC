@@ -36,6 +36,11 @@ class TestCaseSection(
     // order among its siblings
     @Column(name = "position", nullable = false)
     var position: Int = 0,
+
+    // the API token that created it, when another app did instead of a user
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_token_id")
+    var createdByToken: ProjectApiToken? = null,
 ) {
     fun toDTO(): TestCaseSectionDTO {
         return TestCaseSectionDTO(externalID, parent?.externalID, name, position)

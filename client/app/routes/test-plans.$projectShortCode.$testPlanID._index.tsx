@@ -99,10 +99,8 @@ export default function TestPlanDetails() {
 							{plan.description}
 						</p>
 					)}
-					{plan.updatedBy && (
-						<p className="mt-1 text-xs text-gray-500">
-							Last updated by {plan.updatedBy}
-						</p>
+					{authorship(plan) && (
+						<p className="mt-1 text-xs text-gray-500">{authorship(plan)}</p>
 					)}
 				</div>
 				<div className="flex flex-wrap gap-2 self-end sm:self-start">
@@ -241,4 +239,14 @@ export default function TestPlanDetails() {
 			</section>
 		</div>
 	)
+}
+
+/** e.g. "Created by co-bord (API token) · Last updated by Ana", leaving out what isn't known. */
+function authorship(plan: { createdBy?: string; updatedBy?: string }) {
+	const parts = []
+	if (plan.createdBy) parts.push(`Created by ${plan.createdBy}`)
+	if (plan.updatedBy && plan.updatedBy !== plan.createdBy) {
+		parts.push(`Last updated by ${plan.updatedBy}`)
+	}
+	return parts.join(' · ')
 }

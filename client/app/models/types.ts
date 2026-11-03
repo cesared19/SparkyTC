@@ -293,6 +293,8 @@ export interface ProjectApiToken {
 	creationDate: number
 	createdBy?: string
 	lastUsedAt?: number
+	// read and write tokens also create sections, test cases and test plans
+	canWrite: boolean
 }
 
 export interface TestCaseAttachment {
