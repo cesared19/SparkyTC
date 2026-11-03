@@ -36,17 +36,17 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		api.get<FetchResponse<JiraConfiguration>>(APIRoute.jiraConfiguration),
 	])
 	const project = projects.data.find(
-		(p) => p.projectShortCode === params.projectShortCode,
+		(p) => p.projectShortCode === params.projectShortCode
 	)
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
 	}
 	const [builds, apiTokens] = await Promise.all([
 		api.get<FetchResponse<ProjectBuild[]>>(
-			APIRoute.projectBuilds(projectShortCode),
+			APIRoute.projectBuilds(projectShortCode)
 		),
 		api.get<FetchResponse<ProjectApiToken[]>>(
-			APIRoute.projectApiTokens(projectShortCode),
+			APIRoute.projectApiTokens(projectShortCode)
 		),
 	])
 
@@ -67,7 +67,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			try {
 				issueTypes = (
 					await api.get<FetchResponse<JiraIssueType[]>>(
-						APIRoute.jiraIssueTypes(spaceKey),
+						APIRoute.jiraIssueTypes(spaceKey)
 					)
 				).data
 			} catch {
@@ -242,8 +242,10 @@ export default function ProjectSettings() {
 					<h2 className="text-lg font-semibold text-gray-900">API tokens</h2>
 					<p className="mt-1 text-sm text-gray-500">
 						Other apps, like co-bord, use a token to read this project: its
-						suites, test cases, test plans and their latest results. Tokens can
-						only read, and only this project.
+						suites, test cases, test plans and their latest results. A Read and
+						write token also creates sections, test cases and plans, credited to
+						the token; no token edits or deletes anything, and each one works
+						only on this project.
 					</p>
 				</div>
 				<ApiTokens
@@ -444,7 +446,7 @@ function JiraTargetFields({
 /** Whether the shared Jira account can report issues in other users' names, null when unknown. */
 async function reporterPermission(
 	api: Awaited<ReturnType<typeof requireAdmin>>['api'],
-	spaceKey: string,
+	spaceKey: string
 ) {
 	try {
 		const response = await api.get<

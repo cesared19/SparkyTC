@@ -4,11 +4,41 @@ import { DateDisplay } from '~/components/DateDisplay'
 import { ErrorResponse, ProjectApiToken } from '~/models/types'
 import { Route } from '~/utility/Routes'
 
-type TokenRequest =
-	| { intent: 'create'; projectShortCode: string; name: string }
-	| { intent: 'revoke'; tokenID: string }
+type CreateTokenRequest = {
+	intent: 'create'
+	projectShortCode: string
+	name: string
+	canWrite: boolean
+}
+
+type TokenRequest = CreateTokenRequest | { intent: 'revoke'; tokenID: string }
 
 type TokenResponse = ErrorResponse | { ok: true; secret?: string }
+
+const PERMISSIONS = [
+	{
+		canWrite: false,
+		label: 'Read',
+		description: 'Reads suites, test cases, plans and results',
+	},
+	{
+		canWrite: true,
+		label: 'Read and write',
+		description: 'Also creates sections, test cases and plans',
+	},
+]
+
+function PermissionBadge({ canWrite }: { canWrite: boolean }) {
+	return (
+		<span
+			className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+				canWrite ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'
+			}`}
+		>
+			{canWrite ? 'Read and write' : 'Read'}
+		</span>
+	)
+}
 
 const buttonClassName =
 	'rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40'
@@ -36,7 +66,8 @@ async function copyText(text: string) {
 
 /**
  * Tokens other apps, like co-bord, use to read this project (its suites, test cases, plans and their latest
- * results) through the integration API. The token is shown once, when it's created.
+ * results) through the integration API, and to create sections, test cases and plans when they can write.
+ * The token is shown once, when it's created.
  */
 export function ApiTokens({
 	projectShortCode,
@@ -56,6 +87,7 @@ export function ApiTokens({
 	const [secret, setSecret] = useState<string | null>(null)
 	const [copied, setCopied] = useState(false)
 	const [confirming, setConfirming] = useState<string | null>(null)
+	const [canWrite, setCanWrite] = useState(false)
 	const busy = fetcher.state !== 'idle'
 	const error =
 		fetcher.state === 'idle' && fetcher.data && 'message' in fetcher.data
@@ -71,6 +103,7 @@ export function ApiTokens({
 		) {
 			setSecret(fetcher.data.secret)
 			setCopied(false)
+			setCanWrite(false)
 			if (nameRef.current) nameRef.current.value = ''
 		}
 	}, [fetcher.state, fetcher.data])
@@ -79,7 +112,7 @@ export function ApiTokens({
 		<div className="space-y-4">
 			{secret && (
 				<div className="space-y-2 rounded-md border border-green-200 bg-green-50 p-3">
-					<p className="text-sm font-medium text-green-900">
+					<p className="text-sm font-medium text-green-800">
 						Copy the token now. It won&apos;t be shown again.
 					</p>
 					<div className="flex flex-wrap items-center gap-2">
@@ -111,7 +144,8 @@ export function ApiTokens({
 				onSubmit={(event) => {
 					event.preventDefault()
 					const name = nameRef.current?.value.trim()
-					if (name) submit({ intent: 'create', projectShortCode, name })
+					if (name)
+						submit({ intent: 'create', projectShortCode, name, canWrite })
 				}}
 			>
 				<label
@@ -137,6 +171,33 @@ export function ApiTokens({
 						{busy ? 'Creating...' : 'Create token'}
 					</button>
 				</div>
+				<fieldset className="mt-2">
+					<legend className="text-xs font-medium text-gray-700">
+						Permission
+					</legend>
+					<div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+						{PERMISSIONS.map((permission) => (
+							<label
+								key={permission.label}
+								className="flex items-start gap-2 text-sm text-gray-700"
+							>
+								<input
+									type="radio"
+									name="api-token-permission"
+									checked={canWrite === permission.canWrite}
+									onChange={() => setCanWrite(permission.canWrite)}
+									className="mt-0.5 h-4 w-4 border-gray-300 text-brand-600 focus:ring-brand-500"
+								/>
+								<span>
+									{permission.label}
+									<span className="block text-xs text-gray-500">
+										{permission.description}
+									</span>
+								</span>
+							</label>
+						))}
+					</div>
+				</fieldset>
 				{error && <p className="mt-1 text-xs text-red-600">{error}</p>}
 			</form>
 
@@ -150,8 +211,9 @@ export function ApiTokens({
 							className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm"
 						>
 							<span className="min-w-0 flex-1">
-								<span className="block font-medium text-gray-900">
+								<span className="flex flex-wrap items-center gap-2 font-medium text-gray-900">
 									{token.name}
+									<PermissionBadge canWrite={token.canWrite} />
 								</span>
 								<span className="block text-xs text-gray-500">
 									<code className="font-mono">{token.tokenPrefix}…</code> ·

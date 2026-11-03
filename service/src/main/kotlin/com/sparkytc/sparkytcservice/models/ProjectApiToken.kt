@@ -6,8 +6,8 @@ import org.hibernate.annotations.CreationTimestamp
 import java.util.*
 
 /**
- * A token another application uses to read one project through the integration API. Only its SHA-256 hash is
- * kept; the token itself is shown once, when it's created.
+ * A token another application uses to read one project through the integration API, and to create in it when
+ * it can write. Only its SHA-256 hash is kept; the token itself is shown once, when it's created.
  */
 @Entity(name = "project_api_tokens")
 class ProjectApiToken(
@@ -42,8 +42,20 @@ class ProjectApiToken(
 
     @Column(name = "last_used_at")
     var lastUsedAt: Date? = null,
+
+    // read and write tokens also create sections, test cases and test plans
+    @Column(name = "can_write", nullable = false)
+    val canWrite: Boolean = false,
+
+    // a revoked token no longer works, but stays so what it created keeps its name
+    @Column(name = "revoked_at")
+    var revokedAt: Date? = null,
 ) {
+    /** How what it created shows its author, e.g. "co-bord (API token)". */
+    val authorName: String
+        get() = "$name (API token)"
+
     fun toDTO(): ProjectApiTokenDTO {
-        return ProjectApiTokenDTO(externalID, name, tokenPrefix, creationDate, createdBy?.displayName, lastUsedAt)
+        return ProjectApiTokenDTO(externalID, name, tokenPrefix, creationDate, createdBy?.displayName, lastUsedAt, canWrite)
     }
 }

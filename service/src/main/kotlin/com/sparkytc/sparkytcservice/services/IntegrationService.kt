@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service
 import java.util.UUID
 
 /**
- * Read-only view of one project for other apps (co-bord): its sections, test cases and plans, and the latest
- * result of each test case in a build. The project comes from the API token.
+ * What other apps (co-bord) read of one project: its sections, test cases and plans, and the latest result of
+ * each test case in a build. The project comes from the API token. Creating is in IntegrationWriteService.
  */
 @Service
 class IntegrationService(
@@ -34,7 +34,8 @@ class IntegrationService(
     fun retrieveProject(): IntegrationProjectDTO {
         val project = project()
         val builds = projectBuildRepository.findAllByProjectOrderByIdDesc(project).map { it.toIntegration() }
-        return IntegrationProjectDTO(project.projectShortCode, project.title, builds.firstOrNull(), builds, "/projects/${project.projectShortCode}")
+        val permissions = if (CurrentIntegrationProject.token().canWrite) listOf("read", "write") else listOf("read")
+        return IntegrationProjectDTO(project.projectShortCode, project.title, builds.firstOrNull(), builds, "/projects/${project.projectShortCode}", permissions)
     }
 
     @Transactional
@@ -64,17 +65,35 @@ class IntegrationService(
         return testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project)
             .filter { text.isEmpty() || it.testCaseNumber.toString() == text || it.title.lowercase().contains(text) }
             .take(limit.coerceIn(1, 500))
-            .map { testCase ->
-                IntegrationTestCaseDTO(
-                    testCaseID = testCase.externalID,
-                    testCaseNumber = testCase.testCaseNumber,
-                    title = testCase.title,
-                    sectionPath = testCase.section?.let { tree.path(it) },
-                    labels = testCase.labels.sortedBy { it.lowercase() },
-                    webPath = testCasePath(project, testCase),
-                )
-            }
+            .map { toIntegration(project, tree, it) }
     }
+
+    /** One test case of the token's project, as the API lists them. */
+    @Transactional
+    fun retrieveTestCase(testCaseID: Long, created: Boolean? = null): IntegrationTestCaseDTO {
+        val project = project()
+        val tree = SectionTree(sectionRepository.findAllByProjectOrderByPositionAscIdAsc(project))
+        return toIntegration(project, tree, testCaseRepository.findById(testCaseID).orElseThrow()).copy(created = created)
+    }
+
+    /** One section of the token's project, as the API lists them. */
+    @Transactional
+    fun retrieveSection(sectionID: UUID): IntegrationSectionDTO = retrieveSections().first { it.sectionID == sectionID }
+
+    /** One test plan of the token's project, as the API lists them. */
+    @Transactional
+    fun retrieveTestPlan(testPlanID: UUID, created: Boolean? = null): IntegrationTestPlanDTO =
+        retrieveTestPlans().first { it.testPlanID == testPlanID }.copy(created = created)
+
+    private fun toIntegration(project: WorkspaceProject, tree: SectionTree, testCase: TestCase) = IntegrationTestCaseDTO(
+        testCaseID = testCase.externalID,
+        testCaseNumber = testCase.testCaseNumber,
+        title = testCase.title,
+        sectionPath = testCase.section?.let { tree.path(it) },
+        labels = testCase.labels.sortedBy { it.lowercase() },
+        webPath = testCasePath(project, testCase),
+        sourceRef = testCase.sourceRef,
+    )
 
     @Transactional
     fun retrieveTestPlans(): List<IntegrationTestPlanDTO> {
@@ -82,7 +101,7 @@ class IntegrationService(
         val tree = SectionTree(sectionRepository.findAllByProjectOrderByPositionAscIdAsc(project))
         val testCases = testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project)
         return testPlanRepository.findAllByProjectOrderByNameAsc(project).map { plan ->
-            IntegrationTestPlanDTO(plan.externalID, plan.name, plan.description, planTestCases(plan, testCases, tree).size, planPath(project, plan))
+            IntegrationTestPlanDTO(plan.externalID, plan.name, plan.description, planTestCases(plan, testCases, tree).size, planPath(project, plan), plan.sourceRef)
         }
     }
 

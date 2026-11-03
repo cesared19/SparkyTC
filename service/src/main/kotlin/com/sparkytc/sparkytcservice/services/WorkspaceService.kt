@@ -205,8 +205,26 @@ class WorkspaceService(
         return batch.testCases.size
     }
 
-    private fun createTestCaseModel(project: WorkspaceProject, testCaseNumber: Long, testCase: CreateTestCaseDTO): TestCase {
+    /**
+     * A test case another app creates through the integration API: it's credited to the API token, keeps the
+     * app's reference, and gets the next number like any other.
+     */
+    @Transactional
+    fun createTestCaseByToken(project: WorkspaceProject, testCase: CreateTestCaseDTO, token: ProjectApiToken, sourceRef: String?): TestCase {
+        val largestTestCaseNumber = testCaseRepository.findTopByProjectOrderByTestCaseNumberDesc(project)?.testCaseNumber ?: 0
+        return createTestCaseModel(project, largestTestCaseNumber + 1, testCase, token, sourceRef)
+    }
+
+    private fun createTestCaseModel(
+        project: WorkspaceProject,
+        testCaseNumber: Long,
+        testCase: CreateTestCaseDTO,
+        createdByToken: ProjectApiToken? = null,
+        sourceRef: String? = null,
+    ): TestCase {
         require(testCase.title.isNotBlank()) { "Test case must have a title" }
+        // an app's token creates it instead of the signed in user
+        val author = if (createdByToken == null) CurrentUser.get() else null
 
         val newTestCaseModel = TestCase(
             project = project,
@@ -214,10 +232,12 @@ class WorkspaceService(
             title = testCase.title,
             description = Tools.sanitize(testCase.description),
             testInstructions = Tools.sanitize(testCase.testInstructions),
-            createdBy = CurrentUser.get(),
-            updatedBy = CurrentUser.get(),
-            section = testCase.sectionPath?.takeIf { it.isNotBlank() }?.let { sectionService.sectionForPath(project, it) }
-                ?: sectionService.sectionFor(project, testCase.sectionID),
+            createdBy = author,
+            updatedBy = author,
+            createdByToken = createdByToken,
+            sourceRef = sourceRef,
+            section = testCase.sectionPath?.takeIf { it.isNotBlank() }?.let { sectionService.sectionForPath(project, it, createdByToken) }
+                ?: sectionService.sectionFor(project, testCase.sectionID, createdByToken),
             labels = cleanLabels(testCase.labels.orEmpty()),
         )
         testCaseRepository.save(newTestCaseModel)

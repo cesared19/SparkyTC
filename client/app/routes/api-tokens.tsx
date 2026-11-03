@@ -13,7 +13,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			const response = await api.post<
 				FetchResponse<{ token: ProjectApiToken; secret: string }>
 			>(APIRoute.projectApiTokens(body.projectShortCode), {
-				body: { name: body.name },
+				body: { name: body.name, canWrite: body.canWrite === true },
 			})
 			return { ok: true as const, secret: response.data.secret }
 		}

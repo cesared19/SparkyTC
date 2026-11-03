@@ -14,6 +14,8 @@ data class IntegrationProjectDTO(
     val currentBuild: IntegrationBuildDTO?,
     val builds: List<IntegrationBuildDTO>,
     val webPath: String,
+    /** What the token can do: ["read"] or ["read", "write"]. */
+    val permissions: List<String> = listOf("read"),
 )
 
 data class IntegrationSectionDTO(
@@ -34,6 +36,10 @@ data class IntegrationTestCaseDTO(
     val sectionPath: String?,
     val labels: List<String>,
     val webPath: String,
+    /** The reference the app gave it when creating it, if any. */
+    val sourceRef: String? = null,
+    /** Only when creating: false when a test case with the same sourceRef already existed and is returned instead. */
+    val created: Boolean? = null,
 )
 
 data class IntegrationTestPlanDTO(
@@ -42,6 +48,9 @@ data class IntegrationTestPlanDTO(
     val description: String?,
     val testCaseCount: Int,
     val webPath: String,
+    val sourceRef: String? = null,
+    /** Only when creating: false when a test plan with the same sourceRef already existed and is returned instead. */
+    val created: Boolean? = null,
 )
 
 data class IntegrationResultsRequestDTO(
@@ -90,4 +99,33 @@ data class IntegrationResultsDTO(
     val missingTestCaseNumbers: List<Long>,
     val missingSectionIDs: List<UUID>,
     val missingTestPlanIDs: List<UUID>,
+)
+
+/** A section to create by its path, e.g. "Checkout / Payments"; the parts that exist are reused. */
+data class IntegrationCreateSectionDTO(val path: String? = null)
+
+data class IntegrationStepDTO(val action: String? = null, val expected: String? = null)
+
+data class IntegrationCreateTestCaseDTO(
+    val title: String? = null,
+    val description: String? = null,
+    /** Free text instructions, for the TEXT format. */
+    val testInstructions: String? = null,
+    /** Created if missing; the project's first suite when empty. */
+    val sectionPath: String? = null,
+    val labels: List<String>? = null,
+    /** TEXT or STEPS; STEPS when there are steps and no format is given. */
+    val format: String? = null,
+    val steps: List<IntegrationStepDTO>? = null,
+    /** The app's reference, e.g. "cobord:<boardId>:<elementId>": creating twice returns the first test case. */
+    val sourceRef: String? = null,
+)
+
+data class IntegrationCreateTestPlanDTO(
+    val name: String? = null,
+    val description: String? = null,
+    val sectionIDs: List<UUID>? = null,
+    val labels: List<String>? = null,
+    val testCaseNumbers: List<Long>? = null,
+    val sourceRef: String? = null,
 )

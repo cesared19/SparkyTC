@@ -4,6 +4,7 @@ import com.sparkytc.sparkytcservice.dto.sections.CreateTestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.ReorderTestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.TestCaseSectionDTO
 import com.sparkytc.sparkytcservice.dto.sections.UpdateTestCaseSectionDTO
+import com.sparkytc.sparkytcservice.models.ProjectApiToken
 import com.sparkytc.sparkytcservice.models.TestCaseSection
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import com.sparkytc.sparkytcservice.repositories.TestCaseRepository
@@ -106,26 +107,35 @@ class TestCaseSectionService(
     }
 
     /** The section a test case is filed in: the chosen one, or the project's first suite, created if needed. */
-    fun sectionFor(project: WorkspaceProject, sectionID: UUID?): TestCaseSection {
-        return sectionID?.let { requireSection(project, it) } ?: defaultSection(project)
+    fun sectionFor(project: WorkspaceProject, sectionID: UUID?, createdByToken: ProjectApiToken? = null): TestCaseSection {
+        return sectionID?.let { requireSection(project, it) } ?: defaultSection(project, createdByToken)
     }
 
-    /** The section at a path such as "Mobile / Login", creating the suite and sections that don't exist yet. */
-    fun sectionForPath(project: WorkspaceProject, path: String): TestCaseSection {
+    /**
+     * The section at a path such as "Mobile / Login", creating the suite and sections that don't exist yet; the
+     * ones an API token creates say so.
+     */
+    fun sectionForPath(project: WorkspaceProject, path: String, createdByToken: ProjectApiToken? = null): TestCaseSection {
         val names = path.split("/").map { it.trim() }.filter { it.isNotEmpty() }
         require(names.isNotEmpty()) { "The section path is empty" }
         var parent: TestCaseSection? = null
         for (name in names) {
             val siblings = siblings(project, parent)
             parent = siblings.firstOrNull { it.name.equals(name, ignoreCase = true) }
-                ?: sectionRepository.save(TestCaseSection(project = project, parent = parent, name = requireName(name), position = siblings.size))
+                ?: sectionRepository.save(TestCaseSection(
+                    project = project,
+                    parent = parent,
+                    name = requireName(name),
+                    position = siblings.size,
+                    createdByToken = createdByToken,
+                ))
         }
         return parent!!
     }
 
-    private fun defaultSection(project: WorkspaceProject): TestCaseSection {
+    private fun defaultSection(project: WorkspaceProject, createdByToken: ProjectApiToken? = null): TestCaseSection {
         return siblings(project, null).firstOrNull()
-            ?: sectionRepository.save(TestCaseSection(project = project, name = "Default"))
+            ?: sectionRepository.save(TestCaseSection(project = project, name = "Default", createdByToken = createdByToken))
     }
 
     private fun requireSection(project: WorkspaceProject, sectionID: UUID): TestCaseSection {

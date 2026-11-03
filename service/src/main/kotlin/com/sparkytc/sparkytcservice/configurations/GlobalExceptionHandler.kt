@@ -4,6 +4,7 @@ import com.sparkytc.sparkytcservice.dto.ErrorResponse
 import com.sparkytc.sparkytcservice.services.AuthenticationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.multipart.MaxUploadSizeExceededException
@@ -16,6 +17,15 @@ class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ErrorResponse(
             error = "Validation Error",
             message = ex.message ?: "An error occurred"
+        ))
+    }
+
+    // e.g. an integration API call with broken JSON or a list where text was expected
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadableBody(ex: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.badRequest().body(ErrorResponse(
+            error = "Validation Error",
+            message = "The request body isn't valid JSON, or a field has the wrong type"
         ))
     }
 

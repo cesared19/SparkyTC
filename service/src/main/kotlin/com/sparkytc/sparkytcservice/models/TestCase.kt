@@ -50,6 +50,15 @@ class TestCase(
     @JoinColumn(name = "updated_by_id")
     var updatedBy: User? = null,
 
+    // the API token that created it, when another app did instead of a user
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_token_id")
+    var createdByToken: ProjectApiToken? = null,
+
+    // the other app's reference to it, unique among the project's test cases that aren't archived
+    @Column(name = "source_ref")
+    var sourceRef: String? = null,
+
     // the suite or section it's filed in; always set once saved
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id")
@@ -94,6 +103,6 @@ class TestCase(
             propertyValueMap[propertyValue.propertyConfiguration.externalID] = propertyValue.value
         }
 
-        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName, updatedBy?.displayName, modifyDate, isArchived, section?.externalID, labels.sortedBy { it.lowercase() }, format, steps.map { it.toDTO() })
+        return TestCaseDTO(externalID, creationDate, project.externalID, testCaseNumber, title, description, testInstructions, propertyValueMap, attachments.map { it.toDTO() }, jiraLinks.map { it.toDTO() }, createdBy?.displayName ?: createdByToken?.authorName, updatedBy?.displayName, modifyDate, isArchived, section?.externalID, labels.sortedBy { it.lowercase() }, format, steps.map { it.toDTO() })
     }
 }

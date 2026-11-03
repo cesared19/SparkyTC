@@ -191,8 +191,156 @@ class IntegrationApiTests {
         assertEquals(1, otherResults.get("missingSectionIDs").size())
     }
 
-    private fun token(shortCode: String): String =
-        data(send(post("/api/v1/workspace/projects/$shortCode/api-tokens"), mapOf("name" to "co-bord"))).get("secret").asText()
+    @Test
+    fun `only read and write tokens create, and revoking keeps what they created credited`() {
+        val read = token("PRJ")
+        val write = token("PRJ", canWrite = true)
+        assertEquals(listOf("read"), data(integration(read, get("/api/integration/v1/project"))).get("permissions").map { it.asText() })
+        assertEquals(listOf("read", "write"), data(integration(write, get("/api/integration/v1/project"))).get("permissions").map { it.asText() })
+        assertEquals(listOf(true, false), data(admin.perform(get("/api/v1/workspace/projects/PRJ/api-tokens"))).map { it.get("canWrite").asBoolean() })
+
+        // a read token can't create, but still asks for results with a POST
+        val denied = integration(read, post("/api/integration/v1/test-cases"), mapOf("title" to "Nope")).andExpect(status().isForbidden)
+        assertEquals("This token can only read. Create a Read and write token in Settings → API tokens.", message(denied))
+        integration(read, post("/api/integration/v1/sections"), mapOf("path" to "Nope")).andExpect(status().isForbidden)
+        integration(read, post("/api/integration/v1/test-plans"), mapOf("name" to "Nope")).andExpect(status().isForbidden)
+        integration(read, post("/api/integration/v1/results"), mapOf("testCaseNumbers" to listOf(1))).andExpect(status().isOk)
+
+        data(integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Created by an app")))
+        assertEquals("co-bord (API token)", appTestCase(1).get("createdBy").asText())
+
+        // revoking stops the token and hides it, but what it created still names it
+        val writeID = data(admin.perform(get("/api/v1/workspace/projects/PRJ/api-tokens"))).first { it.get("canWrite").asBoolean() }.get("tokenID").asText()
+        send(delete("/api/v1/workspace/api-tokens/$writeID"), null).andExpect(status().isOk)
+        integration(write, get("/api/integration/v1/project")).andExpect(status().isUnauthorized)
+        assertEquals(1, data(admin.perform(get("/api/v1/workspace/projects/PRJ/api-tokens"))).size())
+        send(delete("/api/v1/workspace/api-tokens/$writeID"), null).andExpect(status().isBadRequest)
+        assertEquals("co-bord (API token)", appTestCase(1).get("createdBy").asText())
+    }
+
+    @Test
+    fun `creates sections, test cases and plans, once per sourceRef`() {
+        val write = token("PRJ", canWrite = true)
+
+        // sections by path, reusing the parts that exist, ignoring case
+        val cards = data(integration(write, post("/api/integration/v1/sections"), mapOf("path" to "Checkout / Payments / Cards")))
+        assertEquals("Checkout / Payments / Cards", cards.get("path").asText())
+        val again = data(integration(write, post("/api/integration/v1/sections"), mapOf("path" to " checkout/payments / CARDS ")))
+        assertEquals(cards.get("sectionID").asText(), again.get("sectionID").asText())
+
+        // a text test case, with labels cleaned like in the app
+        val text = data(integration(write, post("/api/integration/v1/test-cases"), mapOf(
+            "title" to "Pay with a saved card", "description" to "From the checkout flow", "testInstructions" to "Pay and check the receipt",
+            "sectionPath" to "Checkout / Payments", "labels" to listOf("Smoke", "smoke", " web "), "sourceRef" to "cobord:board:1",
+        )))
+        assertEquals(1, text.get("testCaseNumber").asInt())
+        assertTrue(text.get("created").asBoolean())
+        assertEquals("Checkout / Payments", text.get("sectionPath").asText())
+        assertEquals(listOf("Smoke", "web"), text.get("labels").map { it.asText() })
+        assertEquals("/test-cases/PRJ/1", text.get("webPath").asText())
+        assertEquals("cobord:board:1", text.get("sourceRef").asText())
+
+        // the same reference again returns the first test case instead of creating another
+        val repeated = data(integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Another title", "sourceRef" to "cobord:board:1")))
+        assertEquals(1, repeated.get("testCaseNumber").asInt())
+        assertFalse(repeated.get("created").asBoolean())
+
+        // a test case written as steps, in the first suite when no section is given
+        val steps = data(integration(write, post("/api/integration/v1/test-cases"), mapOf(
+            "title" to "Refund an order", "format" to "STEPS",
+            "steps" to listOf(mapOf("action" to "Open the order", "expected" to "The order page opens"), mapOf("action" to "Click Refund")),
+        )))
+        assertEquals(2, steps.get("testCaseNumber").asInt())
+        val appSteps = appTestCase(2)
+        assertEquals("STEPS", appSteps.get("format").asText())
+        assertEquals(listOf("Open the order", "Click Refund"), appSteps.get("steps").map { it.get("action").asText() })
+        // the project's first suite: Checkout, created above
+        assertEquals("Checkout", steps.get("sectionPath").asText())
+        // credited to the token, and the required properties take their defaults
+        assertEquals("co-bord (API token)", appSteps.get("createdBy").asText())
+        assertTrue(appSteps.get("updatedBy")?.isNull ?: true)
+        val required = data(admin.perform(get("/api/v1/workspace/properties"))).filter { it.get("isRequired").asBoolean() }
+        required.forEach { assertEquals(it.get("defaultValue").asText(), appSteps.get("propertyValues").get(it.get("propertyConfigurationID").asText()).asText()) }
+
+        // plans by section, label and test case number, once per reference
+        val plan = data(integration(write, post("/api/integration/v1/test-plans"), mapOf(
+            "name" to "Checkout flow", "sectionIDs" to listOf(cards.get("sectionID").asText()), "labels" to listOf("smoke"),
+            "testCaseNumbers" to listOf(2), "sourceRef" to "cobord:board:flow",
+        )))
+        assertTrue(plan.get("created").asBoolean())
+        assertEquals(2, plan.get("testCaseCount").asInt())
+        val planAgain = data(integration(write, post("/api/integration/v1/test-plans"), mapOf("name" to "Other", "testCaseNumbers" to listOf(1), "sourceRef" to "cobord:board:flow")))
+        assertEquals(plan.get("testPlanID").asText(), planAgain.get("testPlanID").asText())
+        assertFalse(planAgain.get("created").asBoolean())
+        val appPlans = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-plans")))
+        assertEquals(1, appPlans.size())
+        assertEquals("co-bord (API token)", appPlans[0].get("createdBy").asText())
+
+        // the reference of an archived test case can be used again
+        val testCaseID = appTestCase(1).get("testCaseID").asText()
+        createRun(1, createBuild("1.0"), testCaseID to TestCaseRunStatus.PASS)
+        send(delete("/api/v1/workspace/test-cases/$testCaseID"), null).andExpect(status().isOk)
+        val recreated = data(integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Pay with a saved card", "sourceRef" to "cobord:board:1")))
+        assertTrue(recreated.get("created").asBoolean())
+        assertEquals(3, recreated.get("testCaseNumber").asInt())
+    }
+
+    @Test
+    fun `requests with the same sourceRef at once create one test case`() {
+        val write = token("PRJ", canWrite = true)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(6)
+        val answers = (1..6).map {
+            pool.submit<JsonNode> {
+                data(integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Rule fired twice", "sourceRef" to "cobord:rule:7")))
+            }
+        }.map { it.get() }
+        pool.shutdown()
+        assertEquals(setOf(1), answers.map { it.get("testCaseNumber").asInt() }.toSet())
+        assertEquals(1, answers.count { it.get("created").asBoolean() })
+        assertEquals(1, data(admin.perform(get("/api/v1/workspace/test-cases/PRJ"))).size())
+    }
+
+    @Test
+    fun `writing validates like the app and stays in the token's project`() {
+        val write = token("PRJ", canWrite = true)
+        fun rejected(path: String, body: Any) = message(integration(write, post("/api/integration/v1/$path"), body).andExpect(status().isBadRequest))
+
+        assertEquals("Give the test case a title", rejected("test-cases", mapOf("title" to " ")))
+        assertEquals("The title can have up to 500 characters", rejected("test-cases", mapOf("title" to "x".repeat(501))))
+        assertEquals("The format must be TEXT or STEPS", rejected("test-cases", mapOf("title" to "A", "format" to "TABLE")))
+        assertTrue(rejected("test-cases", mapOf("title" to "A", "format" to "TEXT", "steps" to listOf(mapOf("action" to "Go")))).contains("STEPS format"))
+        rejected("test-cases", mapOf("title" to "A", "format" to "STEPS"))
+        rejected("test-cases", mapOf("title" to "A", "steps" to listOf(mapOf("expected" to "No action"))))
+        assertTrue(rejected("test-cases", mapOf("title" to "A", "labels" to listOf("x".repeat(51)))).contains("50 characters"))
+        assertTrue(rejected("test-cases", mapOf("title" to "A", "sourceRef" to "x".repeat(201))).contains("200 characters"))
+        assertEquals("The request body isn't valid JSON, or a field has the wrong type", rejected("test-cases", mapOf("title" to listOf("A"))))
+
+        assertTrue(rejected("sections", mapOf("path" to " / ")).isNotEmpty())
+        assertTrue(rejected("sections", mapOf("path" to "x".repeat(201))).contains("200 characters"))
+
+        assertEquals("The test plan needs a name", rejected("test-plans", mapOf("name" to " ", "testCaseNumbers" to listOf(1))))
+        assertTrue(rejected("test-plans", mapOf("name" to "Empty")).startsWith("Choose the test cases"))
+        assertEquals("No test case #999 in this project", rejected("test-plans", mapOf("name" to "Missing", "testCaseNumbers" to listOf(999))))
+        // nothing was created by the rejected requests
+        assertEquals(0, data(admin.perform(get("/api/v1/workspace/test-cases/PRJ"))).size())
+
+        // each project's token creates in its own project, and references don't collide between projects
+        val other = token("OTH", canWrite = true)
+        val otherSection = data(integration(other, post("/api/integration/v1/sections"), mapOf("path" to "Elsewhere"))).get("sectionID").asText()
+        assertTrue(data(integration(other, post("/api/integration/v1/test-cases"), mapOf("title" to "Theirs", "sourceRef" to "shared"))).get("created").asBoolean())
+        assertTrue(data(integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Ours", "sourceRef" to "shared"))).get("created").asBoolean())
+        assertEquals(listOf("Ours"), data(admin.perform(get("/api/v1/workspace/test-cases/PRJ"))).map { it.get("title").asText() })
+        assertTrue(rejected("test-plans", mapOf("name" to "Theirs", "sectionIDs" to listOf(otherSection))).startsWith("No section found"))
+    }
+
+    private fun token(shortCode: String, canWrite: Boolean = false): String =
+        data(send(post("/api/v1/workspace/projects/$shortCode/api-tokens"), mapOf("name" to "co-bord", "canWrite" to canWrite))).get("secret").asText()
+
+    private fun appTestCase(number: Int): JsonNode =
+        data(admin.perform(get("/api/v1/workspace/test-cases/PRJ"))).first { it.get("testCaseNumber").asInt() == number }
+
+    private fun message(result: ResultActions): String =
+        objectMapper.readTree(result.andReturn().response.contentAsString).get("message").asText()
 
     private fun integration(secret: String, request: MockHttpServletRequestBuilder, body: Any? = null): ResultActions {
         request.header(HttpHeaders.AUTHORIZATION, "Bearer $secret").contentType(MediaType.APPLICATION_JSON)

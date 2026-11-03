@@ -46,6 +46,15 @@ class TestPlan(
     @JoinColumn(name = "updated_by_id")
     var updatedBy: User? = null,
 
+    // the API token that created it, when another app did instead of a user
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_token_id")
+    var createdByToken: ProjectApiToken? = null,
+
+    // the other app's reference to it, unique among the project's test plans
+    @Column(name = "source_ref")
+    var sourceRef: String? = null,
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "test_plan_sections",
@@ -75,7 +84,7 @@ class TestPlan(
             sectionIDs = sections.map { it.externalID },
             labels = labels.sortedBy { it.lowercase() },
             testCaseIDs = testCases.map { it.externalID },
-            createdBy = createdBy?.displayName,
+            createdBy = createdBy?.displayName ?: createdByToken?.authorName,
             updatedBy = updatedBy?.displayName,
             modifyDate = modifyDate,
         )
