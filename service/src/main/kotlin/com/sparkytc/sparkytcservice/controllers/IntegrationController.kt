@@ -7,6 +7,8 @@ import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestPlanDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationResultsRequestDTO
 import com.sparkytc.sparkytcservice.services.IntegrationService
 import com.sparkytc.sparkytcservice.services.IntegrationWriteService
+import com.sparkytc.sparkytcservice.dto.ErrorResponse
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -30,6 +32,14 @@ class IntegrationController(
     @GetMapping("/test-cases")
     fun testCases(@RequestParam(required = false) query: String?, @RequestParam(defaultValue = "50") limit: Int): ResponseEntity<Any> =
         ResponseEntity.ok(DataResponse(data = integrationService.retrieveTestCases(query, limit)))
+
+    /** A test case by its number, with its steps and results, newest first (up to `limit`). 404 if there's none. */
+    @GetMapping("/test-cases/{testCaseNumber}/history")
+    fun history(@PathVariable testCaseNumber: Long, @RequestParam(defaultValue = "50") limit: Int): ResponseEntity<Any> {
+        val history = integrationService.retrieveHistory(testCaseNumber, limit)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(error = "Not Found", message = "No test case $testCaseNumber in this project"))
+        return ResponseEntity.ok(DataResponse(data = history))
+    }
 
     @GetMapping("/test-plans")
     fun testPlans(): ResponseEntity<Any> = ResponseEntity.ok(DataResponse(data = integrationService.retrieveTestPlans()))

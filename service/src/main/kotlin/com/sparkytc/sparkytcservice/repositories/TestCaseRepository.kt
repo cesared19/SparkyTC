@@ -20,6 +20,8 @@ interface TestCaseRepository : JpaRepository<TestCase, Long> {
 
     fun findByExternalID(externalID: UUID): TestCase?
 
+    fun findByProjectAndTestCaseNumber(project: WorkspaceProject, testCaseNumber: Long): TestCase?
+
     fun findAllBySection(section: TestCaseSection): List<TestCase>
 
     // what another app created with this reference; archived test cases free it

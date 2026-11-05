@@ -1,6 +1,6 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.2.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.3.0 está en `main`.
 
 **Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
@@ -40,13 +40,14 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - Borradores de resultado (desde 2.1.1): lo que el tester marca y escribe en un caso del run (resultado, pasos con su actual, comentario) se guarda en el servidor mientras trabaja (`test_case_run_drafts`, uno por usuario y caso, 0.0.18; `ResultDraftService`, `/test-case-runs/{id}/draft`) y se borra al guardar el resultado. El cliente lo carga y guarda con `fetch` directo a la ruta de recurso `/test-case-run-drafts/$id` (`useResultDraft`, ~0.8 s tras cada cambio y al salir con `keepalive`), no con un fetcher, para no recargar el run en cada tecla. "Save result" tiene el selector de resultado al lado (`ResultChooser`) y dice qué falta; al guardar se pasa al siguiente caso con `?saved=<número>` (`SavedResultNotice`). La tabla del run y la exportación de resultados muestran los pasos del último resultado (`stepResultsSummaryText`).
 - API de integración (desde 2.2.0): tokens por proyecto (`project_api_tokens`, 0.0.19; solo se guarda el hash SHA-256 y un prefijo; se muestran una vez) que crean y revocan los admins en Settings (`ApiTokenService`, `ApiTokens.tsx`, ruta de recurso `/api-tokens`). `/api/integration/v1/**` usa `IntegrationTokenInterceptor` (no la sesión) y lee solo el proyecto del token: proyecto y builds, secciones con su ruta, casos, planes y `POST /results` con el último resultado ejecutado en una build (la actual por defecto) y conteos por sección y plan (`IntegrationService`; los casos de un plan siguen la regla de `planTestCases`). La usa co-bord.
 - Escritura por la API (desde 2.3.0): tokens Read o Read and write (`project_api_tokens.can_write`, 0.0.20; los de 2.2.0 quedan como Read). Con escritura, `POST /sections` (por ruta, como `sectionForPath`), `/test-cases` y `/test-plans` (`IntegrationWriteService`); nunca se edita ni se borra desde la API, y un token de lectura recibe 403 (`IntegrationTokenInterceptor`; `POST /results` cuenta como lectura). Lo creado guarda `created_by_token_id` (casos, secciones y planes, con `created_by` en null) y se muestra como "Nombre (API token)" (`ProjectApiToken.authorName`). `source_ref` hace la creación idempotente (índices únicos parciales por proyecto; en casos excluye los archivados) y una carrera se resuelve devolviendo el existente. Revocar es lógico (`revoked_at`), para no perder la atribución. El título por la API tiene un máximo de 500 caracteres (la app no tiene límite).
+- Historial por la API (desde 2.4.0): `GET /test-cases/{number}/history?limit=` (`IntegrationService.retrieveHistory`, `findByProjectAndTestCaseNumber`): el caso (también archivado) con descripción, instrucciones y pasos (los compartidos expandidos con su nombre) y sus resultados del más nuevo al más viejo con run, build, `isLatestInRun`, pasos del resultado, cantidad de evidencia y `webPath` al caso en el run; 404 si el proyecto del token no tiene ese número. Lo usa co-bord 0.14.0 para mostrar el historial de un caso vinculado.
 - Responsivo (desde 1.3.0): en móvil la barra superior es un menú, la lista de proyectos es un panel lateral y las tablas (`Table`) se muestran como tarjetas hasta `lg`; la página Users usa `useMediaQuery` para no duplicar sus formularios. Revisa los cambios de interfaz también a 390 px y 820 px.
 - Modo claro, oscuro o del sistema. Paleta de marca carmesí `#C01C37`, con la escala de grises y la escala `brand` definidas como variables CSS en `client/app/tailwind.css`.
 
 ## Cómo trabajar
 
 - **Antes de hacer push:**
-  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 90).
+  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 91).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint está en 0 problemas (desde 2.0.1); debe seguir así. Los payloads que se envían con `useSubmit`/`fetcher.submit` son alias `type`, no interfaces que extienden `Record<string, any>`.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
@@ -63,5 +64,5 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Versión en curso
 
-- **2.3.0** (rama `claude/v2.3.0`): tokens con permiso de escritura para que co-bord cree secciones, casos y planes desde sus tableros, con atribución al token e idempotencia por `sourceRef`.
+- **2.4.0** (rama `claude/intelligent-hamilton-ish806`): historial de un caso por la API de integración, para co-bord 0.14.0.
 - **Propuesta pendiente de decisiones** (trazabilidad y administración): References y reporte de cobertura; auditoría y roles (Viewer, Lead); revisión y aprobación de casos; HTTPS y SSO.
