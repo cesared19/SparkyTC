@@ -197,6 +197,7 @@ Other apps can read a project through an API, and create test cases in it, for e
 | `GET /sections` | Suites and sections, with their path and how many test cases they hold (nested ones included) |
 | `GET /test-cases?query=&limit=` | Test cases whose number or title match, with their section and labels |
 | `GET /test-plans` | Test plans and how many test cases they have now |
+| `GET /test-cases/{number}/history?limit=` | A test case (archived ones too) with its description, instructions and steps (shared steps expanded), and its results in the project's test runs, newest first (up to `limit`, 50 by default): status, notes, who and when, the run and its build, whether it was the run's final result, how each step went, the number of evidence files and a `webPath` to the test case in that run. `total` counts them all. A number the project doesn't have gets a 404. |
 | `POST /results` | For the given `testCaseNumbers`, `sectionIDs` and `testPlanIDs`: the latest executed result of each test case in a `build` (the current build by default), and counts for sections and plans. Items that no longer exist are listed as missing. |
 
 `GET /project` also returns the token's `permissions`: `["read"]` or `["read", "write"]`. A Read and write token can also call:

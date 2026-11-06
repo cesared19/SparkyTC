@@ -8,6 +8,7 @@ import com.sparkytc.sparkytcservice.dto.projects.CreateWorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.testcases.CreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.testruns.CreateTestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
+import com.sparkytc.sparkytcservice.dto.steps.StepResultDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -331,6 +332,48 @@ class IntegrationApiTests {
         assertTrue(data(integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Ours", "sourceRef" to "shared"))).get("created").asBoolean())
         assertEquals(listOf("Ours"), data(admin.perform(get("/api/v1/workspace/test-cases/PRJ"))).map { it.get("title").asText() })
         assertTrue(rejected("test-plans", mapOf("name" to "Theirs", "sectionIDs" to listOf(otherSection))).startsWith("No section found"))
+    }
+
+    @Test
+    fun `reads a test case's history, newest first, with how each step went`() {
+        val secret = token("PRJ", canWrite = true)
+        val created = data(integration(secret, post("/api/integration/v1/test-cases"), mapOf(
+            "title" to "Sign in", "description" to "With a password",
+            "steps" to listOf(mapOf("action" to "Open the app", "expected" to "The sign in page"), mapOf("action" to "Sign in")),
+        )))
+        val number = created.get("testCaseNumber").asInt()
+        val testCaseID = created.get("testCaseID").asText()
+        val build = createBuild("2.0")
+        createRun(1, build, testCaseID to TestCaseRunStatus.FAIL)
+        // a second result in another run, with the steps recorded
+        send(post("/api/v1/workspace/test-runs/PRJ"), CreateTestRunDTO("Run 2", null, listOf(UUID.fromString(testCaseID)), buildID = UUID.fromString(build)))
+            .andExpect(status().isOk)
+        val run = data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/2")))[0]
+        val runSteps = run.get("steps")
+        val stepResults = runSteps.map { StepResultDTO(UUID.fromString(it.get("stepID").asText()), TestCaseRunStatus.PASS, "As expected") }
+        send(put("/api/v1/workspace/test-case-runs/${run.get("testCaseRunID").asText()}"), UpdateTestCaseRunDTO(TestCaseRunStatus.PASS, "Works now", stepResults = stepResults))
+            .andExpect(status().isOk)
+
+        val history = data(integration(secret, get("/api/integration/v1/test-cases/$number/history")))
+        assertEquals("Sign in", history.get("testCase").get("title").asText())
+        assertEquals("With a password", history.get("description").asText())
+        assertEquals("STEPS", history.get("format").asText())
+        assertEquals(listOf("Open the app", "Sign in"), history.get("steps").map { it.get("action").asText() })
+        assertEquals(2, history.get("total").asInt())
+        val results = history.get("results")
+        assertEquals(listOf("PASS", "FAIL"), results.map { it.get("status").asText() })
+        assertEquals(listOf(2, 1), results.map { it.get("testRunNumber").asInt() })
+        assertEquals("2.0", results[0].get("buildNumber").asText())
+        assertEquals("Works now", results[0].get("notes").asText())
+        assertTrue(results[0].get("isLatestInRun").asBoolean())
+        assertEquals("/test-runs/PRJ/2/$number", results[0].get("webPath").asText())
+        assertEquals(listOf("PASS", "PASS"), results[0].get("steps").map { it.get("status").asText() })
+        assertEquals("The sign in page", results[0].get("steps")[0].get("expected").asText())
+        assertEquals(1, data(integration(secret, get("/api/integration/v1/test-cases/$number/history").param("limit", "1"))).get("results").size())
+
+        // a number that isn't there, or is in another project, is not found
+        integration(secret, get("/api/integration/v1/test-cases/99/history")).andExpect(status().isNotFound)
+        integration(token("OTH"), get("/api/integration/v1/test-cases/$number/history")).andExpect(status().isNotFound)
     }
 
     private fun token(shortCode: String, canWrite: Boolean = false): String =

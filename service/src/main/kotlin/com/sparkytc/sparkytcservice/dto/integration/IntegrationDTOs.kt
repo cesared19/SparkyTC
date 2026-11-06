@@ -129,3 +129,50 @@ data class IntegrationCreateTestPlanDTO(
     val testCaseNumbers: List<Long>? = null,
     val sourceRef: String? = null,
 )
+
+/** A test case with what it says to do, and its results in the project's test runs, newest first. */
+data class IntegrationTestCaseHistoryDTO(
+    val testCase: IntegrationTestCaseDTO,
+    val description: String?,
+    val testInstructions: String?,
+    /** TEXT or STEPS. */
+    val format: String,
+    /** For test cases written as steps; shared steps come expanded, with their name. */
+    val steps: List<IntegrationTestStepDTO>,
+    /** Archived: deleted after being used in test runs, kept for their results. */
+    val archived: Boolean,
+    /** How many results there are in all; `results` has up to `limit` of them. */
+    val total: Int,
+    val results: List<IntegrationHistoryEntryDTO>,
+)
+
+/** A step as the test case says it, for reading; shared steps come expanded, with their name. */
+data class IntegrationTestStepDTO(
+    val action: String,
+    val expected: String?,
+    val sharedStepName: String? = null,
+)
+
+data class IntegrationHistoryEntryDTO(
+    val status: IntegrationResultStatus,
+    val notes: String?,
+    val recordedBy: String?,
+    val recordedAt: Date,
+    val testRunNumber: Long,
+    val testRunTitle: String,
+    val buildNumber: String?,
+    /** Whether it's the result the test case ended with in that run (a run can have several). */
+    val isLatestInRun: Boolean,
+    /** How each step went, as the steps were when the run started. */
+    val steps: List<IntegrationStepResultDTO>,
+    val evidenceCount: Int,
+    /** The test case in that run, in the SparkyTC app. */
+    val webPath: String,
+)
+
+data class IntegrationStepResultDTO(
+    val action: String,
+    val expected: String?,
+    val status: IntegrationResultStatus?,
+    val actual: String?,
+)

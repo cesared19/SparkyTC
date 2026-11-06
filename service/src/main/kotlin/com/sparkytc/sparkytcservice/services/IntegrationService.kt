@@ -27,6 +27,7 @@ class IntegrationService(
     private val testPlanRepository: TestPlanRepository,
     private val testRunRepository: TestRunRepository,
     private val buildResultsService: BuildResultsService,
+    private val testCaseResultRepository: TestCaseResultRepository,
 ) {
     private fun project(): WorkspaceProject = projectRepository.findById(CurrentIntegrationProject.get()).orElseThrow()
 
@@ -147,6 +148,51 @@ class IntegrationService(
     }
 
     /**
+     * A test case of the token's project by its number, archived ones included, with its steps and up to `limit` of
+     * its results, newest first; null when there's no such test case.
+     */
+    @Transactional
+    fun retrieveHistory(testCaseNumber: Long, limit: Int): IntegrationTestCaseHistoryDTO? {
+        val project = project()
+        val testCase = testCaseRepository.findByProjectAndTestCaseNumber(project, testCaseNumber) ?: return null
+        val tree = SectionTree(sectionRepository.findAllByProjectOrderByPositionAscIdAsc(project))
+        val results = testCaseResultRepository.findAllByTestCaseRunTestCaseOrderByRecordedAtDescIdDesc(testCase)
+        val latestByRun = results.groupBy { it.testCaseRun.id }.mapValues { (_, runResults) -> runResults.first().id }
+        val steps = testCase.steps.sortedBy { it.position }.flatMap { step ->
+            val shared = step.sharedStep
+            if (shared != null) shared.items.sortedBy { it.position }.map { IntegrationTestStepDTO(it.action, it.expected, shared.name) }
+            else listOf(IntegrationTestStepDTO(step.action.orEmpty(), step.expected))
+        }
+        return IntegrationTestCaseHistoryDTO(
+            testCase = toIntegration(project, tree, testCase),
+            description = testCase.description,
+            testInstructions = testCase.testInstructions,
+            format = testCase.format.name,
+            steps = steps,
+            archived = testCase.isArchived,
+            total = results.size,
+            results = results.take(limit.coerceIn(1, 200)).map { result ->
+                val run = result.testCaseRun.testRun
+                IntegrationHistoryEntryDTO(
+                    status = status(result.status),
+                    notes = result.notes,
+                    recordedBy = result.recordedBy?.displayName,
+                    recordedAt = result.recordedAt,
+                    testRunNumber = run.testRunNumber,
+                    testRunTitle = run.title,
+                    buildNumber = run.build?.buildNumber,
+                    isLatestInRun = latestByRun[result.testCaseRun.id] == result.id,
+                    steps = result.stepResults.sortedBy { it.step.position }.map {
+                        IntegrationStepResultDTO(it.step.action, it.step.expected, it.status?.let(::status), it.actual)
+                    },
+                    evidenceCount = result.attachments.size,
+                    webPath = "/test-runs/${project.projectShortCode}/${run.testRunNumber}/${testCase.testCaseNumber}",
+                )
+            },
+        )
+    }
+
+    /**
      * The latest executed result of each test case among the build's test runs, by test case id; like the
      * build results, a later pending test case doesn't hide an earlier result. Without builds, every run counts.
      */
@@ -195,7 +241,9 @@ class IntegrationService(
         return IntegrationGroupResultDTO(id, name, counts, summary, webPath)
     }
 
-    private fun status(run: TestCaseRun?): IntegrationResultStatus = when (run?.status) {
+    private fun status(run: TestCaseRun?): IntegrationResultStatus = status(run?.status)
+
+    private fun status(value: TestCaseRunStatus?): IntegrationResultStatus = when (value) {
         TestCaseRunStatus.PASS -> IntegrationResultStatus.PASS
         TestCaseRunStatus.FAIL -> IntegrationResultStatus.FAIL
         TestCaseRunStatus.BLOCKED -> IntegrationResultStatus.BLOCKED
