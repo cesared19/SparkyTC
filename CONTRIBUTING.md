@@ -7,17 +7,19 @@ How work on SparkyTC goes from an idea to a release. It applies to everyone who 
 - Bugs and ideas are reported as GitHub issues with the **Bug report** or **Feature request** form, not in chats or messages. Feedback from testers goes there too, with the steps and a video when possible.
 - New issues get the `triage` label. Triage, at least once a week, decides:
   - the type (`bug`, `enhancement`, `maintenance`, `documentation`);
-  - for bugs, the severity;
+  - for bugs, the severity, as exactly one severity label from the table below;
   - the milestone (the version it's planned for), or that it's not planned.
+
+  Then the `triage` label is removed. An issue keeps it while it has open questions only the owner can answer.
 - An issue is **ready** to start when its expected result is clear, with acceptance criteria for features and steps to reproduce for bugs, and open questions are answered.
 - Bugs go before features, by severity:
 
-  | Severity | Meaning | Aim |
+  | Label | Meaning | Aim |
   | --- | --- | --- |
-  | Critical | Data is lost or nobody can work | Fix now, as a hotfix |
-  | High | A main task can't be done and there's no workaround | Next release |
-  | Medium | There's a workaround | Planned in a milestone |
-  | Low | Cosmetic or minor | When there's room |
+  | `severity: critical` | Data is lost or nobody can work | Fix now, as a hotfix |
+  | `severity: high` | A main task can't be done and there's no workaround | Next release |
+  | `severity: medium` | There's a workaround | Planned in a milestone |
+  | `severity: low` | Cosmetic or minor | When there's room |
 
 ## 2. One branch and one pull request per issue
 

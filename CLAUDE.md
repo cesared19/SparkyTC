@@ -13,6 +13,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - **Backend:** Spring Boot 3 + Kotlin (JDK 21), en `service/`. Paquete `com.sparkytc.sparkytcservice`, configuración con prefijo `sparkytc.*`.
 - **Frontend:** Remix + React + Tailwind, en `client/`. Todas las llamadas a la API pasan por el servidor Remix con la sesión del usuario (`requireAPI` / `requireUser` / `requireAdmin`).
 - **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.20). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
+- **Rendimiento:** Hibernate carga las colecciones por lotes (`default_batch_fetch_size`); al listar runs con sus resultados, usar `findAllByTestRunIn` (`BuildResultsService.testCaseRunsByRun`) en vez de una consulta por run. La página de un run carga solo ese run (`/projects/{code}/test-runs/{number}`).
 - **Deploy:** Docker Compose (`docker-compose.yml`); la imagen del cliente usa Node 22. El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
 
 ## Funcionalidades existentes (v1.0.0)
@@ -61,9 +62,6 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - **Releases:** etiquetas `vX.Y.Z`. Esta sesión no puede crear releases ni subir etiquetas: las notas son la sección de esa versión en `CHANGELOG.md`, con el enlace `compare/vA...vB`, y el usuario publica la release en GitHub.
 - **Al recibir una lista de trabajo:** proponer un orden (bugs primero) y preguntar lo que no quede claro antes de empezar.
 
-## Pendientes conocidos
+## Pendientes
 
-- Más adelante: HTTPS en el servidor y convertir la app en PWA; migrar de Remix 2 a React Router 7 y de ESLint 8 a 9.
-- Rendimiento: Hibernate carga las colecciones por lotes (`default_batch_fetch_size`); al listar runs con sus resultados, usar `findAllByTestRunIn` (`BuildResultsService.testCaseRunsByRun`) en vez de una consulta por run. La página de un run carga solo ese run (`/projects/{code}/test-runs/{number}`).
-- Propuesta pendiente de decisiones (trazabilidad y administración): References y reporte de cobertura; auditoría y roles (Viewer, Lead); revisión y aprobación de casos; HTTPS y SSO. Pasarla a issues cuando se decida.
-- Siguientes pasos del proceso: pruebas E2E con Playwright dentro del repo y de la CI; imágenes en GitHub Container Registry, ambiente de staging, respaldos de Postgres y migración con respaldo previo; después HTTPS.
+El trabajo pendiente vive en los issues de GitHub (los que tienen `triage` esperan decisiones del usuario) y lo planeado para cada versión, en su milestone. No se lista aquí.
