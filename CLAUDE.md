@@ -1,6 +1,8 @@
 # SparkyTC
 
-Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión 2.3.0 está en `main`.
+Plataforma de gestión de test cases, basada en el proyecto open source Cherry (Apache 2.0). La versión actual es la de `service/build.gradle.kts`; lo que cambió en cada una está en `CHANGELOG.md`.
+
+**Proceso:** el flujo de trabajo (issues, ramas, definition of done, releases, hotfixes) está en `CONTRIBUTING.md` y aplica a cada sesión. Este archivo guarda solo reglas duraderas y arquitectura: la versión en curso y el plan viven en los issues y milestones de GitHub, y las versiones publicadas en GitHub Releases.
 
 **Repositorio:** trabaja y abre PRs solo en https://github.com/cesared19/SparkyTC.
 
@@ -46,23 +48,22 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 
 ## Cómo trabajar
 
-- **Antes de hacer push:**
-  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres; hoy son 91).
+- **Cada tarea es un issue** (si no existe, pide crearlo o créalo con su plantilla) y se trabaja en su propia rama (`feat/123-...`, `fix/...`), sin tocar archivos de otra sesión en curso.
+- **Antes de hacer push** (la CI de GitHub corre lo mismo en cada PR y debe quedar en verde):
+  - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint está en 0 problemas (desde 2.0.1); debe seguir así. Los payloads que se envían con `useSubmit`/`fetcher.submit` son alias `type`, no interfaces que extienden `Record<string, any>`.
 - **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
 - **Formato del cliente:** Prettier con `--use-tabs --single-quote --no-semi`; sigue el estilo del código existente.
-- **Flujo de trabajo:** un PR por versión. El usuario decide cuándo abrir y cuándo fusionar el PR (no abrirlo ni fusionarlo por iniciativa propia).
-- **Versionado:** al preparar una versión, actualiza `version` en `service/build.gradle.kts`, `client/package.json` y `client/package-lock.json`, y el `README.md` cuando corresponda.
-- **Releases:** etiquetas con formato `vX.Y.Z` (v1.0.0, v2.0.1, v2.1.0, v2.1.1 y v2.2.0 publicadas). Esta sesión no puede crear releases ni subir etiquetas: se preparan las notas (en inglés, con lo nuevo desde la release anterior, cómo actualizar y el enlace `compare/vA...vB`) y el usuario la publica en GitHub.
+- **Flujo de trabajo:** un PR por issue, que cierra su issue y sigue la plantilla. El usuario decide cuándo abrir y cuándo fusionar cada PR (no abrirlo ni fusionarlo por iniciativa propia); se fusionan con squash.
+- **Changelog:** cada PR que cambia algo para usuarios o para quien despliega agrega su línea bajo **Unreleased** en `CHANGELOG.md` (en inglés). Los cambios de esquema van también en **Upgrading**.
+- **Versionado:** los PRs normales **no** cambian la versión. Solo el PR de release (`release/X.Y.Z`) actualiza `version` en `service/build.gradle.kts`, `client/package.json` y `client/package-lock.json`, convierte **Unreleased** en la versión con fecha y actualiza los enlaces del final del changelog.
+- **Releases:** etiquetas `vX.Y.Z`. Esta sesión no puede crear releases ni subir etiquetas: las notas son la sección de esa versión en `CHANGELOG.md`, con el enlace `compare/vA...vB`, y el usuario publica la release en GitHub.
 - **Al recibir una lista de trabajo:** proponer un orden (bugs primero) y preguntar lo que no quede claro antes de empezar.
 
 ## Pendientes conocidos
 
 - Más adelante: HTTPS en el servidor y convertir la app en PWA; migrar de Remix 2 a React Router 7 y de ESLint 8 a 9.
 - Rendimiento: Hibernate carga las colecciones por lotes (`default_batch_fetch_size`); al listar runs con sus resultados, usar `findAllByTestRunIn` (`BuildResultsService.testCaseRunsByRun`) en vez de una consulta por run. La página de un run carga solo ese run (`/projects/{code}/test-runs/{number}`).
-
-## Versión en curso
-
-- **2.4.0** (rama `claude/intelligent-hamilton-ish806`): historial de un caso por la API de integración, para co-bord 0.14.0.
-- **Propuesta pendiente de decisiones** (trazabilidad y administración): References y reporte de cobertura; auditoría y roles (Viewer, Lead); revisión y aprobación de casos; HTTPS y SSO.
+- Propuesta pendiente de decisiones (trazabilidad y administración): References y reporte de cobertura; auditoría y roles (Viewer, Lead); revisión y aprobación de casos; HTTPS y SSO. Pasarla a issues cuando se decida.
+- Siguientes pasos del proceso: pruebas E2E con Playwright dentro del repo y de la CI; imágenes en GitHub Container Registry, ambiente de staging, respaldos de Postgres y migración con respaldo previo; después HTTPS.
