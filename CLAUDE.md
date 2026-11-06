@@ -52,7 +52,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - **Antes de hacer push** (la CI de GitHub corre lo mismo en cada PR y debe quedar en verde):
   - Backend: `cd service && ./gradlew test` (tests de integración con Testcontainers + Postgres).
   - Cliente: `cd client && npx tsc && npm run lint && npm run build`. El lint está en 0 problemas (desde 2.0.1); debe seguir así. Los payloads que se envían con `useSubmit`/`fetcher.submit` son alias `type`, no interfaces que extienden `Record<string, any>`.
-- **Si Testcontainers no encuentra Docker:** inicia dockerd con `DOCKER_MIN_API_VERSION=1.24`.
+- **Testcontainers** 1.21.4 o posterior: las versiones anteriores hablan una API de Docker que Docker 29 (local y en los runners de GitHub) ya rechaza. Si el daemon no está corriendo, inícialo con `dockerd`.
 - **Cambios de interfaz:** pruébalos de punta a punta en el navegador contra el build de producción (`npm run build` + `npm run start`), revisando también el modo oscuro.
 - **Formato del cliente:** Prettier con `--use-tabs --single-quote --no-semi`; sigue el estilo del código existente.
 - **Flujo de trabajo:** un PR por issue, que cierra su issue y sigue la plantilla. El usuario decide cuándo abrir y cuándo fusionar cada PR (no abrirlo ni fusionarlo por iniciativa propia); se fusionan con squash.
