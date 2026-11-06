@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in SparkyTC doesn't work as it should
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting it. A video or screenshot and the exact steps make it much faster to fix.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a test run and a test case written as steps
+        2. Mark the first step as Pass and type an actual result
+        3. Go back to the run without saving
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Attach screenshots or videos here.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical — data is lost or nobody can work
+        - High — a main task can't be done and there's no workaround
+        - Medium — there's a workaround
+        - Low — cosmetic or minor
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SparkyTC version
+      description: The version shown in the release you're using, e.g. 2.4.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: e.g. iPhone 15, Safari / MacBook, Chrome 131
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: How often it happens, the project or test run, error messages.
