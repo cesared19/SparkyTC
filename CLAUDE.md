@@ -15,6 +15,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - **Base de datos:** PostgreSQL con migraciones propias en `service/src/main/kotlin/com/sparkytc/sparkytcservice/database/DatabaseMigrator.kt` (esquema actual 0.0.20). Cada cambio de esquema agrega una versión nueva en `SchemaVersion` (`SchemaVersion.kt`) y su paso de migración.
 - **Rendimiento:** Hibernate carga las colecciones por lotes (`default_batch_fetch_size`); al listar runs con sus resultados, usar `findAllByTestRunIn` (`BuildResultsService.testCaseRunsByRun`) en vez de una consulta por run. La página de un run carga solo ese run (`/projects/{code}/test-runs/{number}`).
 - **Deploy:** Docker Compose (`docker-compose.yml`); la imagen del cliente usa Node 22. El backend solo se publica en `127.0.0.1:8080`; el cliente en el puerto 3000. El servidor se accede por IP, sin HTTPS todavía.
+- **Respaldos y migración (desde 2.5.0):** PostgreSQL 16 corre aparte (contenedor propio en el mismo servidor), no en el compose. `docker compose up` corre `pre-migration-backup` → `database-migration` (el backend con `MIGRATE`, sale al terminar) → `backend-service` (con `NONE`), cada uno con `service_completed_successfully`. `database-backup` hace un `pg_dump` diario (14 diarios, 8 semanales) en `backups/` del servidor; los scripts están en `deploy/backup/` (`backup.sh`, `restore.sh`, que lee host, puerto y base del `DATABASE_URL` JDBC). Restaurar y rollback están en el README.
 
 ## Funcionalidades existentes (v1.0.0)
 

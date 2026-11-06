@@ -2,12 +2,19 @@
 
 Notable changes to SparkyTC, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/). Each pull request adds its line under **Unreleased**; a release pull request turns that section into the new version (see [CONTRIBUTING.md](./CONTRIBUTING.md)).
 
-When a version changes the database, its entry says so under **Upgrading**: run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE`, then set it back to `NONE`.
+When a version changes the database, its entry says so under **Upgrading**. Since 2.5.0, `docker compose up` backs up the database and migrates it on its own; earlier versions ran the backend once with `DATABASE_MIGRATION_MODE=MIGRATE`, then set it back to `NONE`.
 
 ## [Unreleased]
 
 ### Added
 - Issue forms for bugs and feature requests, a pull request checklist, this changelog, and the contributing and security guides.
+- Daily database backups on the server, keeping 14 daily and 8 weekly ones, with commands to list them, check one by restoring it into a new database, and restore one. The README explains how to restore and how to roll back an upgrade.
+
+### Changed
+- `docker compose up` backs up the database, migrates it if the new version needs it, and only then starts the backend. If the backup or the migration fails, the backend doesn't start. `DATABASE_MIGRATION_MODE` is no longer set by hand.
+
+### Upgrading
+- Remove `DATABASE_MIGRATION_MODE` from `.env` and run `docker compose up -d --build`. Backups are written to `backups/` next to `docker-compose.yml` (`BACKUP_DIR` changes it); the README lists the other settings.
 
 ## [2.4.0] - 2026-11-06
 
