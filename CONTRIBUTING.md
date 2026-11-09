@@ -27,13 +27,16 @@ How work on SparkyTC goes from an idea to a release. It applies to everyone who 
 - Keep the branch to that issue, and short-lived: days, not weeks. Big features are split into issues that each leave `main` working.
 - Commit messages say what changes and why, in the imperative ("Keep unsaved results as drafts").
 - Open the pull request early and fill in the template. It **closes its issue** (`Closes #123`).
-- `main` is protected: changes only arrive through pull requests with green checks and an approval. Pull requests are **squash merged**, so each one is a single commit in `main`, and the branch is deleted afterwards.
+- `main` is protected: changes only arrive through pull requests approved by the owner. Pull requests are **squash merged**, so each one is a single commit in `main`, and the branch is deleted afterwards.
 
 ## 3. Definition of done
 
 A pull request is ready to merge when:
 
-- **CI is green**: backend tests, client types, lint (no problems allowed) and build, and both Docker images build.
+- **The checks pass locally**, run before pushing (the repository has no automated CI):
+  - backend: `cd service && ./gradlew test`;
+  - client: `cd client && npx tsc && npm run lint && npm run build`, with no lint problems;
+  - for changes to Docker files, `docker compose build`.
 - **Tests cover the change**: new behavior has tests, and a fixed bug has a test that failed before the fix.
 - **UI changes were checked** against the production build (`npm run build` + `npm run start`) at 390 px, 820 px and desktop, in light and dark mode. No page may scroll as a whole past its content.
 - **The changelog has a line** under **Unreleased** in [CHANGELOG.md](./CHANGELOG.md), in the right group (Added, Changed, Fixed, Removed, Security), written for users. Changes users don't notice don't need one.
@@ -71,7 +74,7 @@ Other apps (co-bord) depend on `/api/integration/v1`. In `v1`, fields and endpoi
 
 ## 7. Maintenance
 
-- **Dependencies**: Dependabot opens weekly pull requests. Minor and patch updates come grouped; merge them when CI is green. Major updates (Spring Boot, Remix, Node) get their own issue, since they may need code changes.
+- **Dependencies**: reviewed by hand, at least once a month (`npm outdated` in `client`, and the versions in `service/build.gradle.kts`). Minor and patch updates go in one pull request once the checks pass locally. Major updates (Spring Boot, Remix, Node) get their own issue, since they may need code changes.
 - **Security**: report vulnerabilities privately, as [SECURITY.md](./SECURITY.md) explains.
 - **Branches**: merged branches are deleted; old unmerged ones are closed or deleted at triage.
 

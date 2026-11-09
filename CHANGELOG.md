@@ -7,8 +7,7 @@ When a version changes the database, its entry says so under **Upgrading**: run 
 ## [Unreleased]
 
 ### Added
-- Continuous integration: every pull request runs the backend tests, the client's types, lint and build, and builds both Docker images.
-- Issue forms for bugs and feature requests, a pull request checklist, weekly dependency updates, this changelog, and the contributing and security guides.
+- Issue forms for bugs and feature requests, a pull request checklist, this changelog, and the contributing and security guides.
 
 ## [2.4.0] - 2026-11-06
 
