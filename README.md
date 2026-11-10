@@ -99,7 +99,7 @@ Comma, semicolon and tab separated files are supported, and column names and sel
 
 Images and videos are stored in the database. The maximum upload size can be configured with the `ATTACHMENT_MAX_FILE_SIZE` (default `100MB`) and `ATTACHMENT_MAX_REQUEST_SIZE` (default `200MB`) environment variables of the backend service.
 
-These features require database schema version `0.0.11`. Existing installations must run the backend once with `DATABASE_MIGRATION_MODE=MIGRATE` after updating.
+These features require database schema version `0.0.11` or later, which [upgrading](#upgrading) migrates to.
 
 ### User accounts
 
@@ -276,59 +276,120 @@ While recording a result, the test case run page lists the linked issues that ca
 ### Prerequisites
 
 -  Docker and Docker Compose
--  PostgreSQL instance (self-hosted or cloud provider)
+-  PostgreSQL 16 (self-hosted, e.g. in its own Docker container, or a cloud provider), reachable from the containers
 -  Clone of the repository
 
 ### Application setup
 
-We'll need to perform the initial migration of the database schema. This can be done by running the following steps:
-
-1. Configure environment variables
-
-Create a `.env` file in the root directory:
+1. Create a `.env` file in the root directory:
 
 ```
-DATABASE_MIGRATION_MODE=MIGRATE
 DATABASE_URL=jdbc:postgresql://<your-db-host>:5432/<your-db-name>
 DATABASE_USERNAME=<username>
 DATABASE_PASSWORD=<password>
 ```
 
-2. Start the backend service
-
-Run Docker Compose to build and start the backend-service container:
+2. Build and start the application:
 
 ```bash
-docker compose up backend-service --build
+docker compose up -d --build
 ```
 
-This will take some time to build and run. The application will migrate the database to the latest schema and shut down automatically once complete.
+The first time takes a while. The services start in this order, and each waits for the one before it to finish well:
 
-### Running the application
+1. `pre-migration-backup` backs up the database (see [Backups](#backups)).
+2. `database-migration` migrates the database to this version's schema if it's behind, and exits. On a new database it creates the whole schema.
+3. `backend-service` and `client-service` start.
 
-1. Update the environment variables to turn off migration mode
-
-```
-DATABASE_MIGRATION_MODE=NONE
-```
-
-2. Build and start the application
-
-```bash
-docker compose up --build
-```
+If the backup or the migration fails, the backend doesn't start, so it never runs on a database it can't use; `docker compose logs pre-migration-backup database-migration` shows why. `DATABASE_MIGRATION_MODE` doesn't go in `.env` anymore.
 
 The application will be available at `http://localhost:3000` by default.
 
-1. Verify deployment
-
-Check that all containers are running:
+3. Check that the containers are running:
 
 ```bash
 docker compose ps
 ```
 
-You should see both the client and backend services running successfully.
+`backend-service`, `client-service` and `database-backup` should be up (`database-backup` shows *healthy*), and `pre-migration-backup` and `database-migration` exited with code 0.
+
+### Upgrading
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+The steps above run again: the database is backed up before anything changes, migrated if the new version needs it, and the new version starts. Every `docker compose up` makes a pre-migration backup and restarts the backend, even when there's nothing to migrate.
+
+### Backups
+
+The `database-backup` service backs up the database with `pg_dump` every day, into `backups/` next to `docker-compose.yml` on this server:
+
+| Folder | What | Kept |
+| --- | --- | --- |
+| `backups/daily` | The backup made each day at `BACKUP_TIME` | The last `BACKUP_KEEP_DAILY` (14) |
+| `backups/weekly` | A copy of Sunday's daily backup | The last `BACKUP_KEEP_WEEKLY` (8) |
+| `backups/pre-migration` | The backup made by each `docker compose up` | The last `BACKUP_KEEP_PRE_MIGRATION` (10) |
+| `backups/manual` | Backups made by hand | All of them; delete them yourself |
+
+Each backup is a compressed `pg_dump` file (custom format) that is checked with `pg_restore` before it's kept. Optional settings in `.env`:
+
+```
+BACKUP_TIME=03:00          # when the daily backup runs (HH:MM)
+TZ=America/Mexico_City     # the time zone of BACKUP_TIME and of the file names (UTC by default)
+BACKUP_KEEP_DAILY=14
+BACKUP_KEEP_WEEKLY=8
+BACKUP_KEEP_PRE_MIGRATION=10
+BACKUP_DIR=./backups       # where backups are written on this server
+BACKUP_IMAGE=postgres:16   # pg_dump must be the PostgreSQL server's major version or newer
+```
+
+-  If a night's backup fails, it's tried again the next night, and `docker compose ps` shows `database-backup` as *unhealthy* until a backup works. `docker compose logs database-backup` shows why.
+-  The backups connect with the same `DATABASE_*` settings and Docker network as the backend, so whatever lets the backend reach PostgreSQL also works for them.
+-  The backups are on the same server as the database, so they protect against mistakes, failed upgrades and a damaged database, not against losing the server. Copy `backups/` somewhere else from time to time if that matters.
+-  Back up by hand at any time, e.g. before changing data in bulk:
+
+```bash
+docker compose run --rm database-backup now
+```
+
+### Restoring a backup
+
+List the backups, newest first:
+
+```bash
+docker compose run --rm database-backup restore list
+```
+
+**Check a backup** by restoring it into a new database, without touching SparkyTC's. The database user needs permission to create databases:
+
+```bash
+docker compose run --rm database-backup restore daily/<file>.dump --into sparkytc_restore_test
+```
+
+It prints the schema version it restored. Look at the data with `psql` if you like, then drop the copy (`DROP DATABASE sparkytc_restore_test;`). Doing this every few months makes sure the backups work when they're needed.
+
+**Restore over SparkyTC's database**, e.g. after data was lost:
+
+```bash
+docker compose stop backend-service
+docker compose run --rm database-backup restore daily/<file>.dump --replace
+docker compose up -d
+```
+
+It asks you to type the database name before going on, and refuses while the backend (or anything else) is connected. It empties the `public` schema, including tables a newer version added, and restores the backup into it, so the database user must own the database. Everything after the backup is lost, so back up by hand first if what's there may still be needed.
+
+### Rolling back an upgrade
+
+If a new version doesn't work, go back to the previous version and the database it had:
+
+1. Stop the backend: `docker compose stop backend-service`.
+2. Restore the pre-migration backup made by the upgrade (the newest in `backups/pre-migration`, see `restore list`): `docker compose run --rm database-backup restore pre-migration/<file>.dump --replace`. If the upgrade didn't change the schema (its changelog has no database schema under **Upgrading**), you can skip this step and keep the data entered since.
+3. Go back to the previous version's code: `git checkout v<previous version>`, e.g. `git checkout v2.5.0`. Versions before 2.5.0 don't migrate on their own: for them, add `DATABASE_MIGRATION_MODE=NONE` to `.env`.
+4. Start it: `docker compose up -d --build`.
+
+Then report what went wrong in an issue. To return to the latest version later, `git checkout main` and upgrade as usual.
 
 ## Running the development server
 

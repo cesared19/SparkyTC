@@ -1,14 +1,71 @@
+# The database connection, shared by the backend, the migration and the backups.
+x-database: &database
+   DATABASE_URL: ${DATABASE_URL}
+   DATABASE_USERNAME: ${DATABASE_USERNAME}
+   DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+
+# pg_dump and pg_restore must be the PostgreSQL server's major version or newer.
+x-backup-tools: &backup-tools
+   image: ${BACKUP_IMAGE:-postgres:16}
+   entrypoint: ['bash', '/scripts/backup.sh']
+   volumes:
+      - ./deploy/backup:/scripts:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+   networks:
+      - app-network
+
 services:
+   # Daily backups, kept on this server in BACKUP_DIR (see the README).
+   database-backup:
+      <<: *backup-tools
+      command: ['schedule']
+      environment:
+         <<: *database
+         TZ: ${TZ:-UTC}
+         BACKUP_TIME: ${BACKUP_TIME:-03:00}
+         BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-14}
+         BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-8}
+      healthcheck:
+         test: ['CMD', 'bash', '/scripts/backup.sh', 'healthy']
+         interval: 1h
+         start_period: 1m
+      restart: unless-stopped
+
+   # Each `docker compose up` backs up the database, migrates it if this version needs it, and then starts the
+   # backend. If the backup or the migration fails, the backend doesn't start.
+   pre-migration-backup:
+      <<: *backup-tools
+      command: ['now', 'pre-migration']
+      environment:
+         <<: *database
+         TZ: ${TZ:-UTC}
+         BACKUP_KEEP_PRE_MIGRATION: ${BACKUP_KEEP_PRE_MIGRATION:-10}
+      restart: 'no'
+
+   database-migration:
+      build:
+         context: ./service
+         dockerfile: Dockerfile
+      environment:
+         <<: *database
+         APPLICATION_ENVIRONMENT: production
+         # migrates the schema when it's behind this version, then exits
+         DATABASE_MIGRATION_MODE: MIGRATE
+      depends_on:
+         pre-migration-backup:
+            condition: service_completed_successfully
+      restart: 'no'
+      networks:
+         - app-network
+
    backend-service:
       build:
          context: ./service
          dockerfile: Dockerfile
       environment:
+         <<: *database
          APPLICATION_ENVIRONMENT: production
-         DATABASE_MIGRATION_MODE: ${DATABASE_MIGRATION_MODE}
-         DATABASE_URL: ${DATABASE_URL}
-         DATABASE_USERNAME: ${DATABASE_USERNAME}
-         DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+         DATABASE_MIGRATION_MODE: NONE
          ADMIN_USERNAME: ${ADMIN_USERNAME:-}
          ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
          ADMIN_PASSWORD_RESET: ${ADMIN_PASSWORD_RESET:-false}
@@ -20,6 +77,9 @@ services:
       # only reachable from the host itself, the client talks to the backend over app-network
       ports:
          - '127.0.0.1:8080:8080'
+      depends_on:
+         database-migration:
+            condition: service_completed_successfully
       networks:
          - app-network
 
