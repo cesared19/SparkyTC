@@ -11,7 +11,7 @@ Closes #
 ## Checklist
 
 - [ ] Linked to its issue, and the branch does only that
-- [ ] Tests added or updated, and CI is green
+- [ ] Tests added or updated, and the checks pass locally (see CONTRIBUTING.md)
 - [ ] UI changes checked against the production build at 390 px, 820 px and desktop, in light and dark mode
 - [ ] `CHANGELOG.md` has a line under **Unreleased** (or the change doesn't affect users)
 - [ ] Database changes add a new schema version and say so in the changelog
