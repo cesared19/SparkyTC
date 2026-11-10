@@ -86,3 +86,4 @@ Sessions of Claude Code follow this guide like anyone else:
 - **The issue says what to do.** Plans, decisions and follow-ups go in the issue, not only in the chat.
 - **`CLAUDE.md` holds lasting rules and architecture.** The current version and the released versions are not kept there: GitHub milestones and releases say that.
 - **Every pull request is reviewed and approved by the owner before merging.**
+- **No bulk activity on GitHub.** The owner's account doesn't allow automated tools, so assistants push branches and open pull requests when asked, but never create issues, labels, milestones or comments in bulk, and don't retry what GitHub refuses. Several issues from one plan are written up for the owner to create.
