@@ -61,6 +61,7 @@ Plataforma de gestión de test cases, basada en el proyecto open source Cherry (
 - **Changelog:** cada PR que cambia algo para usuarios o para quien despliega agrega su línea bajo **Unreleased** en `CHANGELOG.md` (en inglés). Los cambios de esquema van también en **Upgrading**.
 - **Versionado:** los PRs normales **no** cambian la versión. Solo el PR de release (`release/X.Y.Z`) actualiza `version` en `service/build.gradle.kts`, `client/package.json` y `client/package-lock.json`, convierte **Unreleased** en la versión con fecha y actualiza los enlaces del final del changelog.
 - **Releases:** etiquetas `vX.Y.Z`. Esta sesión no puede crear releases ni subir etiquetas: las notas son la sección de esa versión en `CHANGELOG.md`, con el enlace `compare/vA...vB`, y el usuario publica la release en GitHub.
+- **Actividad en GitHub:** la cuenta es de estudiante y GitHub la suspendió una vez por actividad automatizada (14 issues creados por la API en 9 segundos). No crear nada en lote (issues, etiquetas, milestones, comentarios): si un plan genera varios issues, dejar el texto para que el usuario los cree desde la web, o crearlos uno a uno solo si lo pide. No reintentar en bucle lo que GitHub rechaza (403). Sin GitHub Actions ni Dependabot. Push y PRs sí, cuando el usuario lo pida.
 - **Al recibir una lista de trabajo:** proponer un orden (bugs primero) y preguntar lo que no quede claro antes de empezar.
 
 ## Pendientes
