@@ -16,4 +16,6 @@ data class TestCaseResultDTO(
     val attachments: List<TestCaseAttachmentDTO> = emptyList(),
     // how each step went, for test cases written as steps
     val stepResults: List<StepResultDTO> = emptyList(),
+    // what an app reported with the result through the integration API (JSON), e.g. a replay's comparison
+    val report: String? = null,
 )

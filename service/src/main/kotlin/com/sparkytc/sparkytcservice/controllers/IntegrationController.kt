@@ -5,6 +5,7 @@ import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateSectionDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestPlanDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestRunDTO
+import com.sparkytc.sparkytcservice.dto.integration.IntegrationRecordResultDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationResultsRequestDTO
 import com.sparkytc.sparkytcservice.services.IntegrationService
 import com.sparkytc.sparkytcservice.services.IntegrationWriteService
@@ -67,6 +68,17 @@ class IntegrationController(
     @PostMapping("/test-runs")
     fun createTestRun(@RequestBody request: IntegrationCreateTestRunDTO): ResponseEntity<Any> =
         ResponseEntity.ok(DataResponse(data = integrationWriteService.createTestRun(request)))
+
+    /**
+     * Records a result for a test case of an automated test run, with its notes, time and report. 404 when the
+     * project has no test run with that number.
+     */
+    @PostMapping("/test-runs/{testRunNumber}/results")
+    fun recordResult(@PathVariable testRunNumber: Long, @RequestBody request: IntegrationRecordResultDTO): ResponseEntity<Any> {
+        val recorded = integrationWriteService.recordResult(testRunNumber, request)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(error = "Not Found", message = "No test run $testRunNumber in this project"))
+        return ResponseEntity.ok(DataResponse(data = recorded))
+    }
 
     /** Latest results of the given test cases, sections and plans in a build (the current one by default). */
     @PostMapping("/results")

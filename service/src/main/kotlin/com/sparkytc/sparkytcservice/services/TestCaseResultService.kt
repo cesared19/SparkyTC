@@ -6,6 +6,7 @@ import com.sparkytc.sparkytcservice.dto.auth.UserRole
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseHistoryEntryDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.dto.testruns.TestRunStatus
+import com.sparkytc.sparkytcservice.models.ProjectApiToken
 import com.sparkytc.sparkytcservice.models.TestCaseAttachment
 import com.sparkytc.sparkytcservice.models.TestCaseResult
 import com.sparkytc.sparkytcservice.models.TestCaseRun
@@ -34,7 +35,14 @@ class TestCaseResultService(
     private val attachmentService: AttachmentService,
 ) {
     /** Adds a result and makes it the test case's status in the run. */
-    fun record(testCaseRun: TestCaseRun, status: TestCaseRunStatus, notes: String?, actor: User?): TestCaseResult {
+    fun record(
+        testCaseRun: TestCaseRun,
+        status: TestCaseRunStatus,
+        notes: String?,
+        actor: User?,
+        token: ProjectApiToken? = null,
+        report: String? = null,
+    ): TestCaseResult {
         require(status != TestCaseRunStatus.PENDING) { "Choose a result: pass, fail, blocked or skip" }
         val result = testCaseResultRepository.save(TestCaseResult(
             testCaseRun = testCaseRun,
@@ -42,6 +50,8 @@ class TestCaseResultService(
             notes = notes?.trim()?.takeIf { it.isNotEmpty() },
             recordedBy = actor,
             recordedAt = Date(),
+            recordedByToken = token,
+            report = report,
         ))
         applyLatest(testCaseRun, result)
         return result
@@ -108,6 +118,7 @@ class TestCaseResultService(
         testCaseRun.status = latest?.status ?: TestCaseRunStatus.PENDING
         testCaseRun.notes = latest?.notes
         testCaseRun.executedBy = latest?.recordedBy
+        testCaseRun.executedByToken = latest?.recordedByToken
         testCaseRun.executedAt = latest?.recordedAt
         testCaseRunRepository.save(testCaseRun)
     }

@@ -48,17 +48,31 @@ class TestCaseResult(
     // how each step went, for test cases written as steps
     @OneToMany(mappedBy = "result")
     val stepResults: List<TestCaseResultStep> = emptyList(),
+
+    // the app's token that recorded it through the integration API, instead of a user
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recorded_by_token_id")
+    val recordedByToken: ProjectApiToken? = null,
+
+    // what the app reported with the result (JSON of IntegrationResultReportDTO), e.g. a replay's comparison
+    @Column(name = "report")
+    val report: String? = null,
 ) {
+    /** Who recorded it: the user, or the app's token as "Name (API token)". */
+    val recorderName: String?
+        get() = recordedBy?.displayName ?: recordedByToken?.authorName
+
     fun toDTO(): TestCaseResultDTO {
         return TestCaseResultDTO(
             resultID = externalID,
             status = status,
             notes = notes,
-            recordedBy = recordedBy?.displayName,
+            recordedBy = recorderName,
             recordedByID = recordedBy?.externalID,
             recordedAt = recordedAt,
             attachments = attachments.map { it.toDTO() },
             stepResults = stepResults.sortedBy { it.step.position }.map { it.toDTO() },
+            report = report,
         )
     }
 }

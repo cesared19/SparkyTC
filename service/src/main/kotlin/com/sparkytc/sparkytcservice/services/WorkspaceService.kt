@@ -491,6 +491,8 @@ class WorkspaceService(
             isAutomated = true,
             createdByToken = token,
             sourceRef = sourceRef,
+            // the app reports how long each test case took
+            trackTime = true,
         ))
         addTestCaseRuns(newTestRun, testCases)
         return newTestRun
@@ -658,19 +660,7 @@ class WorkspaceService(
         timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
 
         val testRun = testCaseRun.testRun
-        val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
-
-        // blocked test cases are expected to be tested once unblocked
-        val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING && it.status != TestCaseRunStatus.BLOCKED }
-        if (isTestRunComplete && testRun.status != TestRunStatus.COMPLETE) {
-            testRun.status = TestRunStatus.COMPLETE
-            testRunRepository.save(testRun)
-            notificationService.notifyTestRunCompleted(testRun)
-        }
-        else if (!isTestRunComplete && testRun.status == TestRunStatus.PENDING) {
-            testRun.status = TestRunStatus.IN_PROGRESS
-            testRunRepository.save(testRun)
-        }
+        updateTestRunStatusAfterResult(testRun)
 
         val transitionErrors = updateDTO.jiraTransitions.mapNotNull { transition ->
             transitionJiraIssue(testCaseRun, transition, updateDTO.appBaseURL, actor)
@@ -682,6 +672,40 @@ class WorkspaceService(
                 .copy(resultID = result.externalID, jiraTransitionErrors = transitionErrors)
         }
         return UpdateTestCaseRunResultDTO(resultID = result.externalID, jiraTransitionErrors = transitionErrors)
+    }
+
+    /** A run completes once every test case has a final result (blocked ones are expected to be tested once unblocked). */
+    private fun updateTestRunStatusAfterResult(testRun: TestRun) {
+        val testCaseRuns = testCaseRunRepository.findAllByTestRun(testRun)
+        val isTestRunComplete = testCaseRuns.all { it.status != TestCaseRunStatus.PENDING && it.status != TestCaseRunStatus.BLOCKED }
+        if (isTestRunComplete && testRun.status != TestRunStatus.COMPLETE) {
+            testRun.status = TestRunStatus.COMPLETE
+            testRunRepository.save(testRun)
+            notificationService.notifyTestRunCompleted(testRun)
+        }
+        else if (!isTestRunComplete && testRun.status == TestRunStatus.PENDING) {
+            testRun.status = TestRunStatus.IN_PROGRESS
+            testRunRepository.save(testRun)
+        }
+    }
+
+    /**
+     * Records a result for an app's token (integration API), like the app does: a new result that becomes the test
+     * case's status, the time it took, and the run completing with the same rule. Jira isn't touched.
+     */
+    @Transactional
+    fun recordResultByToken(
+        testCaseRun: TestCaseRun,
+        status: TestCaseRunStatus,
+        notes: String?,
+        durationSeconds: Long?,
+        report: String?,
+        token: ProjectApiToken,
+    ): TestCaseResult {
+        val result = testCaseResultService.record(testCaseRun, status, notes, actor = null, token = token, report = report)
+        timeTrackingService.resultRecorded(testCaseRun, null, durationSeconds)
+        updateTestRunStatusAfterResult(testCaseRun.testRun)
+        return result
     }
 
     /**

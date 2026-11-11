@@ -56,6 +56,11 @@ class TestCaseRun(
     @JoinColumn(name = "executed_by_id")
     var executedBy: User? = null,
 
+    // the app's token that recorded the latest result, when it came through the integration API
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "executed_by_token_id")
+    var executedByToken: ProjectApiToken? = null,
+
     // the user working on this test case, so testers don't duplicate work
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to_id")
@@ -87,7 +92,7 @@ class TestCaseRun(
         val now = Date()
         return TestCaseRunDTO(
             externalID, creationDate, testCase.toDTO(), status, title, description, testInstructions, notes,
-            executedBy?.displayName, assignedTo?.let { UserSummaryDTO(it.externalID, it.displayName) },
+            executedBy?.displayName ?: executedByToken?.authorName, assignedTo?.let { UserSummaryDTO(it.externalID, it.displayName) },
             timeSeconds = timeEntries.sumOf { it.seconds(now) },
             runningTimers = timeEntries.filter { it.isRunning }.map { RunningTimerDTO(it.user?.externalID, it.user?.displayName, it.startedAt) },
             executedAt = executedAt,

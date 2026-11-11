@@ -42,8 +42,9 @@ class IntegrationTokenInterceptor(
         return true
     }
 
-    // POST /results reads: it takes its filters in the body
-    private fun isRead(request: HttpServletRequest) = request.requestURI.removeSuffix("/").endsWith("/results")
+    // POST /results reads: it takes its filters in the body. Only that endpoint; recording results writes.
+    private fun isRead(request: HttpServletRequest) =
+        request.requestURI.removePrefix(request.contextPath).removeSuffix("/") == "/api/integration/v1/results"
 
     override fun afterCompletion(request: HttpServletRequest, response: HttpServletResponse, handler: Any, ex: Exception?) {
         CurrentIntegrationProject.clear()

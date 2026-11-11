@@ -648,6 +648,15 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.22")
                 }
                 SchemaVersion.VERSION_0_0_22 -> {
+                    // results an app's token recorded (integration API), instead of a user
+                    jdbcTemplate.execute("ALTER TABLE test_case_results ADD COLUMN recorded_by_token_id BIGINT REFERENCES project_api_tokens(id) ON DELETE SET NULL")
+                    jdbcTemplate.execute("ALTER TABLE test_case_runs ADD COLUMN executed_by_token_id BIGINT REFERENCES project_api_tokens(id) ON DELETE SET NULL")
+                    // the report an app sent with a result, e.g. a replay's screenshots and performance (JSON)
+                    jdbcTemplate.execute("ALTER TABLE test_case_results ADD COLUMN report TEXT")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.23")
+                }
+                SchemaVersion.VERSION_0_0_23 -> {
                     break
                 }
             }
