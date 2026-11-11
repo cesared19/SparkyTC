@@ -4,6 +4,7 @@ import com.sparkytc.sparkytcservice.dto.DataResponse
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateSectionDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestPlanDTO
+import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestRunDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationResultsRequestDTO
 import com.sparkytc.sparkytcservice.services.IntegrationService
 import com.sparkytc.sparkytcservice.services.IntegrationWriteService
@@ -58,6 +59,14 @@ class IntegrationController(
     @PostMapping("/test-plans")
     fun createTestPlan(@RequestBody request: IntegrationCreateTestPlanDTO): ResponseEntity<Any> =
         ResponseEntity.ok(DataResponse(data = integrationWriteService.createTestPlan(request)))
+
+    /**
+     * Creates an automated test run for a registered build, with test cases by number and/or a test plan's, or
+     * returns the one with the same sourceRef (`created` tells which).
+     */
+    @PostMapping("/test-runs")
+    fun createTestRun(@RequestBody request: IntegrationCreateTestRunDTO): ResponseEntity<Any> =
+        ResponseEntity.ok(DataResponse(data = integrationWriteService.createTestRun(request)))
 
     /** Latest results of the given test cases, sections and plans in a build (the current one by default). */
     @PostMapping("/results")

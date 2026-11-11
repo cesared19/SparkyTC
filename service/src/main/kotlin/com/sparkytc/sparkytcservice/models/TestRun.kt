@@ -81,6 +81,10 @@ class TestRun (
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_token_id", updatable = false)
     val createdByToken: ProjectApiToken? = null,
+
+    // the reference the app that created it gave it, so creating it again returns this one
+    @Column(name = "source_ref", updatable = false)
+    val sourceRef: String? = null,
 ) {
     val isClosed: Boolean
         get() = status == TestRunStatus.COMPLETE || status == TestRunStatus.ABORT

@@ -176,3 +176,40 @@ data class IntegrationStepResultDTO(
     val status: IntegrationResultStatus?,
     val actual: String?,
 )
+
+/** A test run to create for a build: test cases by number and/or a test plan's test cases. */
+data class IntegrationCreateTestRunDTO(
+    val title: String? = null,
+    val description: String? = null,
+    /** Build number; it must already be registered in the project. */
+    val build: String? = null,
+    val testCaseNumbers: List<Long>? = null,
+    val testPlanID: UUID? = null,
+    val sourceRef: String? = null,
+)
+
+/** A test case in a test run, with its latest result there. */
+data class IntegrationTestRunCaseDTO(
+    val testCaseNumber: Long,
+    val title: String,
+    val status: IntegrationResultStatus,
+    /** The test case in this run, in the app. */
+    val webPath: String,
+)
+
+data class IntegrationTestRunDTO(
+    val testRunID: UUID,
+    val testRunNumber: Long,
+    val title: String,
+    /** PENDING, IN_PROGRESS, COMPLETE or ABORT. */
+    val status: String,
+    val build: IntegrationBuildDTO?,
+    /** Created through the integration API. */
+    val automated: Boolean,
+    val testPlanID: UUID?,
+    val testCases: List<IntegrationTestRunCaseDTO>,
+    val webPath: String,
+    val sourceRef: String? = null,
+    /** Only when creating: false when a test run with the same sourceRef already existed and is returned instead. */
+    val created: Boolean? = null,
+)

@@ -10,12 +10,13 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 - Issue forms for bugs and feature requests, a pull request checklist, this changelog, and the contributing and security guides.
 - Daily database backups on the server, keeping 14 daily and 8 weekly ones, with commands to list them, check one by restoring it into a new database, and restore one. The README explains how to restore and how to roll back an upgrade.
 - Test runs record whether they were created in the app (manual) or through the integration API (automated). Automated runs show an **Automated** badge in the run list and on the run page, with the API token as their author, and the run list can show all runs, only manual or only automated ones (kept in the address with the sort order). The dashboard and the Builds tab count both.
+- Test runs through the integration API: `POST /api/integration/v1/test-runs` with a Read and write token creates an automated test run for a registered build, with test cases by number and/or a test plan's. An unknown build or test case gets a 400 naming it, and a `sourceRef` returns the run already created with it instead of a duplicate.
 
 ### Changed
 - `docker compose up` backs up the database, migrates it if the new version needs it, and only then starts the backend. If the backup or the migration fails, the backend doesn't start. `DATABASE_MIGRATION_MODE` is no longer set by hand.
 
 ### Upgrading
-- Database schema **0.0.21**: existing test runs are marked as manual.
+- Database schema **0.0.22**: existing test runs are marked as manual, and test runs can keep the reference of the app that created them.
 - Remove `DATABASE_MIGRATION_MODE` from `.env` and run `docker compose up -d --build`. Backups are written to `backups/` next to `docker-compose.yml` (`BACKUP_DIR` changes it); the README lists the other settings.
 
 ## [2.4.0] - 2026-11-06
