@@ -28,6 +28,7 @@ class IntegrationService(
     private val testRunRepository: TestRunRepository,
     private val buildResultsService: BuildResultsService,
     private val testCaseResultRepository: TestCaseResultRepository,
+    private val testCaseRunRepository: TestCaseRunRepository,
 ) {
     private fun project(): WorkspaceProject = projectRepository.findById(CurrentIntegrationProject.get()).orElseThrow()
 
@@ -85,6 +86,44 @@ class IntegrationService(
     @Transactional
     fun retrieveTestPlan(testPlanID: UUID, created: Boolean? = null): IntegrationTestPlanDTO =
         retrieveTestPlans().first { it.testPlanID == testPlanID }.copy(created = created)
+
+    /** The test cases a plan takes now (not archived), with the same rule as the app; for creating test runs. */
+    fun testCasesOfPlan(project: WorkspaceProject, plan: TestPlan): List<TestCase> {
+        val tree = SectionTree(sectionRepository.findAllByProjectOrderByPositionAscIdAsc(project))
+        return planTestCases(plan, testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project), tree)
+    }
+
+    /** A test run of the token's project, with its test cases in number order. */
+    @Transactional
+    fun retrieveTestRun(testRunID: Long, created: Boolean? = null): IntegrationTestRunDTO {
+        val project = project()
+        val run = testRunRepository.findById(testRunID).orElseThrow()
+        require(run.project.id == project.id) { "No test run found" }
+        val runPath = "/test-runs/${project.projectShortCode}/${run.testRunNumber}"
+        val testCases = testCaseRunRepository.findAllByTestRun(run)
+            .sortedBy { it.testCase.testCaseNumber }
+            .map { caseRun ->
+                IntegrationTestRunCaseDTO(
+                    testCaseNumber = caseRun.testCase.testCaseNumber,
+                    title = caseRun.title,
+                    status = status(caseRun.status),
+                    webPath = "$runPath/${caseRun.testCase.testCaseNumber}",
+                )
+            }
+        return IntegrationTestRunDTO(
+            testRunID = run.externalID,
+            testRunNumber = run.testRunNumber,
+            title = run.title,
+            status = run.status.name,
+            build = run.build?.toIntegration(),
+            automated = run.isAutomated,
+            testPlanID = run.testPlan?.externalID,
+            testCases = testCases,
+            webPath = runPath,
+            sourceRef = run.sourceRef,
+            created = created,
+        )
+    }
 
     private fun toIntegration(project: WorkspaceProject, tree: SectionTree, testCase: TestCase) = IntegrationTestCaseDTO(
         testCaseID = testCase.externalID,

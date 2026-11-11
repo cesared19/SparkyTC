@@ -19,4 +19,6 @@ interface TestRunRepository : JpaRepository<TestRun, Long> {
     fun findByProjectAndTestRunNumber(project: WorkspaceProject, testRunNumber: Long): TestRun?
 
     fun existsByBuild(build: ProjectBuild): Boolean
+
+    fun findByProjectAndSourceRef(project: WorkspaceProject, sourceRef: String): TestRun?
 }

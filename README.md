@@ -184,11 +184,11 @@ API tokens are created at https://id.atlassian.com/manage-profile/security/api-t
 -  When recording a **Pass**, the tester can close the linked issues that aren't done; when recording a **Fail**, they can reopen the linked issues that are done and optionally assign them to someone else so they find out (see below).
 -  The links use the address you open SparkyTC with (e.g. `http://192.168.1.20:3000`). Set `SPARKYTC_PUBLIC_URL` in the client service to override it, for example when a domain is added.
 
-### Integration API (co-bord)
+### Integration API (co-bord, re-Play)
 
-Other apps can read a project through an API, and create test cases in it, for example [co-bord](https://github.com/cesared19/co-bord) to show which board steps are covered by test cases and how they did, and to create test cases and plans from its boards.
+Other apps can read a project through an API, and create test cases and test runs in it, for example [co-bord](https://github.com/cesared19/co-bord) to show which board steps are covered by test cases and how they did, and to create test cases and plans from its boards, and [re-Play](https://github.com/cesared19/re-Play-vibe-session-recording) to report replayed VR sessions as automated test runs.
 
--  An admin creates a token in the project's **Settings**, under **API tokens**, choosing its permission, and copies it right away: it is shown only once. A **Read** token reads the project; a **Read and write** token can also create sections, test cases and test plans. No token edits or deletes anything, and each one works only on its project. **Revoke** stops a token at once; the list shows each token's permission and when it was last used. Tokens created before 2.3.0 are Read tokens.
+-  An admin creates a token in the project's **Settings**, under **API tokens**, choosing its permission, and copies it right away: it is shown only once. A **Read** token reads the project; a **Read and write** token can also create sections, test cases, test plans and test runs. No token edits or deletes anything, and each one works only on its project. **Revoke** stops a token at once; the list shows each token's permission and when it was last used. Tokens created before 2.3.0 are Read tokens.
 -  Requests send the token as `Authorization: Bearer stc_...` to `/api/integration/v1`:
 
 | Endpoint | Returns |
@@ -207,8 +207,9 @@ Other apps can read a project through an API, and create test cases in it, for e
 | `POST /sections` | `{ "path": "Suite / Section / Subsection" }` | The parts of the path that don't exist yet (matched ignoring case), returning the last section like `GET /sections` |
 | `POST /test-cases` | `{ "title", "description"?, "testInstructions"?, "sectionPath"?, "labels"?, "format"?: "TEXT" \| "STEPS", "steps"?: [{ "action", "expected"? }], "sourceRef"? }` | A test case, returned like `GET /test-cases` with its number and `webPath`. Without `sectionPath` it goes to the project's first suite; required properties take their default values; `format` is `STEPS` when steps are sent without one. |
 | `POST /test-plans` | `{ "name", "description"?, "sectionIDs"?, "labels"?, "testCaseNumbers"?, "sourceRef"? }` | A test plan, returned like `GET /test-plans`. It needs at least one section, label or test case. |
+| `POST /test-runs` | `{ "title", "build", "testCaseNumbers"?, "testPlanID"?, "description"?, "sourceRef"? }` | An **automated** test run for a build that's already registered (the API never creates builds), with the given test cases and the plan's (same rule as starting a run from the plan), in number order. It starts open with nobody assigned. Returns its number, status, build, test cases (number, title, status and `webPath` in the run) and `webPath`. An unknown build, or test case numbers that don't exist or are archived, get a 400 that names them, and nothing is created. |
 
--  **`sourceRef`** is the app's own reference, up to 200 characters, such as `cobord:<boardId>:<elementId>`. Creating a test case or plan with a `sourceRef` the project already has returns the existing one instead of a new one, with `"created": false` (`true` when it was created), so retries never create duplicates. An archived test case frees its reference.
+-  **`sourceRef`** is the app's own reference, up to 200 characters, such as `cobord:<boardId>:<elementId>`. Creating a test case, plan or test run with a `sourceRef` the project already has returns the existing one instead of a new one, with `"created": false` (`true` when it was created), so retries never create duplicates. An archived test case frees its reference.
 -  What a token creates shows the token as its author, e.g. *co-bord (API token)*, also after the token is revoked.
 -  Validation follows the app: a title is required (up to 500 characters through the API), labels are trimmed and kept once ignoring case (up to 50 characters, no commas), and section and plan names take up to 200 characters. Invalid requests get a 400 with a message, and a Read token gets a 403.
 

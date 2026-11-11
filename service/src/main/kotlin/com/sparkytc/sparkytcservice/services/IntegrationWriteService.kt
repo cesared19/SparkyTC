@@ -26,6 +26,8 @@ class IntegrationWriteService(
     private val propertyConfigurationRepository: PropertyConfigurationRepository,
     private val testCaseRepository: TestCaseRepository,
     private val testPlanRepository: TestPlanRepository,
+    private val testRunRepository: TestRunRepository,
+    private val projectBuildRepository: ProjectBuildRepository,
     private val sectionService: TestCaseSectionService,
     private val workspaceService: WorkspaceService,
     private val testPlanService: TestPlanService,
@@ -104,6 +106,49 @@ class IntegrationWriteService(
         )
         val externalID = transaction.execute { testPlanRepository.findById(testPlanID).orElseThrow().externalID }!!
         return integrationService.retrieveTestPlan(externalID, created)
+    }
+
+    /**
+     * Creates an automated test run for a build that's already registered, with test cases by number and/or a test
+     * plan's, or returns the one with the same sourceRef. Nothing is created if something is wrong.
+     */
+    fun createTestRun(request: IntegrationCreateTestRunDTO): IntegrationTestRunDTO {
+        val title = request.title?.trim().orEmpty()
+        require(title.isNotEmpty()) { "Give the test run a title" }
+        require(title.length <= MAX_TITLE) { "The title can have up to $MAX_TITLE characters" }
+        val buildNumber = request.build?.trim().orEmpty()
+        require(buildNumber.isNotEmpty()) { "Send the build the test run is for, e.g. \"build\": \"1.4.2\"" }
+        val numbers = request.testCaseNumbers.orEmpty().distinct()
+        require(numbers.isNotEmpty() || request.testPlanID != null) { "Send testCaseNumbers, a testPlanID, or both" }
+        val sourceRef = sourceRef(request.sourceRef)
+
+        val (testRunID, created) = createOnce(
+            existing = { project -> sourceRef?.let { testRunRepository.findByProjectAndSourceRef(project, it) }?.id },
+            create = { project, token ->
+                // builds are registered by admins; the API never creates them
+                val build = requireNotNull(projectBuildRepository.findByProjectAndBuildNumberIgnoreCase(project, buildNumber)) {
+                    "No build $buildNumber in this project. An admin registers builds in the Builds tab."
+                }
+                val plan = request.testPlanID?.let { id ->
+                    testPlanRepository.findByExternalID(id)?.takeIf { it.project.id == project.id }
+                        ?: throw IllegalArgumentException("No test plan $id in this project")
+                }
+
+                val byNumber = testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project)
+                    .associateBy { it.testCaseNumber }
+                val missing = numbers.filter { it !in byNumber }
+                require(missing.isEmpty()) {
+                    "No test case ${missing.joinToString(", ") { "#$it" }} in this project (or archived)"
+                }
+                val testCases = (numbers.map { byNumber.getValue(it) } + plan?.let { integrationService.testCasesOfPlan(project, it) }.orEmpty())
+                    .distinctBy { it.id }
+                    .sortedBy { it.testCaseNumber }
+                require(testCases.isNotEmpty()) { "The test plan ${plan?.name} has no test cases" }
+
+                workspaceService.createTestRunByToken(project, title, request.description, build, plan, testCases, token, sourceRef).id
+            },
+        )
+        return integrationService.retrieveTestRun(testRunID, created)
     }
 
     /**

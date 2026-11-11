@@ -453,12 +453,53 @@ class WorkspaceService(
         testRunRepository.save(newTestRun)
         notificationService.notifyTestRunAssigned(newTestRun, newTestRun.assignees, CurrentUser.get())
 
-        for (testCaseID in testRun.testCaseIDs) {
+        val testCases = testRun.testCaseIDs.map { testCaseID ->
             val testCaseModel = testCaseRepository.findByExternalID(testCaseID)
             requireNotNull(testCaseModel) { "No test case found for id $testCaseID" }
             require(testCaseModel.project.id == project.id && !testCaseModel.isArchived) { "No test case found for id $testCaseID" }
+            testCaseModel
+        }
+        addTestCaseRuns(newTestRun, testCases)
+        return newTestRun
+    }
+
+    /**
+     * Creates an automated test run for an app's token (integration API): it's credited to the token, starts open
+     * with nobody assigned, and keeps the app's reference. The test cases are already checked by the caller.
+     */
+    @Transactional
+    fun createTestRunByToken(
+        project: WorkspaceProject,
+        title: String,
+        description: String?,
+        build: ProjectBuild,
+        testPlan: TestPlan?,
+        testCases: List<TestCase>,
+        token: ProjectApiToken,
+        sourceRef: String?,
+    ): TestRun {
+        require(testCases.isNotEmpty()) { "There must be at least one test case for the test run" }
+        val largestTestRunNumber = testRunRepository.findTopByProjectOrderByTestRunNumberDesc(project)?.testRunNumber ?: 0
+        val newTestRun = testRunRepository.save(TestRun(
+            project = project,
+            testRunNumber = largestTestRunNumber + 1,
+            status = TestRunStatus.PENDING,
+            title = title,
+            description = description,
+            build = build,
+            testPlan = testPlan,
+            isAutomated = true,
+            createdByToken = token,
+            sourceRef = sourceRef,
+        ))
+        addTestCaseRuns(newTestRun, testCases)
+        return newTestRun
+    }
+
+    private fun addTestCaseRuns(testRun: TestRun, testCases: List<TestCase>) {
+        for (testCaseModel in testCases) {
             val newTestCaseRun = TestCaseRun(
-                testRun = newTestRun,
+                testRun = testRun,
                 testCase = testCaseModel,
                 status = TestCaseRunStatus.PENDING,
                 title = testCaseModel.title,
@@ -470,7 +511,6 @@ class WorkspaceService(
             stepService.copyToRun(testCaseModel, newTestCaseRun)
             testCaseRunRepository.save(newTestCaseRun)
         }
-        return newTestRun
     }
 
     /**

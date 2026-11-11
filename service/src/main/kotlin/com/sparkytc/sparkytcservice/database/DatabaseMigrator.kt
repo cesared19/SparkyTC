@@ -638,6 +638,16 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.21")
                 }
                 SchemaVersion.VERSION_0_0_21 -> {
+                    // the other app's reference to a test run it created, so retries don't create it twice
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN source_ref TEXT")
+                    jdbcTemplate.execute("""
+                        CREATE UNIQUE INDEX test_runs_source_ref_idx ON test_runs (project_id, source_ref)
+                        WHERE source_ref IS NOT NULL
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.22")
+                }
+                SchemaVersion.VERSION_0_0_22 -> {
                     break
                 }
             }

@@ -424,6 +424,112 @@ class IntegrationApiTests {
         assertEquals("co-bord (API token)", afterRevoke.get("createdBy").asText())
     }
 
+    @Test
+    fun `creates automated test runs for a registered build, once per sourceRef`() {
+        val write = token("PRJ", canWrite = true)
+        // 1 and 2 are in a nested section of Menus; 3 is elsewhere
+        for (title in listOf("Open the main menu", "Close the main menu")) {
+            integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to title, "sectionPath" to "Menus / Main")).andExpect(status().isOk)
+        }
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Grab a cube", "sectionPath" to "Objects")).andExpect(status().isOk)
+        val menus = data(integration(write, get("/api/integration/v1/sections"))).first { it.get("path").asText() == "Menus" }.get("sectionID").asText()
+        val plan = data(integration(write, post("/api/integration/v1/test-plans"), mapOf("name" to "Menus", "sectionIDs" to listOf(menus)))).get("testPlanID").asText()
+        createBuild("1.4.2")
+
+        // test cases by number and a plan's, without repeating and in number order
+        val run = data(integration(write, post("/api/integration/v1/test-runs"), mapOf(
+            "title" to "Replay smoke", "description" to "From re-Play", "build" to " 1.4.2 ",
+            "testCaseNumbers" to listOf(3, 1), "testPlanID" to plan, "sourceRef" to "replay:batch:1",
+        )))
+        assertTrue(run.get("created").asBoolean())
+        assertTrue(run.get("automated").asBoolean())
+        assertEquals(1, run.get("testRunNumber").asInt())
+        assertEquals("PENDING", run.get("status").asText())
+        assertEquals("1.4.2", run.get("build").get("buildNumber").asText())
+        assertEquals(plan, run.get("testPlanID").asText())
+        assertEquals("/test-runs/PRJ/1", run.get("webPath").asText())
+        assertEquals("replay:batch:1", run.get("sourceRef").asText())
+        assertEquals(listOf(1, 2, 3), run.get("testCases").map { it.get("testCaseNumber").asInt() })
+        assertEquals(setOf("NOT_RUN"), run.get("testCases").map { it.get("status").asText() }.toSet())
+        assertEquals("/test-runs/PRJ/1/2", run.get("testCases")[1].get("webPath").asText())
+
+        // in the app: automated, credited to the token, open and with nobody assigned
+        val appRun = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/1")))
+        assertTrue(appRun.get("automated").asBoolean())
+        assertEquals("co-bord (API token)", appRun.get("createdBy").asText())
+        assertEquals(0, appRun.get("assignees").size())
+        assertEquals("From re-Play", appRun.get("description").asText())
+        assertEquals(3, data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1"))).size())
+
+        // the same reference returns that run instead of creating another
+        val again = data(integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Other", "build" to "1.4.2", "testCaseNumbers" to listOf(2), "sourceRef" to "replay:batch:1")))
+        assertFalse(again.get("created").asBoolean())
+        assertEquals(1, again.get("testRunNumber").asInt())
+        assertEquals(3, again.get("testCases").size())
+
+        // only the plan's test cases (the nested section counts), and without a reference a new run each time
+        val byPlan = data(integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Menus only", "build" to "1.4.2", "testPlanID" to plan)))
+        assertEquals(2, byPlan.get("testRunNumber").asInt())
+        assertEquals(listOf(1, 2), byPlan.get("testCases").map { it.get("testCaseNumber").asInt() })
+        assertEquals(2, data(admin.perform(get("/api/v1/workspace/test-runs/PRJ"))).size())
+    }
+
+    @Test
+    fun `creating a test run checks the token, the build and the test cases first`() {
+        val write = token("PRJ", canWrite = true)
+        fun rejected(body: Any) = message(integration(write, post("/api/integration/v1/test-runs"), body).andExpect(status().isBadRequest))
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Open the main menu")).andExpect(status().isOk)
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Old case")).andExpect(status().isOk)
+        val buildID = createBuild("1.4.2")
+        // #2 is archived: deleted after being used in a run
+        val oldCase = appTestCase(2).get("testCaseID").asText()
+        createRun(1, buildID, oldCase to TestCaseRunStatus.PASS)
+        send(delete("/api/v1/workspace/test-cases/$oldCase"), null).andExpect(status().isOk)
+
+        // a Read token can't create test runs
+        integration(token("PRJ"), post("/api/integration/v1/test-runs"), mapOf("title" to "Run", "build" to "1.4.2", "testCaseNumbers" to listOf(1)))
+            .andExpect(status().isForbidden)
+
+        assertEquals("Give the test run a title", rejected(mapOf("title" to " ", "build" to "1.4.2", "testCaseNumbers" to listOf(1))))
+        assertTrue(rejected(mapOf("title" to "Run", "testCaseNumbers" to listOf(1))).startsWith("Send the build"))
+        assertEquals("No build 9.9.9 in this project. An admin registers builds in the Builds tab.",
+            rejected(mapOf("title" to "Run", "build" to "9.9.9", "testCaseNumbers" to listOf(1))))
+        assertEquals("Send testCaseNumbers, a testPlanID, or both", rejected(mapOf("title" to "Run", "build" to "1.4.2")))
+        assertEquals("No test case #2, #99 in this project (or archived)",
+            rejected(mapOf("title" to "Run", "build" to "1.4.2", "testCaseNumbers" to listOf(1, 2, 99))))
+        val unknownPlan = UUID.randomUUID()
+        assertEquals("No test plan $unknownPlan in this project", rejected(mapOf("title" to "Run", "build" to "1.4.2", "testPlanID" to unknownPlan)))
+
+        // another project's token sees neither this project's plans nor its builds
+        val plan = data(integration(write, post("/api/integration/v1/test-plans"), mapOf("name" to "Smoke", "testCaseNumbers" to listOf(1)))).get("testPlanID").asText()
+        val other = token("OTH", canWrite = true)
+        val otherRejected = message(integration(other, post("/api/integration/v1/test-runs"), mapOf("title" to "Run", "build" to "1.4.2", "testPlanID" to plan))
+            .andExpect(status().isBadRequest))
+        assertTrue(otherRejected.startsWith("No build 1.4.2"))
+
+        // only the run created in the app exists: nothing was created by the rejected requests
+        val runs = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))
+        assertEquals(1, runs.size())
+        assertFalse(runs[0].get("automated").asBoolean())
+    }
+
+    @Test
+    fun `requests with the same sourceRef at once create one test run`() {
+        val write = token("PRJ", canWrite = true)
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Open the main menu")).andExpect(status().isOk)
+        createBuild("1.4.2")
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(6)
+        val answers = (1..6).map {
+            pool.submit<JsonNode> {
+                data(integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Replay", "build" to "1.4.2", "testCaseNumbers" to listOf(1), "sourceRef" to "replay:batch:7")))
+            }
+        }.map { it.get() }
+        pool.shutdown()
+        assertEquals(setOf(1), answers.map { it.get("testRunNumber").asInt() }.toSet())
+        assertEquals(1, answers.count { it.get("created").asBoolean() })
+        assertEquals(1, data(admin.perform(get("/api/v1/workspace/test-runs/PRJ"))).size())
+    }
+
     private fun token(shortCode: String, canWrite: Boolean = false): String =
         data(send(post("/api/v1/workspace/projects/$shortCode/api-tokens"), mapOf("name" to "co-bord", "canWrite" to canWrite))).get("secret").asText()
 
