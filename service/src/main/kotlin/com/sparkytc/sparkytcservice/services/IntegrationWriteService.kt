@@ -11,6 +11,8 @@ import com.sparkytc.sparkytcservice.models.ProjectApiToken
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import com.sparkytc.sparkytcservice.repositories.*
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.web.multipart.MultipartFile
+import java.util.UUID
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
@@ -30,6 +32,8 @@ class IntegrationWriteService(
     private val testRunRepository: TestRunRepository,
     private val projectBuildRepository: ProjectBuildRepository,
     private val testCaseRunRepository: TestCaseRunRepository,
+    private val testCaseResultRepository: TestCaseResultRepository,
+    private val attachmentService: AttachmentService,
     private val objectMapper: com.fasterxml.jackson.databind.ObjectMapper,
     private val sectionService: TestCaseSectionService,
     private val workspaceService: WorkspaceService,
@@ -191,6 +195,23 @@ class IntegrationWriteService(
                 testRunStatus = testRun.status.name,
                 webPath = "$runPath/$testCaseNumber",
             )
+        }
+    }
+
+    /**
+     * Attaches files to a result of an automated test run: images, videos and .zip files (only downloaded, never
+     * shown). Returns null when the project has no test run with that number or the result isn't in it.
+     */
+    fun uploadEvidence(testRunNumber: Long, resultID: UUID, files: List<MultipartFile>): List<IntegrationAttachmentDTO>? {
+        return transaction.execute {
+            val (project, token) = projectAndToken()
+            val testRun = testRunRepository.findByProjectAndTestRunNumber(project, testRunNumber) ?: return@execute null
+            val result = testCaseResultRepository.findByExternalID(resultID)?.takeIf { it.testCaseRun.testRun.id == testRun.id }
+                ?: return@execute null
+            require(testRun.isAutomated) { "Test run $testRunNumber was created in the app; the API adds evidence only in automated test runs" }
+            attachmentService.store(result.testCaseRun.testCase, files, result, token).map {
+                IntegrationAttachmentDTO(it.attachmentID, it.fileName, it.contentType, it.fileSize)
+            }
         }
     }
 

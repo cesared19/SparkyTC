@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
@@ -46,6 +47,10 @@ import kotlin.test.assertTrue
 class IntegrationApiTests {
 
     companion object {
+        private val PNG = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10)
+        // an empty archive: just the end of central directory record
+        private val ZIP = byteArrayOf('P'.code.toByte(), 'K'.code.toByte(), 5, 6) + ByteArray(18)
+
         @Container
         private val postgresContainer = PostgreSQLContainer<Nothing>("postgres:latest").apply {
             withDatabaseName("testdb")
@@ -631,6 +636,91 @@ class IntegrationApiTests {
         // another project's token doesn't see this project's runs
         integration(token("OTH", canWrite = true), post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 1, "status" to "PASS"))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `attaches images, videos and a downloadable zip report to a result`() {
+        val write = token("PRJ", canWrite = true)
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Open the main menu")).andExpect(status().isOk)
+        createBuild("1.4.2")
+        integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Replay", "build" to "1.4.2", "testCaseNumbers" to listOf(1))).andExpect(status().isOk)
+        val resultID = data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 1, "status" to "FAIL")))
+            .get("resultID").asText()
+
+        // after the run completed: evidence goes in once the result is recorded
+        val stored = data(upload(write, "/api/integration/v1/test-runs/1/results/$resultID/attachments",
+            MockMultipartFile("files", "000120_menu-open.recording.png", "image/png", PNG),
+            MockMultipartFile("files", "session.mp4", "video/mp4", byteArrayOf(0, 0, 0, 24)),
+            // Windows sends zips with this type
+            MockMultipartFile("files", "replay-report.zip", "application/x-zip-compressed", ZIP),
+        ))
+        assertEquals(listOf("image/png", "video/mp4", "application/zip"), stored.map { it.get("contentType").asText() })
+
+        // in the app: the result's evidence, credited to the token
+        val result = data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1")))[0].get("results").last()
+        assertEquals(resultID, result.get("resultID").asText())
+        assertEquals(3, result.get("attachments").size())
+        assertEquals(setOf("co-bord (API token)"), result.get("attachments").map { it.get("uploadedBy").asText() }.toSet())
+        assertEquals(3, data(integration(write, get("/api/integration/v1/test-cases/1/history"))).get("results")[0].get("evidenceCount").asInt())
+
+        // images and videos open in the browser; the zip only downloads, and the browser never guesses its type
+        fun served(index: Int) = admin.perform(get("/api/v1/workspace/attachments/${stored[index].get("attachmentID").asText()}")).andExpect(status().isOk).andReturn().response
+        assertTrue(served(0).getHeader(HttpHeaders.CONTENT_DISPOSITION)!!.startsWith("inline"))
+        assertTrue(served(1).getHeader(HttpHeaders.CONTENT_DISPOSITION)!!.startsWith("inline"))
+        val zip = served(2)
+        assertTrue(zip.getHeader(HttpHeaders.CONTENT_DISPOSITION)!!.startsWith("attachment"))
+        assertEquals("nosniff", zip.getHeader("X-Content-Type-Options"))
+        assertEquals("application/zip", zip.contentType)
+    }
+
+    @Test
+    fun `adding evidence checks the token, the result and the files`() {
+        val write = token("PRJ", canWrite = true)
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Open the main menu")).andExpect(status().isOk)
+        val buildID = createBuild("1.4.2")
+        integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Replay", "build" to "1.4.2", "testCaseNumbers" to listOf(1))).andExpect(status().isOk)
+        integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Replay 2", "build" to "1.4.2", "testCaseNumbers" to listOf(1))).andExpect(status().isOk)
+        val resultID = data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 1, "status" to "PASS"))).get("resultID").asText()
+        val path = "/api/integration/v1/test-runs/1/results/$resultID/attachments"
+        val png = MockMultipartFile("files", "shot.png", "image/png", PNG)
+
+        upload(token("PRJ"), path, png).andExpect(status().isForbidden)
+        upload(write, "/api/integration/v1/test-runs/2/results/$resultID/attachments", png).andExpect(status().isNotFound)
+        upload(write, "/api/integration/v1/test-runs/9/results/$resultID/attachments", png).andExpect(status().isNotFound)
+        upload(write, "/api/integration/v1/test-runs/1/results/${UUID.randomUUID()}/attachments", png).andExpect(status().isNotFound)
+        upload(token("OTH", canWrite = true), path, png).andExpect(status().isNotFound)
+
+        fun rejected(vararg files: MockMultipartFile) = message(upload(write, path, *files).andExpect(status().isBadRequest))
+        assertEquals("At least one file is required", rejected())
+        assertTrue(rejected(MockMultipartFile("files", "report.html", "text/html", "<script>alert(1)</script>".toByteArray())).startsWith("Unsupported file type for report.html"))
+        assertEquals("File fake.zip isn't a .zip file", rejected(MockMultipartFile("files", "fake.zip", "application/zip", "<html>".toByteArray())))
+        assertEquals("File empty.png is empty", rejected(MockMultipartFile("files", "empty.png", "image/png", ByteArray(0))))
+        // one bad file leaves nothing half uploaded
+        rejected(png, MockMultipartFile("files", "notes.txt", "text/plain", "x".toByteArray()))
+        assertEquals(0, data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1")))[0].get("results").last().get("attachments").size())
+
+        // a result of a run created in the app is the testers'
+        val appCase = appTestCase(1).get("testCaseID").asText()
+        createRun(3, buildID, appCase to TestCaseRunStatus.PASS)
+        val appResult = data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/3")))[0].get("results").last().get("resultID").asText()
+        assertTrue(message(upload(write, "/api/integration/v1/test-runs/3/results/$appResult/attachments", png).andExpect(status().isBadRequest)).contains("created in the app"))
+
+        // in the app, people still upload only images and videos, and an SVG is never shown inline
+        admin.perform(multipart("/api/v1/workspace/test-case-results/$appResult/attachments").file(MockMultipartFile("files", "r.zip", "application/zip", ZIP)))
+            .andExpect(status().isBadRequest)
+        val svg = objectMapper.readTree(admin.perform(multipart("/api/v1/workspace/test-case-results/$appResult/attachments")
+            .file(MockMultipartFile("files", "diagram.svg", "image/svg+xml", "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>".toByteArray())))
+            .andExpect(status().isOk).andReturn().response.contentAsString).get("data")[0].get("attachmentID").asText()
+        val served = admin.perform(get("/api/v1/workspace/attachments/$svg")).andExpect(status().isOk).andReturn().response
+        assertTrue(served.getHeader(HttpHeaders.CONTENT_DISPOSITION)!!.startsWith("attachment"))
+        assertEquals("nosniff", served.getHeader("X-Content-Type-Options"))
+    }
+
+    private fun upload(secret: String, path: String, vararg files: MockMultipartFile): ResultActions {
+        val request = multipart(path)
+        files.forEach { request.file(it) }
+        request.header(HttpHeaders.AUTHORIZATION, "Bearer $secret")
+        return anonymous.perform(request)
     }
 
     private fun token(shortCode: String, canWrite: Boolean = false): String =

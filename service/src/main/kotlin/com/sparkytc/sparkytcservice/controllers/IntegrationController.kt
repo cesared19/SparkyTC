@@ -11,6 +11,9 @@ import com.sparkytc.sparkytcservice.services.IntegrationService
 import com.sparkytc.sparkytcservice.services.IntegrationWriteService
 import com.sparkytc.sparkytcservice.dto.ErrorResponse
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.web.multipart.MultipartFile
+import java.util.UUID
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -78,6 +81,21 @@ class IntegrationController(
         val recorded = integrationWriteService.recordResult(testRunNumber, request)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(error = "Not Found", message = "No test run $testRunNumber in this project"))
         return ResponseEntity.ok(DataResponse(data = recorded))
+    }
+
+    /**
+     * Attaches files to a result of an automated test run (multipart, field "files"): images, videos and .zip files,
+     * which are only ever downloaded. 404 when the run or the result isn't in this project.
+     */
+    @PostMapping("/test-runs/{testRunNumber}/results/{resultID}/attachments", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun uploadEvidence(
+        @PathVariable testRunNumber: Long,
+        @PathVariable resultID: UUID,
+        @RequestParam("files", required = false) files: List<MultipartFile>?,
+    ): ResponseEntity<Any> {
+        val stored = integrationWriteService.uploadEvidence(testRunNumber, resultID, files.orEmpty())
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(error = "Not Found", message = "No result $resultID in test run $testRunNumber of this project"))
+        return ResponseEntity.ok(DataResponse(data = stored))
     }
 
     /** Latest results of the given test cases, sections and plans in a build (the current one by default). */

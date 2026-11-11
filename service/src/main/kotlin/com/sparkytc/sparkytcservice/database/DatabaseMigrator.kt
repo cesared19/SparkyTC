@@ -657,6 +657,12 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.23")
                 }
                 SchemaVersion.VERSION_0_0_23 -> {
+                    // evidence an app's token uploaded (integration API), instead of a user
+                    jdbcTemplate.execute("ALTER TABLE test_case_attachments ADD COLUMN uploaded_by_token_id BIGINT REFERENCES project_api_tokens(id) ON DELETE SET NULL")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.24")
+                }
+                SchemaVersion.VERSION_0_0_24 -> {
                     break
                 }
             }

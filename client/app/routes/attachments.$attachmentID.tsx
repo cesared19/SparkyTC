@@ -13,6 +13,8 @@ const FORWARDED_HEADERS = [
 	'Content-Range',
 	'Accept-Ranges',
 	'Content-Disposition',
+	// files that aren't images or videos (e.g. a .zip) are only downloaded, never interpreted
+	'X-Content-Type-Options',
 ]
 
 export async function loader({ request, params }: LoaderFunctionArgs) {

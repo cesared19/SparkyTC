@@ -26,12 +26,22 @@ function formatFileSize(bytes: number) {
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function isImage(attachment: TestCaseAttachment) {
-	return attachment.contentType.startsWith('image/')
-}
-
 function isVideo(attachment: TestCaseAttachment) {
 	return attachment.contentType.startsWith('video/')
+}
+
+// images the browser shows safely; others (SVG, or a .zip an app attached) are downloaded
+const INLINE_IMAGES = [
+	'image/png',
+	'image/jpeg',
+	'image/gif',
+	'image/webp',
+	'image/bmp',
+	'image/avif',
+]
+
+function isPreviewable(attachment: TestCaseAttachment) {
+	return INLINE_IMAGES.includes(attachment.contentType.toLowerCase())
 }
 
 export function AttachmentGallery({
@@ -133,7 +143,7 @@ export function AttachmentGallery({
 										compact ? 'h-28' : 'h-48'
 									}`}
 								>
-									{isImage(attachment) ? (
+									{isPreviewable(attachment) ? (
 										<button
 											type="button"
 											onClick={() => setPreviewAttachment(attachment)}
@@ -157,9 +167,18 @@ export function AttachmentGallery({
 											<track kind="captions" />
 										</video>
 									) : (
-										<span className="text-sm text-gray-500">
-											Preview not available
-										</span>
+										<a
+											href={src}
+											download={attachment.fileName}
+											className="flex flex-col items-center gap-1 text-sm text-gray-600 hover:text-brand-700"
+										>
+											<span className="rounded-md border border-gray-300 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
+												{attachment.fileName.includes('.')
+													? attachment.fileName.split('.').pop()
+													: 'file'}
+											</span>
+											<span className="underline">Download</span>
+										</a>
 									)}
 								</div>
 								<figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-gray-600">
@@ -167,6 +186,11 @@ export function AttachmentGallery({
 										href={src}
 										target="_blank"
 										rel="noopener noreferrer"
+										download={
+											isPreviewable(attachment) || isVideo(attachment)
+												? undefined
+												: attachment.fileName
+										}
 										className="truncate hover:text-brand-700 hover:underline"
 										title={
 											attachment.uploadedBy

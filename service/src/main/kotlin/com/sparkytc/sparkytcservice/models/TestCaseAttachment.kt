@@ -44,8 +44,13 @@ class TestCaseAttachment(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "test_case_result_id")
     val testCaseResult: TestCaseResult? = null,
+
+    // the app's token that uploaded it through the integration API, instead of a user
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_by_token_id")
+    val uploadedByToken: ProjectApiToken? = null,
 ) {
     fun toDTO(): TestCaseAttachmentDTO {
-        return TestCaseAttachmentDTO(externalID, creationDate, fileName, contentType, fileSize, uploadedBy?.displayName)
+        return TestCaseAttachmentDTO(externalID, creationDate, fileName, contentType, fileSize, uploadedBy?.displayName ?: uploadedByToken?.authorName)
     }
 }
