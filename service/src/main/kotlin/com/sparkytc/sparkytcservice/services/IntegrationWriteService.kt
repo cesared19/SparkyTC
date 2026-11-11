@@ -6,6 +6,7 @@ import com.sparkytc.sparkytcservice.dto.plans.SaveTestPlanDTO
 import com.sparkytc.sparkytcservice.dto.steps.StepInputDTO
 import com.sparkytc.sparkytcservice.dto.steps.TestCaseFormat
 import com.sparkytc.sparkytcservice.dto.testcases.CreateTestCaseDTO
+import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.models.ProjectApiToken
 import com.sparkytc.sparkytcservice.models.WorkspaceProject
 import com.sparkytc.sparkytcservice.repositories.*
@@ -28,6 +29,8 @@ class IntegrationWriteService(
     private val testPlanRepository: TestPlanRepository,
     private val testRunRepository: TestRunRepository,
     private val projectBuildRepository: ProjectBuildRepository,
+    private val testCaseRunRepository: TestCaseRunRepository,
+    private val objectMapper: com.fasterxml.jackson.databind.ObjectMapper,
     private val sectionService: TestCaseSectionService,
     private val workspaceService: WorkspaceService,
     private val testPlanService: TestPlanService,
@@ -152,6 +155,72 @@ class IntegrationWriteService(
     }
 
     /**
+     * Records a result for a test case of an automated test run, like the app does, credited to the token. Returns
+     * null when the project has no test run with that number. Results are never edited through the API.
+     */
+    fun recordResult(testRunNumber: Long, request: IntegrationRecordResultDTO): IntegrationRecordedResultDTO? {
+        val testCaseNumber = requireNotNull(request.testCaseNumber) { "Send the testCaseNumber" }
+        val status = when (request.status?.trim()?.uppercase()) {
+            "PASS" -> TestCaseRunStatus.PASS
+            "FAIL" -> TestCaseRunStatus.FAIL
+            "BLOCKED" -> TestCaseRunStatus.BLOCKED
+            "SKIP" -> TestCaseRunStatus.SKIP
+            else -> throw IllegalArgumentException("The status must be PASS, FAIL, BLOCKED or SKIP")
+        }
+        val notes = request.notes?.trim()?.takeIf { it.isNotEmpty() }
+        require(notes == null || notes.length <= MAX_NOTES) { "The notes can have up to $MAX_NOTES characters" }
+        val duration = request.durationSeconds
+        require(duration == null || duration in 0..MAX_DURATION_SECONDS) { "The durationSeconds must be between 0 and $MAX_DURATION_SECONDS (24 hours)" }
+        val report = request.report?.let { reportJson(it) }
+
+        return transaction.execute {
+            val (project, token) = projectAndToken()
+            val testRun = testRunRepository.findByProjectAndTestRunNumber(project, testRunNumber) ?: return@execute null
+            require(testRun.isAutomated) { "Test run $testRunNumber was created in the app; the API records results only in automated test runs" }
+            require(!testRun.isClosed) { "Test run $testRunNumber is closed" }
+            val testCaseRun = testCaseRunRepository.findAllByTestRun(testRun).firstOrNull { it.testCase.testCaseNumber == testCaseNumber }
+            requireNotNull(testCaseRun) { "Test case #$testCaseNumber is not in test run $testRunNumber" }
+
+            val result = workspaceService.recordResultByToken(testCaseRun, status, notes, duration, report, token)
+            val runPath = "/test-runs/${project.projectShortCode}/$testRunNumber"
+            IntegrationRecordedResultDTO(
+                resultID = result.externalID,
+                testRunNumber = testRunNumber,
+                testCaseNumber = testCaseNumber,
+                status = IntegrationResultStatus.valueOf(status.name),
+                testRunStatus = testRun.status.name,
+                webPath = "$runPath/$testCaseNumber",
+            )
+        }
+    }
+
+    /** Checks the report's size and values and returns it as stored: compact JSON. */
+    private fun reportJson(report: IntegrationResultReportDTO): String {
+        val findings = report.findings.orEmpty()
+        require(findings.size <= MAX_REPORT_ITEMS) { "The report can have up to $MAX_REPORT_ITEMS findings" }
+        require(findings.all { it.length <= MAX_FINDING }) { "Each finding can have up to $MAX_FINDING characters" }
+        val screenshots = report.screenshots.orEmpty()
+        require(screenshots.size <= MAX_REPORT_ITEMS) { "The report can have up to $MAX_REPORT_ITEMS screenshots" }
+        for (screenshot in screenshots) {
+            val name = screenshot.name?.trim().orEmpty()
+            require(name.isNotEmpty() && name.length <= MAX_SCREENSHOT_NAME) { "Each screenshot needs a name of up to $MAX_SCREENSHOT_NAME characters" }
+            screenshot.differentPercent?.let { require(it.isFinite() && it in 0.0..100.0) { "differentPercent must be between 0 and 100" } }
+        }
+        for (set in listOfNotNull(report.metrics?.recorded, report.metrics?.replay)) {
+            val values = listOfNotNull(set.averageFps, set.frameTimeP50Ms, set.frameTimeP95Ms, set.frameTimeP99Ms, set.overBudgetPercent,
+                set.cpuAvgMs, set.gpuAvgMs, set.usedMemoryPeakMB, set.batteryTemperatureMaxC)
+            require(values.all { it.isFinite() }) { "The report's metrics must be numbers" }
+            require((set.droppedFrames ?: 0) >= 0) { "droppedFrames can't be negative" }
+        }
+        val json = objectMapper.writeValueAsString(report.copy(
+            findings = findings.map { it.trim() }.filter { it.isNotEmpty() },
+            screenshots = screenshots.map { it.copy(name = it.name?.trim()) },
+        ))
+        require(json.length <= MAX_REPORT_LENGTH) { "The report can be up to ${MAX_REPORT_LENGTH / 1024} KB" }
+        return json
+    }
+
+    /**
      * Returns what already has the app's reference, or creates it. Two requests with the same reference at once
      * both try to create it; the database lets one through and the other gets the one created.
      */
@@ -194,5 +263,11 @@ class IntegrationWriteService(
         // the app has no limit; the API keeps titles to a size a test case list can show
         const val MAX_TITLE = 500
         const val MAX_SOURCE_REF = 200
+        const val MAX_NOTES = 10_000
+        const val MAX_DURATION_SECONDS = 24L * 60 * 60
+        const val MAX_REPORT_ITEMS = 500
+        const val MAX_FINDING = 1_000
+        const val MAX_SCREENSHOT_NAME = 200
+        const val MAX_REPORT_LENGTH = 256 * 1024
     }
 }

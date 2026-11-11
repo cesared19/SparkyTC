@@ -530,6 +530,109 @@ class IntegrationApiTests {
         assertEquals(1, data(admin.perform(get("/api/v1/workspace/test-runs/PRJ"))).size())
     }
 
+    @Test
+    fun `records results in automated test runs like the app, with the time and the report`() {
+        val write = token("PRJ", canWrite = true)
+        for (title in listOf("Open the main menu", "Grab a cube", "Teleport")) {
+            integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to title)).andExpect(status().isOk)
+        }
+        createBuild("1.4.2")
+        val run = data(integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Replay", "build" to "1.4.2", "testCaseNumbers" to listOf(1, 2, 3))))
+        assertEquals(1, run.get("testRunNumber").asInt())
+
+        val report = mapOf(
+            "passed" to true,
+            "findings" to listOf(" p95 frame time went from 11.1 ms to 12.0 ms "),
+            "screenshots" to listOf(mapOf("name" to "000120_menu-open", "differentPercent" to 0.02, "passed" to true)),
+            "metrics" to mapOf(
+                "recorded" to mapOf("averageFps" to 89.6, "frameTimeP95Ms" to 11.1, "droppedFrames" to 3),
+                "replay" to mapOf("averageFps" to 88.9, "frameTimeP95Ms" to 12.0, "droppedFrames" to 5),
+            ),
+        )
+        val pass = data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf(
+            "testCaseNumber" to 1, "status" to "pass", "notes" to "Replay matched the recording", "durationSeconds" to 95, "report" to report,
+        )))
+        assertEquals("PASS", pass.get("status").asText())
+        assertEquals("IN_PROGRESS", pass.get("testRunStatus").asText())
+        assertEquals("/test-runs/PRJ/1/1", pass.get("webPath").asText())
+        UUID.fromString(pass.get("resultID").asText())
+
+        // blocked keeps the run open, like in the app
+        assertEquals("IN_PROGRESS", data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 2, "status" to "BLOCKED"))).get("testRunStatus").asText())
+        assertEquals("IN_PROGRESS", data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 3, "status" to "FAIL"))).get("testRunStatus").asText())
+        // a new result for the blocked one completes it
+        assertEquals("COMPLETE", data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 2, "status" to "SKIP"))).get("testRunStatus").asText())
+
+        // in the app: the token executed them, with the time it reported, and the run is complete
+        val caseRuns = data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1"))).associateBy { it.get("testCase").get("testCaseNumber").asInt() }
+        assertEquals(listOf("PASS", "SKIP", "FAIL"), listOf(1, 2, 3).map { caseRuns.getValue(it).get("status").asText() })
+        assertEquals("co-bord (API token)", caseRuns.getValue(1).get("executedBy").asText())
+        assertEquals("Replay matched the recording", caseRuns.getValue(1).get("notes").asText())
+        assertEquals(95, caseRuns.getValue(1).get("timeSeconds").asInt())
+        assertEquals("COMPLETE", data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/1"))).get("status").asText())
+
+        // the history keeps both results of #2 and the report of #1, trimmed and as sent
+        val history = data(admin.perform(get("/api/v1/workspace/test-cases/${appTestCase(1).get("testCaseID").asText()}/history")))
+        val stored = objectMapper.readTree(history[0].get("result").get("report").asText())
+        assertTrue(stored.get("passed").asBoolean())
+        assertEquals("p95 frame time went from 11.1 ms to 12.0 ms", stored.get("findings")[0].asText())
+        assertEquals("000120_menu-open", stored.get("screenshots")[0].get("name").asText())
+        assertEquals(12.0, stored.get("metrics").get("replay").get("frameTimeP95Ms").asDouble())
+        assertEquals("co-bord (API token)", history[0].get("result").get("recordedBy").asText())
+        assertEquals(2, data(admin.perform(get("/api/v1/workspace/test-cases/${appTestCase(2).get("testCaseID").asText()}/history"))).size())
+
+        // the build's results and the API's history count them like any other
+        val results = data(integration(write, post("/api/integration/v1/results"), mapOf("testCaseNumbers" to listOf(1, 2, 3), "build" to "1.4.2")))
+        assertEquals(listOf("PASS", "SKIP", "FAIL"), results.get("testCases").map { it.get("status").asText() })
+        assertEquals("co-bord (API token)", results.get("testCases")[0].get("executedBy").asText())
+        val apiHistory = data(integration(write, get("/api/integration/v1/test-cases/1/history")))
+        assertEquals("co-bord (API token)", apiHistory.get("results")[0].get("recordedBy").asText())
+    }
+
+    @Test
+    fun `recording results needs a write token, an open automated run and its test cases`() {
+        val write = token("PRJ", canWrite = true)
+        val read = token("PRJ")
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Open the main menu")).andExpect(status().isOk)
+        integration(write, post("/api/integration/v1/test-cases"), mapOf("title" to "Not in the run")).andExpect(status().isOk)
+        val buildID = createBuild("1.4.2")
+        data(integration(write, post("/api/integration/v1/test-runs"), mapOf("title" to "Replay", "build" to "1.4.2", "testCaseNumbers" to listOf(1))))
+        fun rejected(number: Int, body: Any) = message(integration(write, post("/api/integration/v1/test-runs/$number/results"), body).andExpect(status().isBadRequest))
+
+        // a Read token can't record (its path ends in /results, but only POST /results reads)
+        integration(read, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 1, "status" to "PASS")).andExpect(status().isForbidden)
+        integration(read, post("/api/integration/v1/test-runs/1/results/"), mapOf("testCaseNumber" to 1, "status" to "PASS")).andExpect(status().isForbidden)
+        integration(read, post("/api/integration/v1/results"), mapOf("testCaseNumbers" to listOf(1))).andExpect(status().isOk)
+
+        integration(write, post("/api/integration/v1/test-runs/9/results"), mapOf("testCaseNumber" to 1, "status" to "PASS")).andExpect(status().isNotFound)
+        assertEquals("Send the testCaseNumber", rejected(1, mapOf("status" to "PASS")))
+        assertEquals("The status must be PASS, FAIL, BLOCKED or SKIP", rejected(1, mapOf("testCaseNumber" to 1, "status" to "PENDING")))
+        assertEquals("Test case #2 is not in test run 1", rejected(1, mapOf("testCaseNumber" to 2, "status" to "PASS")))
+        assertTrue(rejected(1, mapOf("testCaseNumber" to 1, "status" to "PASS", "notes" to "x".repeat(10_001))).contains("10000 characters"))
+        assertTrue(rejected(1, mapOf("testCaseNumber" to 1, "status" to "PASS", "durationSeconds" to -1)).startsWith("The durationSeconds"))
+        assertTrue(rejected(1, mapOf("testCaseNumber" to 1, "status" to "PASS", "report" to mapOf("findings" to listOf("x".repeat(1_001))))).contains("1000 characters"))
+        assertEquals("differentPercent must be between 0 and 100",
+            rejected(1, mapOf("testCaseNumber" to 1, "status" to "PASS", "report" to mapOf("screenshots" to listOf(mapOf("name" to "a", "differentPercent" to 150))))))
+        assertTrue(rejected(1, mapOf("testCaseNumber" to 1, "status" to "PASS", "report" to mapOf("screenshots" to listOf(mapOf("name" to " ")))))
+            .startsWith("Each screenshot needs a name"))
+        assertTrue(rejected(1, mapOf("testCaseNumber" to 1, "status" to "PASS", "report" to mapOf("findings" to List(400) { "y".repeat(900) }))).contains("KB"))
+
+        // nothing was recorded by the rejected requests
+        assertEquals("PENDING", data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1")))[0].get("status").asText())
+
+        // runs created in the app are the testers': the API doesn't write in them
+        createRun(2, buildID, appTestCase(1).get("testCaseID").asText() to null)
+        assertTrue(rejected(2, mapOf("testCaseNumber" to 1, "status" to "PASS")).contains("created in the app"))
+
+        // a closed run takes no more results
+        data(integration(write, post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 1, "status" to "PASS")))
+        assertEquals("Test run 1 is closed", rejected(1, mapOf("testCaseNumber" to 1, "status" to "FAIL")))
+
+        // another project's token doesn't see this project's runs
+        integration(token("OTH", canWrite = true), post("/api/integration/v1/test-runs/1/results"), mapOf("testCaseNumber" to 1, "status" to "PASS"))
+            .andExpect(status().isNotFound)
+    }
+
     private fun token(shortCode: String, canWrite: Boolean = false): String =
         data(send(post("/api/v1/workspace/projects/$shortCode/api-tokens"), mapOf("name" to "co-bord", "canWrite" to canWrite))).get("secret").asText()
 

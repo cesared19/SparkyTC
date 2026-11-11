@@ -213,3 +213,62 @@ data class IntegrationTestRunDTO(
     /** Only when creating: false when a test run with the same sourceRef already existed and is returned instead. */
     val created: Boolean? = null,
 )
+
+/** A result to record for a test case of an automated test run. */
+data class IntegrationRecordResultDTO(
+    val testCaseNumber: Long? = null,
+    /** PASS, FAIL, BLOCKED or SKIP. */
+    val status: String? = null,
+    val notes: String? = null,
+    /** How long the test case took; it's the test case's time in the run. */
+    val durationSeconds: Long? = null,
+    val report: IntegrationResultReportDTO? = null,
+)
+
+/** What an app found, stored with the result and shown in SparkyTC, e.g. a replay compared with its recording. */
+data class IntegrationResultReportDTO(
+    val passed: Boolean? = null,
+    val findings: List<String>? = null,
+    val screenshots: List<IntegrationReportScreenshotDTO>? = null,
+    val metrics: IntegrationReportMetricsDTO? = null,
+)
+
+data class IntegrationReportScreenshotDTO(
+    val name: String? = null,
+    /** Percentage of pixels that differ from the recording, 0–100. */
+    val differentPercent: Double? = null,
+    val passed: Boolean? = null,
+)
+
+/** Performance of the recording and of the replay. */
+data class IntegrationReportMetricsDTO(
+    val recorded: IntegrationReportMetricSetDTO? = null,
+    val replay: IntegrationReportMetricSetDTO? = null,
+)
+
+data class IntegrationReportMetricSetDTO(
+    val averageFps: Double? = null,
+    val frameTimeP50Ms: Double? = null,
+    val frameTimeP95Ms: Double? = null,
+    val frameTimeP99Ms: Double? = null,
+    /** Percentage of frames over one refresh interval. */
+    val overBudgetPercent: Double? = null,
+    val droppedFrames: Long? = null,
+    val cpuAvgMs: Double? = null,
+    val gpuAvgMs: Double? = null,
+    val usedMemoryPeakMB: Double? = null,
+    val batteryTemperatureMaxC: Double? = null,
+)
+
+data class IntegrationRecordedResultDTO(
+    /** For uploading the result's evidence. */
+    val resultID: UUID,
+    val testRunNumber: Long,
+    val testCaseNumber: Long,
+    val status: IntegrationResultStatus,
+    /** The run's status after this result: COMPLETE once every test case has a final result. */
+    val testRunStatus: String,
+    /** The test case in the run, in the app. */
+    val webPath: String,
+)
+

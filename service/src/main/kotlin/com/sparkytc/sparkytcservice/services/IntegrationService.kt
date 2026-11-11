@@ -215,7 +215,7 @@ class IntegrationService(
                 IntegrationHistoryEntryDTO(
                     status = status(result.status),
                     notes = result.notes,
-                    recordedBy = result.recordedBy?.displayName,
+                    recordedBy = result.recorderName,
                     recordedAt = result.recordedAt,
                     testRunNumber = run.testRunNumber,
                     testRunTitle = run.title,
@@ -254,7 +254,7 @@ class IntegrationService(
         title = testCase.title,
         status = status(run),
         executedAt = run?.executedAt,
-        executedBy = run?.executedBy?.displayName,
+        executedBy = run?.executedBy?.displayName ?: run?.executedByToken?.authorName,
         testRunNumber = run?.testRun?.testRunNumber,
         webPath = testCasePath(project, testCase),
     )
