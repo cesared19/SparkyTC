@@ -19,6 +19,11 @@ import {
 	latestStepResults,
 	stepResultsSummaryText,
 } from '~/components/StepsView'
+import {
+	latestReplayReport,
+	replaySummary,
+	type ReplayReport,
+} from '~/utility/ReplayReport'
 
 export type ExportFormat = 'csv' | 'xlsx'
 
@@ -154,6 +159,9 @@ export function runResultRows(
 	const hasSteps = testCaseRuns.some(
 		(run) => run.format === TestCaseFormat.steps
 	)
+	// the replay columns only when some test case's result came with a replay's report
+	const reports = testCaseRuns.map((run) => latestReplayReport(run.results))
+	const hasReplay = reports.some((report) => report !== undefined)
 	const header = [
 		'ID',
 		'Title',
@@ -165,26 +173,37 @@ export function runResultRows(
 		'Results recorded',
 		...(hasSteps ? ['Steps', 'Step results'] : []),
 		...(testRun.trackTime ? ['Time (minutes)'] : []),
+		...(hasReplay ? ['Replay result', 'Replay p95 frame time (ms)'] : []),
 		'Jira issues',
 		'Build',
 	]
-	const rows = testCaseRuns.map((run) => [
+	const rows = testCaseRuns.map((run, index) => [
 		Tools.testCaseDisplayCode(project, run.testCase),
 		run.title,
 		sectionPath(sections, run.testCase.sectionID),
 		STATUS_NAMES[run.status],
 		run.notes ?? '',
-		run.status === TestCaseRunStatus.pending ? '' : run.executedBy ?? '',
+		run.status === TestCaseRunStatus.pending ? '' : (run.executedBy ?? ''),
 		run.executedAt ? new Date(run.executedAt).toLocaleString('en-US') : '',
 		run.results.length,
 		...(hasSteps
 			? [stepResultsSummaryText(run) ?? '', stepResultLines(run)]
 			: []),
 		...(testRun.trackTime ? [Math.round(run.timeSeconds / 6) / 10] : []),
+		...(hasReplay ? replayColumns(reports[index]) : []),
 		(run.testCase.jiraLinks ?? []).map((link) => link.issueKey).join(', '),
 		testRun.build?.buildNumber ?? '',
 	])
 	return [header, ...rows]
+}
+
+function replayColumns(report: ReplayReport | undefined): (string | number)[] {
+	if (!report) return ['', '']
+	const p95 = report.replay?.frameTimeP95Ms
+	return [
+		replaySummary(report),
+		p95 === undefined ? '' : Math.round(p95 * 10) / 10,
+	]
 }
 
 /** Each step of the latest result: "1. PASS Open the page", then "   Actual: ..." when written. */

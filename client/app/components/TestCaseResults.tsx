@@ -13,7 +13,9 @@ import {
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 import { Route } from '~/utility/Routes'
 import { ErrorMessage } from './ErrorMessage'
+import { ReplayReportView } from './ReplayReportView'
 import { StepResultsSummary } from './StepsView'
+import { replayReport, replaySummary } from '~/utility/ReplayReport'
 
 function formatDateTime(date: number) {
 	return new Date(date).toLocaleString('en-US', {
@@ -47,6 +49,7 @@ function ResultItem({
 			: undefined
 
 	if (deleteFetcher.state !== 'idle') return null
+	const report = replayReport(result)
 
 	return (
 		<li className="space-y-3 py-4">
@@ -92,6 +95,9 @@ function ResultItem({
 			) : (
 				<p className="text-sm italic text-gray-500">No comment</p>
 			)}
+			{report && (
+				<ReplayReportView report={report} attachments={result.attachments} />
+			)}
 			{steps && steps.length > 0 && (
 				<StepResultsSummary
 					steps={steps}
@@ -133,6 +139,22 @@ export function TestCaseRunResults({
 				/>
 			))}
 		</ul>
+	)
+}
+
+/** In the history, a line with the replay's verdict that opens the whole report. */
+function HistoryReplayReport({ result }: { result: TestCaseResult }) {
+	const report = replayReport(result)
+	if (!report) return null
+	return (
+		<details className="text-xs">
+			<summary className="cursor-pointer text-gray-700 hover:text-brand-700">
+				Replay report: {replaySummary(report)}
+			</summary>
+			<div className="mt-2">
+				<ReplayReportView report={report} attachments={result.attachments} />
+			</div>
+		</details>
 	)
 }
 
@@ -229,6 +251,7 @@ export function TestCaseHistory({
 								{entry.result.notes}
 							</p>
 						)}
+						<HistoryReplayReport result={entry.result} />
 					</li>
 				))}
 			</ul>
