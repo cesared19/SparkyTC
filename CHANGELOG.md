@@ -16,6 +16,7 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 - A result that came with a replay's report shows it on the test case's page in the run and in its history: the findings, each screenshot compared with the recording (with links to its recording, replay and diff images), and the performance of the recording next to the replay's, with metrics more than 20% worse highlighted. The results export adds the replay's result and p95 frame time when a run has them.
 
 ### Changed
+- The integration API can be reached on the app's port: `http://<server>:3000/api/integration/v1/...` is forwarded to the backend, so apps on other machines (like re-Play on a tester's PC) can use it with their token. Only the integration API is forwarded.
 - `docker compose up` backs up the database, migrates it if the new version needs it, and only then starts the backend. If the backup or the migration fails, the backend doesn't start. `DATABASE_MIGRATION_MODE` is no longer set by hand.
 
 ### Security

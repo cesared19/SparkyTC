@@ -217,7 +217,8 @@ Other apps can read a project through an API, and create test cases and test run
 
 -  The latest result follows the same rule as the build results: the last executed result of each test case among the build's test runs; results not run in that build are `NOT_RUN`. Archived test cases are left out.
 -  Every item has a `webPath` to open it in SparkyTC.
--  The backend is only published on `127.0.0.1:8080`. Apps in other Docker Compose projects on the same server reach it by joining the SparkyTC network (`docker network ls` shows its name, such as `sparkytc_app-network`) and calling `http://backend-service:8080`.
+-  Apps on other machines (for example re-Play on a tester's PC) call the API on the app's own address, e.g. `http://<server>:3000/api/integration/v1/...`: the client service forwards `/api/integration/v1` to the backend, with the token, and nothing else of the backend. The app's session isn't used there; a request without a token gets a 401. Until SparkyTC is served over HTTPS, tokens travel unencrypted on the network, like the app's session cookie.
+-  The backend itself is only published on `127.0.0.1:8080`. Apps in other Docker Compose projects on the same server can also reach it by joining the SparkyTC network (`docker network ls` shows its name, such as `sparkytc_app-network`) and calling `http://backend-service:8080`.
 
 ## Architecture Overview
 
