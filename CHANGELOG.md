@@ -6,6 +6,8 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-11
+
 ### Added
 - Issue forms for bugs and feature requests, a pull request checklist, this changelog, and the contributing and security guides.
 - Daily database backups on the server, keeping 14 daily and 8 weekly ones, with commands to list them, check one by restoring it into a new database, and restore one. The README explains how to restore and how to roll back an upgrade.
@@ -23,8 +25,9 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 - Attachments that aren't images the browser shows safely or videos, such as SVG files (which can contain scripts), are now downloaded instead of opened in the browser, and every attachment is sent with `X-Content-Type-Options: nosniff`.
 
 ### Upgrading
-- Database schema **0.0.24**: existing test runs are marked as manual, test runs can keep the reference of the app that created them, and results and evidence can be recorded by an API token, results with a report.
-- Remove `DATABASE_MIGRATION_MODE` from `.env` and run `docker compose up -d --build`. Backups are written to `backups/` next to `docker-compose.yml` (`BACKUP_DIR` changes it); the README lists the other settings.
+- Remove `DATABASE_MIGRATION_MODE` from `.env` and run `docker compose up -d --build`: it backs up the database, migrates it and starts the backend. Backups are written to `backups/` next to `docker-compose.yml` (`BACKUP_DIR` changes it); the README lists the other settings.
+- Database schema **0.0.24**, migrated by the step above: existing test runs are marked as manual, test runs can keep the reference of the app that created them, and results and evidence can be recorded by an API token, results with a report.
+- Apps on other machines (re-Play) use the app's address for the integration API, e.g. `http://<server>:3000`. Apps on the same server can keep calling the backend directly.
 
 ## [2.4.0] - 2026-11-06
 
@@ -107,7 +110,8 @@ First release as SparkyTC, based on [Cherry](https://github.com/bennettadam/cher
 ### Upgrading
 - Database schema 0.0.7. Signing in is now required.
 
-[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/cesared19/SparkyTC/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/cesared19/SparkyTC/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/cesared19/SparkyTC/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/cesared19/SparkyTC/compare/v2.1.1...v2.2.0
