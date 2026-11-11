@@ -15,6 +15,7 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 - Evidence through the integration API: `POST /api/integration/v1/test-runs/{number}/results/{resultID}/attachments` attaches images, videos and `.zip` files (for example a replay's whole report) to a result of an automated test run. A `.zip` shows with a **Download** link and is never opened in SparkyTC.
 
 ### Changed
+- The integration API can be reached on the app's port: `http://<server>:3000/api/integration/v1/...` is forwarded to the backend, so apps on other machines (like re-Play on a tester's PC) can use it with their token. Only the integration API is forwarded.
 - `docker compose up` backs up the database, migrates it if the new version needs it, and only then starts the backend. If the backup or the migration fails, the backend doesn't start. `DATABASE_MIGRATION_MODE` is no longer set by hand.
 
 ### Security
