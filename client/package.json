@@ -8,6 +8,7 @@
 		"build": "remix vite:build",
 		"dev": "remix vite:dev",
 		"dev:host": "remix vite:dev --host",
+		"e2e": "playwright test",
 		"lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
 		"start": "remix-serve ./build/server/index.js",
 		"typecheck": "tsc"
@@ -24,6 +25,7 @@
 		"uuid": "^11.0.3"
 	},
 	"devDependencies": {
+		"@playwright/test": "1.56.1",
 		"@remix-run/dev": "^2.14.0",
 		"@types/react": "^18.2.20",
 		"@types/react-dom": "^18.2.7",
