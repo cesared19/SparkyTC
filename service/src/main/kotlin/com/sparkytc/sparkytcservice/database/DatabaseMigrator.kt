@@ -629,6 +629,15 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.20")
                 }
                 SchemaVersion.VERSION_0_0_20 -> {
+                    // how a test run was created: in the app (manual) or through the integration API (automated);
+                    // existing runs were all created in the app
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN is_automated BOOLEAN NOT NULL DEFAULT FALSE")
+                    // the token that created an automated run, instead of a user
+                    jdbcTemplate.execute("ALTER TABLE test_runs ADD COLUMN created_by_token_id BIGINT REFERENCES project_api_tokens(id) ON DELETE SET NULL")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.21")
+                }
+                SchemaVersion.VERSION_0_0_21 -> {
                     break
                 }
             }

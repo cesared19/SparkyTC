@@ -5,18 +5,24 @@ import {
 	useNavigate,
 	useSearchParams,
 } from '@remix-run/react'
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { FetchResponse, TestRun } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
 import { TestRunStatusBadge } from '~/components/TestRunStatusBadge'
 import { Table, Column } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
+import { AutomatedBadge } from '~/components/AutomatedBadge'
 import {
+	DEFAULT_TEST_RUN_KIND,
 	DEFAULT_TEST_RUN_SORT,
+	filterTestRuns,
+	isTestRunKind,
 	isTestRunSort,
 	sortTestRuns,
+	TEST_RUN_KINDS,
 	TEST_RUN_SORTS,
+	type TestRunKind,
 	type TestRunSort,
 } from '~/utility/TestRunSort'
 
@@ -39,6 +45,26 @@ export default function TestRunsIndex() {
 	const [searchParams, setSearchParams] = useSearchParams()
 	const requested = searchParams.get('sort')
 	const sort = isTestRunSort(requested) ? requested : DEFAULT_TEST_RUN_SORT
+	const requestedKind = searchParams.get('kind')
+	const kind = isTestRunKind(requestedKind)
+		? requestedKind
+		: DEFAULT_TEST_RUN_KIND
+
+	// changes one setting in the address, keeping the others; defaults are left out
+	const setParam = useCallback(
+		(name: string, value: string, defaultValue: string) => {
+			setSearchParams(
+				(previous) => {
+					const next = new URLSearchParams(previous)
+					if (value === defaultValue) next.delete(name)
+					else next.set(name, value)
+					return next
+				},
+				{ replace: true, preventScrollReset: true }
+			)
+		},
+		[setSearchParams]
+	)
 
 	const chooseSort = (next: TestRunSort) => {
 		try {
@@ -46,10 +72,7 @@ export default function TestRunsIndex() {
 		} catch {
 			// storage can be unavailable, e.g. in private windows
 		}
-		setSearchParams(next === DEFAULT_TEST_RUN_SORT ? {} : { sort: next }, {
-			replace: true,
-			preventScrollReset: true,
-		})
+		setParam('sort', next, DEFAULT_TEST_RUN_SORT)
 	}
 
 	// without an order in the address, use the one chosen last time
@@ -62,19 +85,21 @@ export default function TestRunsIndex() {
 			return
 		}
 		if (isTestRunSort(saved) && saved !== DEFAULT_TEST_RUN_SORT) {
-			setSearchParams(
-				{ sort: saved },
-				{ replace: true, preventScrollReset: true }
-			)
+			setParam('sort', saved, DEFAULT_TEST_RUN_SORT)
 		}
-	}, [requested, setSearchParams])
+	}, [requested, setParam])
 
 	const columns: Column<TestRun>[] = [
 		{
 			header: 'Title',
 			key: 'title',
 			mobile: 'title',
-			render: (testRun) => testRun.title,
+			render: (testRun) => (
+				<span className="inline-flex flex-wrap items-center gap-2">
+					{testRun.title}
+					{testRun.automated && <AutomatedBadge />}
+				</span>
+			),
 		},
 		{
 			header: 'Status',
@@ -101,6 +126,30 @@ export default function TestRunsIndex() {
 				</div>
 
 				<div className="flex flex-wrap items-center gap-3">
+					<label
+						htmlFor="testRunKind"
+						className="flex items-center gap-2 text-sm text-gray-700"
+					>
+						Show
+						<select
+							id="testRunKind"
+							value={kind}
+							onChange={(event) =>
+								setParam(
+									'kind',
+									event.target.value as TestRunKind,
+									DEFAULT_TEST_RUN_KIND
+								)
+							}
+							className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+						>
+							{TEST_RUN_KINDS.map((option) => (
+								<option key={option.value} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</label>
 					<label
 						htmlFor="testRunSort"
 						className="flex items-center gap-2 text-sm text-gray-700"
@@ -130,10 +179,12 @@ export default function TestRunsIndex() {
 				</div>
 			</div>
 			<Table
-				tableRows={sortTestRuns(testRuns, sort).map((testRun) => ({
-					id: testRun.testRunID,
-					data: testRun,
-				}))}
+				tableRows={sortTestRuns(filterTestRuns(testRuns, kind), sort).map(
+					(testRun) => ({
+						id: testRun.testRunID,
+						data: testRun,
+					})
+				)}
 				columns={columns}
 				onRowClick={(testRun) => navigate(testRun.testRunNumber.toString())}
 			/>

@@ -7,6 +7,12 @@ import com.sparkytc.sparkytcservice.dto.auth.UserRole
 import com.sparkytc.sparkytcservice.dto.projects.CreateWorkspaceProjectDTO
 import com.sparkytc.sparkytcservice.dto.testcases.CreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.testruns.CreateTestRunDTO
+import com.sparkytc.sparkytcservice.dto.testruns.TestRunStatus
+import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
+import com.sparkytc.sparkytcservice.models.TestRun
+import com.sparkytc.sparkytcservice.repositories.ProjectApiTokenRepository
+import com.sparkytc.sparkytcservice.repositories.TestRunRepository
+import com.sparkytc.sparkytcservice.repositories.WorkspaceProjectRepository
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.dto.steps.StepResultDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
@@ -60,6 +66,9 @@ class IntegrationApiTests {
     @Autowired private lateinit var adminBootstrap: AdminBootstrap
     @Autowired private lateinit var context: WebApplicationContext
     @Autowired private lateinit var objectMapper: ObjectMapper
+    @Autowired private lateinit var projectRepository: WorkspaceProjectRepository
+    @Autowired private lateinit var tokenRepository: ProjectApiTokenRepository
+    @Autowired private lateinit var testRunRepository: TestRunRepository
 
     private lateinit var admin: MockMvc
     private lateinit var anonymous: MockMvc
@@ -374,6 +383,45 @@ class IntegrationApiTests {
         // a number that isn't there, or is in another project, is not found
         integration(secret, get("/api/integration/v1/test-cases/99/history")).andExpect(status().isNotFound)
         integration(token("OTH"), get("/api/integration/v1/test-cases/$number/history")).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `test runs created in the app are manual and runs a token created are automated`() {
+        val testCaseID = createTestCase("Login", null, emptyList())
+        send(post("/api/v1/workspace/test-runs/PRJ"), CreateTestRunDTO("Manual run", null, listOf(UUID.fromString(testCaseID))))
+            .andExpect(status().isOk)
+
+        // a run created the way the integration API creates them
+        val project = projectRepository.findByProjectShortCode("PRJ")!!
+        token("PRJ", canWrite = true)
+        val apiToken = tokenRepository.findAllByProjectAndRevokedAtIsNullOrderByCreationDateDesc(project).first()
+        testRunRepository.save(TestRun(
+            project = project, testRunNumber = 2, status = TestRunStatus.PENDING, title = "Replay",
+            description = null, isAutomated = true, createdByToken = apiToken,
+        ))
+
+        val runs = data(admin.perform(get("/api/v1/workspace/test-runs/PRJ")))
+        val manual = runs.first { it.get("title").asText() == "Manual run" }
+        assertFalse(manual.get("automated").asBoolean())
+        assertFalse(manual.get("createdBy").asText().endsWith("(API token)"))
+        val automated = runs.first { it.get("title").asText() == "Replay" }
+        assertTrue(automated.get("automated").asBoolean())
+        assertEquals("co-bord (API token)", automated.get("createdBy").asText())
+        assertTrue(data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/2"))).get("automated").asBoolean())
+
+        // editing it in the app (even sending the flag) doesn't make it manual
+        val update = objectMapper.valueToTree<com.fasterxml.jackson.databind.node.ObjectNode>(UpdateTestRunDTO("Replay, checked", null, TestRunStatus.IN_PROGRESS))
+            .put("automated", false)
+        send(put("/api/v1/workspace/test-runs/${automated.get("testRunID").asText()}"), update).andExpect(status().isOk)
+        val edited = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/2")))
+        assertEquals("Replay, checked", edited.get("title").asText())
+        assertTrue(edited.get("automated").asBoolean())
+
+        // and revoking the token keeps both the flag and the author
+        send(delete("/api/v1/workspace/api-tokens/${apiToken.externalID}"), null).andExpect(status().isOk)
+        val afterRevoke = data(admin.perform(get("/api/v1/workspace/projects/PRJ/test-runs/2")))
+        assertTrue(afterRevoke.get("automated").asBoolean())
+        assertEquals("co-bord (API token)", afterRevoke.get("createdBy").asText())
     }
 
     private fun token(shortCode: String, canWrite: Boolean = false): String =

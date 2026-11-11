@@ -12,6 +12,28 @@ export const TEST_RUN_SORTS: { value: TestRunSort; label: string }[] = [
 
 export const DEFAULT_TEST_RUN_SORT: TestRunSort = 'open'
 
+// how the runs were created: in the app (manual) or through the integration API (automated)
+export type TestRunKind = 'all' | 'manual' | 'automated'
+
+export const TEST_RUN_KINDS: { value: TestRunKind; label: string }[] = [
+	{ value: 'all', label: 'All' },
+	{ value: 'manual', label: 'Manual' },
+	{ value: 'automated', label: 'Automated' },
+]
+
+export const DEFAULT_TEST_RUN_KIND: TestRunKind = 'all'
+
+export function isTestRunKind(value: string | null): value is TestRunKind {
+	return TEST_RUN_KINDS.some((kind) => kind.value === value)
+}
+
+export function filterTestRuns(testRuns: TestRun[], kind: TestRunKind) {
+	if (kind === 'all') return testRuns
+	return testRuns.filter(
+		(testRun) => testRun.automated === (kind === 'automated')
+	)
+}
+
 export function isTestRunSort(value: string | null): value is TestRunSort {
 	return TEST_RUN_SORTS.some((sort) => sort.value === value)
 }

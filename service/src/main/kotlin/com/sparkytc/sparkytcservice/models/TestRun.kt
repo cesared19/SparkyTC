@@ -72,12 +72,21 @@ class TestRun (
 
     @Column(name = "time_override_seconds")
     var timeOverrideSeconds: Long? = null,
+
+    // created through the integration API instead of in the app; set once, never changed
+    @Column(name = "is_automated", nullable = false, updatable = false)
+    val isAutomated: Boolean = false,
+
+    // the token that created an automated run, shown as its author
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_token_id", updatable = false)
+    val createdByToken: ProjectApiToken? = null,
 ) {
     val isClosed: Boolean
         get() = status == TestRunStatus.COMPLETE || status == TestRunStatus.ABORT
 
     fun toDTO(): TestRunDTO {
         val assigneeSummaries = assignees.sortedBy { it.displayName.lowercase() }.map { UserSummaryDTO(it.externalID, it.displayName) }
-        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName, assigneeSummaries, build?.toDTO(), trackTime, timeOverrideSeconds, testPlan?.externalID, testPlan?.name)
+        return TestRunDTO(externalID, creationDate, testRunNumber, status, title, description, createdBy?.displayName ?: createdByToken?.authorName, assigneeSummaries, build?.toDTO(), trackTime, timeOverrideSeconds, testPlan?.externalID, testPlan?.name, isAutomated)
     }
 }

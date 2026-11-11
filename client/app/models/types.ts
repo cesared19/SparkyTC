@@ -389,6 +389,8 @@ export interface TestRun {
 	// the test plan it was launched from
 	testPlanID?: string
 	testPlanName?: string
+	// created through the integration API instead of in the app
+	automated: boolean
 }
 
 // a template of test cases: those in its sections (and nested ones), with any of its labels, or chosen
