@@ -3,3 +3,7 @@ node_modules
 /.cache
 /build
 .env
+
+# end-to-end test results and report
+/e2e-results
+/e2e-report

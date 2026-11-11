@@ -38,12 +38,29 @@ A pull request is ready to merge when:
   - client: `cd client && npx tsc && npm run lint && npm run build`, with no lint problems;
   - for changes to Docker files or `deploy/`, `docker compose build` and `shellcheck --external-sources deploy/backup/*.sh`.
 - **Tests cover the change**: new behavior has tests, and a fixed bug has a test that failed before the fix.
-- **UI changes were checked** against the production build (`npm run build` + `npm run start`) at 390 px, 820 px and desktop, in light and dark mode. No page may scroll as a whole past its content.
+- **UI changes pass the end-to-end tests** (`npm run e2e`, see below), which check every page at 390 px, 820 px and desktop, in light and dark mode, and that no page scrolls as a whole past its content. A new page is added to `e2e/layout.spec.ts`, and new behavior in the browser gets a test.
 - **The changelog has a line** under **Unreleased** in [CHANGELOG.md](./CHANGELOG.md), in the right group (Added, Changed, Fixed, Removed, Security), written for users. Changes users don't notice don't need one.
 - **Database changes** add a new schema version (`SchemaVersion` and its step in `DatabaseMigrator`), never edit an earlier one, and say so under **Upgrading** in the changelog.
 - **Docs are updated**: the README when users or deployers need to know, and `CLAUDE.md` when a lasting rule or architecture detail changes.
 - **Someone reviewed it**: the owner approves every pull request, including the ones written with an AI assistant.
 - **The version wasn't changed**: only release pull requests change it.
+
+### End-to-end tests
+
+The tests in `client/e2e/` drive the app in Chromium with [Playwright](https://playwright.dev): signing in, test cases with text and steps, test runs with results, evidence and drafts, test plans, bulk edit, export, API tokens, and the layout of every page. They run against an app that is already running, and create a project and data of their own each time, so they never depend on what's in the database. Use a database for testing, not production's.
+
+1. Start the backend with a test database and an admin account (`ADMIN_USERNAME` and `ADMIN_PASSWORD`; see [Running the development server](./README.md#running-the-development-server)).
+2. Start the client's production build: `cd client && npm run build && npm run start`.
+3. The first time, download Chromium: `npx playwright install chromium`.
+4. Run them: `npm run e2e`. Everything takes about two minutes. `npm run e2e -- e2e/test-runs.spec.ts` runs one file.
+
+Settings, as environment variables: `E2E_BASE_URL` (default `http://localhost:3000`), `E2E_ADMIN_USERNAME` and `E2E_ADMIN_PASSWORD` (default `admin` and `admin-password`), and `E2E_CHROMIUM_PATH` to use a Chromium already installed. When a test fails, `npx playwright show-report e2e-report` shows the step, a screenshot and a trace.
+
+To add a test:
+
+- Put it in the `e2e/*.spec.ts` file of its area, or a new one. The helpers in `e2e/support.ts` create test cases and runs, and `unique()` names things so a test can run again on the same database.
+- Find elements by role, label or `id`, as a person would (`getByRole('button', { name: 'Save result' })`). Lists are tables on wide screens and cards on narrow ones, so text can be in the page twice: add `.filter({ visible: true })` or use the table's `row` and `cell` roles.
+- A new page goes in the list of `e2e/layout.spec.ts`.
 
 ## 4. Versions and releases
 
