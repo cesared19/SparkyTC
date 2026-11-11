@@ -17,6 +17,7 @@ import {
 import type { UpdateTestRun, TestCaseRun } from '~/models/types'
 import { ActionMenu, type ActionMenuItem } from '~/components/ActionMenu'
 import { TestRunStatusBadge } from '~/components/TestRunStatusBadge'
+import { AutomatedBadge } from '~/components/AutomatedBadge'
 import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
 import { Table, type Column } from '~/components/Table'
 import { Tools } from '~/utility/Tools'
@@ -333,6 +334,11 @@ export default function TestRunDetails() {
 					<h1 className="text-2xl font-semibold text-gray-900">
 						{testRun.title}
 					</h1>
+					{testRun.automated && (
+						<div className="mt-1">
+							<AutomatedBadge />
+						</div>
+					)}
 					{testRun.createdBy && (
 						<p className="mt-1 text-sm text-gray-500">
 							Created by {testRun.createdBy}

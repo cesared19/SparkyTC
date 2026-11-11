@@ -20,4 +20,6 @@ data class TestRunDTO(
     // the plan it was launched from
     val testPlanID: UUID? = null,
     val testPlanName: String? = null,
+    // created through the integration API instead of in the app
+    val automated: Boolean = false,
 )
