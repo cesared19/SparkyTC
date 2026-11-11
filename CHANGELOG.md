@@ -12,12 +12,16 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 - Test runs record whether they were created in the app (manual) or through the integration API (automated). Automated runs show an **Automated** badge in the run list and on the run page, with the API token as their author, and the run list can show all runs, only manual or only automated ones (kept in the address with the sort order). The dashboard and the Builds tab count both.
 - Test runs through the integration API: `POST /api/integration/v1/test-runs` with a Read and write token creates an automated test run for a registered build, with test cases by number and/or a test plan's. An unknown build or test case gets a 400 naming it, and a `sourceRef` returns the run already created with it instead of a duplicate. These runs track time.
 - Results through the integration API: `POST /api/integration/v1/test-runs/{number}/results` with a Read and write token records Pass, Fail, Blocked or Skip for a test case of an automated test run, like the app does, with notes, the time it took and a report (for example, a replay's screenshot comparison and performance). The run completes with the same rule as in the app, and the token shows as who executed it.
+- Evidence through the integration API: `POST /api/integration/v1/test-runs/{number}/results/{resultID}/attachments` attaches images, videos and `.zip` files (for example a replay's whole report) to a result of an automated test run. A `.zip` shows with a **Download** link and is never opened in SparkyTC.
 
 ### Changed
 - `docker compose up` backs up the database, migrates it if the new version needs it, and only then starts the backend. If the backup or the migration fails, the backend doesn't start. `DATABASE_MIGRATION_MODE` is no longer set by hand.
 
+### Security
+- Attachments that aren't images the browser shows safely or videos, such as SVG files (which can contain scripts), are now downloaded instead of opened in the browser, and every attachment is sent with `X-Content-Type-Options: nosniff`.
+
 ### Upgrading
-- Database schema **0.0.23**: existing test runs are marked as manual, test runs can keep the reference of the app that created them, and results can be recorded by an API token with a report.
+- Database schema **0.0.24**: existing test runs are marked as manual, test runs can keep the reference of the app that created them, and results and evidence can be recorded by an API token, results with a report.
 - Remove `DATABASE_MIGRATION_MODE` from `.env` and run `docker compose up -d --build`. Backups are written to `backups/` next to `docker-compose.yml` (`BACKUP_DIR` changes it); the README lists the other settings.
 
 ## [2.4.0] - 2026-11-06

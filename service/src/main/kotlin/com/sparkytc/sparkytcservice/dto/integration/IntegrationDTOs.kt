@@ -272,3 +272,11 @@ data class IntegrationRecordedResultDTO(
     val webPath: String,
 )
 
+/** A file attached to a result through the integration API. */
+data class IntegrationAttachmentDTO(
+    val attachmentID: UUID,
+    val fileName: String,
+    val contentType: String,
+    val fileSize: Long,
+)
+

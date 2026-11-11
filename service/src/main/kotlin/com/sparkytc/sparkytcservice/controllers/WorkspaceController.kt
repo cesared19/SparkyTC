@@ -20,6 +20,7 @@ import com.sparkytc.sparkytcservice.dto.testruns.RerunTestRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestCaseRunDetailsDTO
 import com.sparkytc.sparkytcservice.dto.testruns.UpdateTestRunDTO
+import com.sparkytc.sparkytcservice.services.AttachmentService
 import com.sparkytc.sparkytcservice.services.BuildResultsService
 import com.sparkytc.sparkytcservice.dto.time.UpdateTestRunTimeDTO
 import com.sparkytc.sparkytcservice.services.JiraService
@@ -344,10 +345,16 @@ class WorkspaceController(
     fun retrieveAttachment(@PathVariable attachmentID: UUID): ResponseEntity<Resource> {
         val content = workspaceService.retrieveAttachmentContent(attachmentID)
 
+        // images and videos open in the browser; anything else (SVG, which can hold scripts, or a .zip) downloads,
+        // and the browser never guesses another type
+        val disposition = if (AttachmentService.isShownInline(content.contentType)) ContentDisposition.inline() else ContentDisposition.attachment()
+        val mediaType = runCatching { MediaType.parseMediaType(content.contentType) }.getOrDefault(MediaType.APPLICATION_OCTET_STREAM)
+
         // returning a Resource lets Spring honor HTTP range requests, which browsers rely on for video seeking
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(content.fileName, Charsets.UTF_8).build().toString())
-            .contentType(MediaType.parseMediaType(content.contentType))
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.filename(content.fileName, Charsets.UTF_8).build().toString())
+            .header("X-Content-Type-Options", "nosniff")
+            .contentType(mediaType)
             .body(ByteArrayResource(content.data))
     }
 
