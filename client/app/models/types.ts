@@ -491,6 +491,8 @@ export interface TestCaseResult {
 	attachments: TestCaseAttachment[]
 	// how each step went, for test cases written as steps
 	stepResults?: StepResult[]
+	// what an app reported with the result through the integration API (JSON), e.g. a replay's comparison
+	report?: string
 }
 
 // a result of a test case in any test run of its project
