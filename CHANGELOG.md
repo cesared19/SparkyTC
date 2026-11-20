@@ -6,8 +6,14 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-20
+
 ### Added
 - Apps can tidy up the test cases they generated: `GET /api/integration/v1/test-cases?sourceRefPrefix=` lists the test cases created with a reference that starts with the prefix (for example every path co-bord generated from one board), and `POST /api/integration/v1/test-cases/archive` with a Read and write token archives the ones that no longer apply. Only test cases created through the API are archived, never deleted: test runs keep their results and the history stays. The others are skipped with the reason.
+
+### Upgrading
+- No database changes. Run `docker compose up -d --build`; the backup and migration steps run as usual and find nothing to migrate.
+- co-bord 0.15.0 uses the new endpoints to archive the test cases of flow paths that changed.
 
 ## [2.5.0] - 2026-11-11
 
@@ -113,7 +119,8 @@ First release as SparkyTC, based on [Cherry](https://github.com/bennettadam/cher
 ### Upgrading
 - Database schema 0.0.7. Signing in is now required.
 
-[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/cesared19/SparkyTC/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/cesared19/SparkyTC/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/cesared19/SparkyTC/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/cesared19/SparkyTC/compare/v2.2.0...v2.3.0
