@@ -53,6 +53,38 @@ class IntegrationWriteService(
         return integrationService.retrieveSection(sectionID)
     }
 
+    /**
+     * Archives test cases an app generated that no longer apply: only ones created through the API, with a
+     * sourceRef, in the token's project. Never deletes, so runs keep their results and the history stays.
+     */
+    fun archiveTestCases(request: IntegrationArchiveTestCasesDTO): IntegrationArchiveResultDTO {
+        val numbers = request.testCaseNumbers.orEmpty().distinct()
+        require(numbers.isNotEmpty()) { "Send the testCaseNumbers to archive" }
+        require(numbers.size <= MAX_ARCHIVE) { "At most $MAX_ARCHIVE test cases at a time" }
+        return transaction.execute {
+            val (project, _) = projectAndToken()
+            val archived = mutableListOf<Long>()
+            val skipped = mutableListOf<IntegrationArchiveSkippedDTO>()
+            for (number in numbers) {
+                val testCase = testCaseRepository.findByProjectAndTestCaseNumber(project, number)
+                val reason = when {
+                    testCase == null -> "Not found"
+                    testCase.isArchived -> "Already archived"
+                    testCase.createdByToken == null || testCase.sourceRef == null -> "Not created through the API"
+                    else -> null
+                }
+                if (reason != null) {
+                    skipped.add(IntegrationArchiveSkippedDTO(number, reason))
+                    continue
+                }
+                testCase!!.isArchived = true
+                testCaseRepository.save(testCase)
+                archived.add(number)
+            }
+            IntegrationArchiveResultDTO(archived, skipped)
+        }!!
+    }
+
     fun createTestCase(request: IntegrationCreateTestCaseDTO): IntegrationTestCaseDTO {
         val title = request.title?.trim().orEmpty()
         require(title.isNotEmpty()) { "Give the test case a title" }
@@ -284,6 +316,7 @@ class IntegrationWriteService(
         // the app has no limit; the API keeps titles to a size a test case list can show
         const val MAX_TITLE = 500
         const val MAX_SOURCE_REF = 200
+        const val MAX_ARCHIVE = 500
         const val MAX_NOTES = 10_000
         const val MAX_DURATION_SECONDS = 24L * 60 * 60
         const val MAX_REPORT_ITEMS = 500
