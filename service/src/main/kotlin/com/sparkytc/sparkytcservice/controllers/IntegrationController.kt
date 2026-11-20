@@ -1,6 +1,7 @@
 package com.sparkytc.sparkytcservice.controllers
 
 import com.sparkytc.sparkytcservice.dto.DataResponse
+import com.sparkytc.sparkytcservice.dto.integration.IntegrationArchiveTestCasesDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateSectionDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestCaseDTO
 import com.sparkytc.sparkytcservice.dto.integration.IntegrationCreateTestPlanDTO
@@ -35,8 +36,12 @@ class IntegrationController(
     fun sections(): ResponseEntity<Any> = ResponseEntity.ok(DataResponse(data = integrationService.retrieveSections()))
 
     @GetMapping("/test-cases")
-    fun testCases(@RequestParam(required = false) query: String?, @RequestParam(defaultValue = "50") limit: Int): ResponseEntity<Any> =
-        ResponseEntity.ok(DataResponse(data = integrationService.retrieveTestCases(query, limit)))
+    fun testCases(
+        @RequestParam(required = false) query: String?,
+        @RequestParam(defaultValue = "50") limit: Int,
+        @RequestParam(required = false) sourceRefPrefix: String?,
+    ): ResponseEntity<Any> =
+        ResponseEntity.ok(DataResponse(data = integrationService.retrieveTestCases(query, limit, sourceRefPrefix)))
 
     /** A test case by its number, with its steps and results, newest first (up to `limit`). 404 if there's none. */
     @GetMapping("/test-cases/{testCaseNumber}/history")
@@ -55,6 +60,14 @@ class IntegrationController(
         ResponseEntity.ok(DataResponse(data = integrationWriteService.createSection(request)))
 
     /** Creates a test case, or returns the one with the same sourceRef (`created` tells which). */
+    /**
+     * Archives test cases created through the API (with a sourceRef) that no longer apply; never deletes. The others
+     * are skipped, with the reason.
+     */
+    @PostMapping("/test-cases/archive")
+    fun archiveTestCases(@RequestBody request: IntegrationArchiveTestCasesDTO): ResponseEntity<Any> =
+        ResponseEntity.ok(DataResponse(data = integrationWriteService.archiveTestCases(request)))
+
     @PostMapping("/test-cases")
     fun createTestCase(@RequestBody request: IntegrationCreateTestCaseDTO): ResponseEntity<Any> =
         ResponseEntity.ok(DataResponse(data = integrationWriteService.createTestCase(request)))

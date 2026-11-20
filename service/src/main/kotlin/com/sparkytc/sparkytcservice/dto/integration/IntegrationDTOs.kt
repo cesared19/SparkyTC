@@ -280,3 +280,14 @@ data class IntegrationAttachmentDTO(
     val fileSize: Long,
 )
 
+
+data class IntegrationArchiveTestCasesDTO(val testCaseNumbers: List<Long>? = null)
+
+data class IntegrationArchiveSkippedDTO(val testCaseNumber: Long, val reason: String)
+
+data class IntegrationArchiveResultDTO(
+    /** The test cases archived now. */
+    val archived: List<Long>,
+    /** The ones left as they were: not found, already archived, or not created through the API. */
+    val skipped: List<IntegrationArchiveSkippedDTO>,
+)

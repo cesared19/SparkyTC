@@ -60,11 +60,14 @@ class IntegrationService(
 
     /** Test cases matching `query` in their number or title (all of them without a query), up to `limit`. */
     @Transactional
-    fun retrieveTestCases(query: String?, limit: Int): List<IntegrationTestCaseDTO> {
+    fun retrieveTestCases(query: String?, limit: Int, sourceRefPrefix: String? = null): List<IntegrationTestCaseDTO> {
         val project = project()
         val tree = SectionTree(sectionRepository.findAllByProjectOrderByPositionAscIdAsc(project))
         val text = query?.trim()?.removePrefix("#")?.lowercase().orEmpty()
+        // the test cases an app created under a reference, e.g. every path it generated from one board
+        val prefix = sourceRefPrefix?.takeIf { it.isNotEmpty() }
         return testCaseRepository.findByProjectAndIsArchivedFalseOrderByTestCaseNumberAsc(project)
+            .filter { prefix == null || it.sourceRef?.startsWith(prefix) == true }
             .filter { text.isEmpty() || it.testCaseNumber.toString() == text || it.title.lowercase().contains(text) }
             .take(limit.coerceIn(1, 500))
             .map { toIntegration(project, tree, it) }

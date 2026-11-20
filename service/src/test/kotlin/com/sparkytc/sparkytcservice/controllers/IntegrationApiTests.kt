@@ -349,6 +349,57 @@ class IntegrationApiTests {
     }
 
     @Test
+    fun `finds the test cases an app generated and archives the ones that no longer apply`() {
+        val writer = token("PRJ", canWrite = true)
+        fun create(title: String, ref: String?) = data(integration(writer, post("/api/integration/v1/test-cases"), mapOf("title" to title, "sourceRef" to ref)))
+            .get("testCaseNumber").asInt()
+        val first = create("Old path", "cobord:b1:path:aaa")
+        val second = create("Current path", "cobord:b1:path:bbb")
+        val otherBoard = create("Another board", "cobord:b2:path:ccc")
+        val noRef = create("Without a reference", null)
+        // one made in the app, and one in another project
+        createTestCase("Made by hand", null, emptyList())
+        val byHand = appTestCase(5).get("testCaseNumber").asInt()
+
+        val generated = data(integration(writer, get("/api/integration/v1/test-cases").param("sourceRefPrefix", "cobord:b1:path:")))
+        assertEquals(listOf(first, second), generated.map { it.get("testCaseNumber").asInt() })
+        assertEquals("cobord:b1:path:aaa", generated[0].get("sourceRef").asText())
+
+        // a read token can't archive
+        integration(token("PRJ"), post("/api/integration/v1/test-cases/archive"), mapOf("testCaseNumbers" to listOf(first))).andExpect(status().isForbidden)
+        integration(writer, post("/api/integration/v1/test-cases/archive"), mapOf("testCaseNumbers" to emptyList<Int>())).andExpect(status().isBadRequest)
+
+        // the old path is used in a run: archiving keeps its result
+        val build = createBuild("1.0")
+        createRun(1, build, appTestCase(first).get("testCaseID").asText() to TestCaseRunStatus.PASS)
+
+        val result = data(integration(writer, post("/api/integration/v1/test-cases/archive"), mapOf("testCaseNumbers" to listOf(first, byHand, noRef, 99, first))))
+        assertEquals(listOf(first), result.get("archived").map { it.asInt() })
+        assertEquals(
+            mapOf(byHand to "Not created through the API", noRef to "Not created through the API", 99 to "Not found"),
+            result.get("skipped").associate { it.get("testCaseNumber").asInt() to it.get("reason").asText() },
+        )
+        val again = data(integration(writer, post("/api/integration/v1/test-cases/archive"), mapOf("testCaseNumbers" to listOf(first))))
+        assertEquals("Already archived", again.get("skipped")[0].get("reason").asText())
+
+        // gone from the lists, not from the history; its reference is free again
+        assertEquals(listOf(second), data(integration(writer, get("/api/integration/v1/test-cases").param("sourceRefPrefix", "cobord:b1:path:"))).map { it.get("testCaseNumber").asInt() })
+        assertFalse(data(admin.perform(get("/api/v1/workspace/test-cases/PRJ"))).any { it.get("testCaseNumber").asInt() == first })
+        val history = data(integration(writer, get("/api/integration/v1/test-cases/$first/history")))
+        assertTrue(history.get("archived").asBoolean())
+        assertEquals("PASS", history.get("results")[0].get("status").asText())
+        val recreated = data(integration(writer, post("/api/integration/v1/test-cases"), mapOf("title" to "Old path again", "sourceRef" to "cobord:b1:path:aaa")))
+        assertTrue(recreated.get("created").asBoolean())
+        assertTrue(otherBoard > 0)
+
+        // another project's token sees none of them and archives nothing here
+        val foreign = token("OTH", canWrite = true)
+        assertEquals(0, data(integration(foreign, get("/api/integration/v1/test-cases").param("sourceRefPrefix", "cobord:"))).size())
+        assertEquals("Not found", data(integration(foreign, post("/api/integration/v1/test-cases/archive"), mapOf("testCaseNumbers" to listOf(second))))
+            .get("skipped")[0].get("reason").asText())
+    }
+
+    @Test
     fun `reads a test case's history, newest first, with how each step went`() {
         val secret = token("PRJ", canWrite = true)
         val created = data(integration(secret, post("/api/integration/v1/test-cases"), mapOf(
