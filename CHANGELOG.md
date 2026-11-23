@@ -6,8 +6,14 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-23
+
 ### Added
 - Apps can update the test cases they generated when their source changes a little: `POST /api/integration/v1/test-cases` with `"updateExisting": true` and a `sourceRef` that already has a test case updates its title, description, test instructions, format and steps when they differ, and says so with `"updated"`. The test case keeps its number, results and history, and test runs keep the steps they started with.
+
+### Upgrading
+- No database changes. Run `docker compose up -d --build`; the backup and migration steps run as usual and find nothing to migrate.
+- co-bord 0.16.0 uses `updateExisting` to update the test cases of a flow when its steps are renamed.
 
 ## [2.6.0] - 2026-11-20
 
@@ -122,7 +128,8 @@ First release as SparkyTC, based on [Cherry](https://github.com/bennettadam/cher
 ### Upgrading
 - Database schema 0.0.7. Signing in is now required.
 
-[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/cesared19/SparkyTC/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/cesared19/SparkyTC/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/cesared19/SparkyTC/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/cesared19/SparkyTC/compare/v2.3.0...v2.4.0
