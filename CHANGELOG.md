@@ -6,6 +6,9 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+### Added
+- Apps can update the test cases they generated when their source changes a little: `POST /api/integration/v1/test-cases` with `"updateExisting": true` and a `sourceRef` that already has a test case updates its title, description, test instructions, format and steps when they differ, and says so with `"updated"`. The test case keeps its number, results and history, and test runs keep the steps they started with.
+
 ## [2.6.0] - 2026-11-20
 
 ### Added

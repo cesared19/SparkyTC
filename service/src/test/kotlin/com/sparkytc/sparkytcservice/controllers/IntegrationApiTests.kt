@@ -349,6 +349,52 @@ class IntegrationApiTests {
     }
 
     @Test
+    fun `updates a generated test case when its source changes a little, keeping its number and results`() {
+        val writer = token("PRJ", canWrite = true)
+        fun send(body: Map<String, Any?>) = data(integration(writer, post("/api/integration/v1/test-cases"), body))
+        val first = mapOf(
+            "title" to "Lesson: Start -> END", "description" to "A path", "sourceRef" to "cobord:b1:path:x",
+            "steps" to listOf(mapOf("action" to "Start Lesson", "expected" to "\"Check\" comes next")),
+        )
+        val created = send(first)
+        val number = created.get("testCaseNumber").asInt()
+        val build = createBuild("1.0")
+        createRun(1, build, created.get("testCaseID").asText() to TestCaseRunStatus.PASS)
+
+        // without updateExisting: returned as it was
+        val plain = send(first + mapOf("title" to "Something else"))
+        assertEquals("Lesson: Start -> END", plain.get("title").asText())
+        assertFalse(plain.has("updated"))
+
+        // the same content: nothing to update
+        val same = send(first + mapOf("updateExisting" to true))
+        assertFalse(same.get("created").asBoolean())
+        assertFalse(same.get("updated").asBoolean())
+
+        // a renamed step: updated in place
+        val changed = send(first + mapOf(
+            "updateExisting" to true,
+            "title" to "Lesson: Start -> END (Quit = YES)",
+            "description" to "A path through Lesson",
+            "steps" to listOf(mapOf("action" to "Start the lesson", "expected" to "\"Check\" comes next"), mapOf("action" to "Quit? -> choose \"YES\"")),
+        ))
+        assertEquals(number, changed.get("testCaseNumber").asInt())
+        assertFalse(changed.get("created").asBoolean())
+        assertTrue(changed.get("updated").asBoolean())
+        val history = data(integration(writer, get("/api/integration/v1/test-cases/$number/history")))
+        assertEquals("Lesson: Start -> END (Quit = YES)", history.get("testCase").get("title").asText())
+        assertEquals("A path through Lesson", history.get("description").asText())
+        assertEquals(listOf("Start the lesson", "Quit? -> choose \"YES\""), history.get("steps").map { it.get("action").asText() })
+        // the run keeps the steps it started with, and the result stays
+        assertEquals("PASS", history.get("results")[0].get("status").asText())
+        val runSteps = data(admin.perform(get("/api/v1/workspace/test-case-runs/PRJ/1")))[0].get("steps")
+        assertEquals(listOf("Start Lesson"), runSteps.map { it.get("action").asText() })
+
+        // a read token can't
+        integration(token("PRJ"), post("/api/integration/v1/test-cases"), first + mapOf("updateExisting" to true)).andExpect(status().isForbidden)
+    }
+
+    @Test
     fun `finds the test cases an app generated and archives the ones that no longer apply`() {
         val writer = token("PRJ", canWrite = true)
         fun create(title: String, ref: String?) = data(integration(writer, post("/api/integration/v1/test-cases"), mapOf("title" to title, "sourceRef" to ref)))

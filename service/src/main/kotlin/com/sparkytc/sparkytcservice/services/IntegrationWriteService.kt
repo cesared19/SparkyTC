@@ -38,6 +38,8 @@ class IntegrationWriteService(
     private val sectionService: TestCaseSectionService,
     private val workspaceService: WorkspaceService,
     private val testPlanService: TestPlanService,
+    private val stepService: StepService,
+    private val stepRepository: TestCaseStepRepository,
     private val integrationService: IntegrationService,
     transactionManager: PlatformTransactionManager,
 ) {
@@ -117,8 +119,31 @@ class IntegrationWriteService(
                 workspaceService.createTestCaseByToken(project, testCase, token, sourceRef).id
             },
         )
-        return integrationService.retrieveTestCase(testCaseID, created)
+        if (created || request.updateExisting != true) return integrationService.retrieveTestCase(testCaseID, created)
+        // the app's source changed a little (a renamed step, a reworded decision): same test case, new content
+        val updated = transaction.execute {
+            val testCase = testCaseRepository.findById(testCaseID).orElseThrow()
+            val wanted = steps.map { clean(it.action) to clean(it.expected) }
+            val current = stepRepository.findAllByTestCaseOrderByPositionAsc(testCase)
+                .map { step -> step.sharedStep?.let { "shared:${it.externalID}" to null } ?: (clean(step.action) to clean(step.expected)) }
+            val same = testCase.title == title &&
+                clean(testCase.description) == clean(request.description) &&
+                clean(testCase.testInstructions) == clean(request.testInstructions) &&
+                testCase.format == format &&
+                current == wanted
+            if (!same) {
+                testCase.title = title
+                testCase.description = clean(request.description)
+                testCase.testInstructions = clean(request.testInstructions)
+                stepService.saveSteps(testCase, format, steps.map { StepInputDTO(action = it.action, expected = it.expected) })
+                testCaseRepository.save(testCase)
+            }
+            !same
+        }!!
+        return integrationService.retrieveTestCase(testCaseID, false).copy(updated = updated)
     }
+
+    private fun clean(text: String?) = text?.trim()?.takeIf { it.isNotEmpty() }
 
     fun createTestPlan(request: IntegrationCreateTestPlanDTO): IntegrationTestPlanDTO {
         // the name first, like the app; the plan's other rules are checked by TestPlanService
