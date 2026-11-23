@@ -40,6 +40,8 @@ data class IntegrationTestCaseDTO(
     val sourceRef: String? = null,
     /** Only when creating: false when a test case with the same sourceRef already existed and is returned instead. */
     val created: Boolean? = null,
+    /** Only when creating with updateExisting: whether the existing test case was changed. */
+    val updated: Boolean? = null,
 )
 
 data class IntegrationTestPlanDTO(
@@ -119,6 +121,11 @@ data class IntegrationCreateTestCaseDTO(
     val steps: List<IntegrationStepDTO>? = null,
     /** The app's reference, e.g. "cobord:<boardId>:<elementId>": creating twice returns the first test case. */
     val sourceRef: String? = null,
+    /**
+     * With a sourceRef that already has a test case: update its title, description, test instructions, format and
+     * steps to these when they differ, instead of returning it unchanged.
+     */
+    val updateExisting: Boolean? = null,
 )
 
 data class IntegrationCreateTestPlanDTO(
