@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Project } from '~/models/project'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
 import { moveItem, orderProjects } from '~/utility/ProjectOrder'
+import {
+	setProjectListHidden,
+	useProjectListHidden,
+} from '~/utility/ProjectListVisibility'
 import { Route } from '~/utility/Routes'
 
 interface ProjectShellProps {
@@ -21,6 +25,7 @@ export function ProjectShell({
 	children,
 }: ProjectShellProps) {
 	const isAdmin = useIsAdmin()
+	const isListHidden = useProjectListHidden()
 	const location = useLocation()
 	// on phones the project list opens as a drawer
 	const [isListOpen, setIsListOpen] = useState(false)
@@ -59,7 +64,8 @@ export function ProjectShell({
 			<ProjectList
 				projects={projects}
 				currentProject={currentProject}
-				className="hidden md:flex"
+				className="hidden md:flex [html[data-project-list=hidden]_&]:md:hidden"
+				canHide
 			/>
 			{isListOpen && (
 				<div className="fixed inset-0 z-40 flex md:hidden">
@@ -84,6 +90,33 @@ export function ProjectShell({
 							onClick={() => setIsListOpen(true)}
 							aria-label="Switch project"
 							className="-ml-1 self-center rounded-md p-1 text-gray-600 hover:bg-gray-100 md:hidden"
+						>
+							<svg
+								className="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth="2"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M4 6h16M4 12h10M4 18h16"
+								/>
+							</svg>
+						</button>
+						<button
+							type="button"
+							id="show-project-list"
+							onClick={() => {
+								setProjectListHidden(false)
+								document.getElementById('hide-project-list')?.focus()
+							}}
+							aria-label="Show project list"
+							aria-expanded={!isListHidden}
+							title="Show project list"
+							className="-ml-1 hidden self-center rounded-md p-1 text-gray-600 hover:bg-gray-100 [html[data-project-list=hidden]_&]:md:inline-flex"
 						>
 							<svg
 								className="h-5 w-5"
@@ -149,12 +182,15 @@ interface ProjectListProps {
 	currentProject?: Project
 	// controls visibility and width, a fixed sidebar by default
 	className?: string
+	// offers a button to hide the list (the fixed sidebar of project pages, not the phone drawer)
+	canHide?: boolean
 }
 
 export function ProjectList({
 	projects,
 	currentProject,
 	className = 'flex',
+	canHide = false,
 }: ProjectListProps) {
 	const user = useCurrentUser()
 	const isAdmin = useIsAdmin()
@@ -295,6 +331,35 @@ export function ProjectList({
 						>
 							+ New
 						</Link>
+					)}
+					{canHide && !isReordering && (
+						<button
+							type="button"
+							id="hide-project-list"
+							onClick={() => {
+								setProjectListHidden(true)
+								document.getElementById('show-project-list')?.focus()
+							}}
+							aria-label="Hide project list"
+							aria-expanded="true"
+							title="Hide project list"
+							className="-mr-1 rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+						>
+							<svg
+								className="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth="2"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M15 19l-7-7 7-7"
+								/>
+							</svg>
+						</button>
 					)}
 				</div>
 			</div>

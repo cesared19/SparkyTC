@@ -79,6 +79,34 @@ for (const screen of SCREENS) {
 	}
 }
 
+// the same pages with the project list hidden (desktop and tablet; on a phone it's a drawer anyway)
+for (const screen of SCREENS.filter(
+	(screen) => !screen.isMobile || screen.viewport.width > 600
+)) {
+	test(`every page fits the window with the project list hidden: ${screen.name}`, async ({
+		browser,
+	}) => {
+		const context = await browser.newContext({
+			storageState: AUTH_FILE,
+			viewport: screen.viewport,
+			isMobile: screen.isMobile,
+			hasTouch: screen.hasTouch,
+		})
+		await context.addInitScript(() =>
+			localStorage.setItem('sparky.projectListHidden', '1')
+		)
+		const page = await context.newPage()
+		for (const path of pages) {
+			await test.step(path, async () => {
+				await page.goto(path)
+				await page.waitForLoadState('networkidle').catch(() => undefined)
+				await expectNoPageScroll(page, `${path} with the list hidden`)
+			})
+		}
+		await context.close()
+	})
+}
+
 /** Creates what the pages need to show something: a test case with steps, a plan and a run. */
 async function pagesToCheck(browser: Browser) {
 	const { code } = testProject()
