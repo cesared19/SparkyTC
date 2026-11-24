@@ -1,4 +1,4 @@
-import { test as setup, expect } from '@playwright/test'
+import { test as setup } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import {
@@ -6,6 +6,7 @@ import {
 	ADMIN_USERNAME,
 	AUTH_FILE,
 	PROJECT_FILE,
+	createProject,
 	signIn,
 } from './support'
 
@@ -15,16 +16,7 @@ setup('sign in and create a project', async ({ page }) => {
 
 	const code = `E${Date.now().toString(36).toUpperCase().slice(-6)}`
 	const title = `E2E ${code}`
-	await page.goto('/projects/new')
-	await page.fill('#title', title)
-	await page.fill('#shortCode', code)
-	// the form's own button: the navigation has a submit button too (Sign out)
-	await page.locator('form:has(#shortCode) button[type=submit]').click()
-	await page.waitForURL((url) => !url.pathname.startsWith('/projects/new'))
-	await page.goto(`/projects/${code}`)
-	await expect(
-		page.getByText(title).filter({ visible: true }).first()
-	).toBeVisible()
+	await createProject(page, code, title)
 
 	mkdirSync(dirname(AUTH_FILE), { recursive: true })
 	await page.context().storageState({ path: AUTH_FILE })

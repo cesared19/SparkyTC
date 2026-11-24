@@ -11,6 +11,7 @@ import com.sparkytc.sparkytcservice.dto.auth.LoginDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateDefaultProjectDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateJiraUserDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateNotificationPreferencesDTO
+import com.sparkytc.sparkytcservice.dto.auth.UpdateProjectOrderDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateThemeDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateUserDTO
 import com.sparkytc.sparkytcservice.dto.auth.UpdateUserProjectsDTO
@@ -60,6 +61,12 @@ class AuthController(
     @PutMapping("/auth/preferences/default-project")
     fun updateDefaultProject(@RequestBody request: UpdateDefaultProjectDTO): ResponseEntity<Any> {
         authService.updateDefaultProject(currentUserOrThrow(), request)
+        return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
+    }
+
+    @PutMapping("/auth/preferences/project-order")
+    fun updateProjectOrder(@RequestBody request: UpdateProjectOrderDTO): ResponseEntity<Any> {
+        authService.updateProjectOrder(currentUserOrThrow(), request)
         return ResponseEntity.ok(StatusResponse(FetchResponseStatus.SUCCESS))
     }
 

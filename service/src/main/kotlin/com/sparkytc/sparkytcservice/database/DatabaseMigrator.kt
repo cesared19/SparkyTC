@@ -663,6 +663,19 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.24")
                 }
                 SchemaVersion.VERSION_0_0_24 -> {
+                    // the order each user chose for the project list, one row per project they placed
+                    jdbcTemplate.execute("""
+                        CREATE TABLE user_project_order (
+                            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            project_id BIGINT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+                            position INTEGER NOT NULL,
+                            PRIMARY KEY (user_id, project_id)
+                        )
+                    """.trimIndent())
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.25")
+                }
+                SchemaVersion.VERSION_0_0_25 -> {
                     break
                 }
             }

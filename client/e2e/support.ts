@@ -27,6 +27,19 @@ export async function signIn(page: Page, username: string, password: string) {
 	await page.waitForURL((url) => !url.pathname.startsWith('/login'))
 }
 
+/** Creates a project (admins only) and goes to its dashboard. */
+export async function createProject(page: Page, code: string, title: string) {
+	await page.goto('/projects/new')
+	await page.fill('#title', title)
+	await page.fill('#shortCode', code)
+	// the form's own button: the navigation has a submit button too (Sign out)
+	await page.locator('form:has(#shortCode) button[type=submit]').click()
+	await page.waitForURL((url) => !url.pathname.startsWith('/projects/new'))
+	await page.goto(`/projects/${code}`)
+	// on a phone the list with the title is hidden in a drawer, the heading isn't
+	await expect(page.getByRole('heading', { name: title })).toBeVisible()
+}
+
 /** Creates a test case and returns its number. Steps make it a test case in the Steps format. */
 export async function createTestCase(
 	page: Page,

@@ -171,6 +171,84 @@ class ProjectAccessTests {
     }
 
     @Test
+    fun `each user orders their own project list`() {
+        createProject("Alpha", "ALP")
+        createProject("Beta", "BET")
+        assignProjects("VIS", "ALP", "BET")
+        assertEquals(emptyList(), projectOrder(admin))
+        assertEquals(emptyList(), projectOrder(tester))
+
+        setProjectOrder(admin, "BET", "VIS", "ALP", "HID")
+        assertEquals(listOf("BET", "VIS", "ALP", "HID"), projectOrder(admin))
+        // nobody else's list changes, and the projects themselves still come in title order
+        assertEquals(emptyList(), projectOrder(tester))
+        assertEquals(listOf("ALP", "BET", "HID", "VIS"), data(admin, "/api/v1/workspace/projects").map { it.get("projectShortCode").asText() })
+
+        // saving again replaces the order, it doesn't add to it
+        setProjectOrder(admin, "VIS", "BET")
+        assertEquals(listOf("VIS", "BET"), projectOrder(admin))
+        setProjectOrder(tester, "ALP", "VIS")
+        assertEquals(listOf("ALP", "VIS"), projectOrder(tester))
+        assertEquals(listOf("VIS", "BET"), projectOrder(admin))
+
+        // an empty list goes back to title order
+        setProjectOrder(admin)
+        assertEquals(emptyList(), projectOrder(admin))
+    }
+
+    @Test
+    fun `saving the order several times at once keeps one of them`() {
+        createProject("Alpha", "ALP")
+        createProject("Beta", "BET")
+        val orders = listOf(listOf("ALP", "BET", "VIS"), listOf("VIS", "BET", "ALP"), listOf("BET", "ALP", "VIS"))
+
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(8)
+        try {
+            val statuses = (0 until 24).map { index ->
+                executor.submit<Int> {
+                    admin.perform(put("/api/v1/auth/preferences/project-order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(mapOf("projectShortCodes" to orders[index % orders.size]))))
+                        .andReturn().response.status
+                }
+            }.map { it.get() }
+            assertEquals(List(24) { 200 }, statuses)
+        } finally {
+            executor.shutdown()
+        }
+        // whichever came last is what stays, whole
+        kotlin.test.assertTrue(projectOrder(admin) in orders)
+    }
+
+    @Test
+    fun `a project order can't repeat projects or name projects the user can't see`() {
+        assignProjects("VIS")
+        setProjectOrder(tester, "VIS")
+
+        for (shortCodes in listOf(listOf("VIS", "VIS"), listOf("VIS", "HID"), listOf("NOPE"))) {
+            tester.perform(put("/api/v1/auth/preferences/project-order")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("projectShortCodes" to shortCodes))))
+                .andExpect(status().isBadRequest)
+        }
+        // the order from before is kept
+        assertEquals(listOf("VIS"), projectOrder(tester))
+    }
+
+    @Test
+    fun `projects a user loses access to leave their order and come back where they were`() {
+        createProject("Alpha", "ALP")
+        assignProjects("VIS", "ALP")
+        setProjectOrder(tester, "ALP", "VIS")
+
+        assignProjects("VIS")
+        assertEquals(listOf("VIS"), projectOrder(tester))
+
+        assignProjects("VIS", "ALP")
+        assertEquals(listOf("ALP", "VIS"), projectOrder(tester))
+    }
+
+    @Test
     fun `the dashboard summarizes test cases and test runs`() {
         val first = createTestCase("VIS")
         val second = createTestCase("VIS")
@@ -199,6 +277,16 @@ class ProjectAccessTests {
             .content(objectMapper.writeValueAsString(CreateWorkspaceProjectDTO(title, shortCode, null))))
             .andExpect(status().isOk)
     }
+
+    private fun setProjectOrder(user: MockMvc, vararg shortCodes: String) {
+        user.perform(put("/api/v1/auth/preferences/project-order")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(mapOf("projectShortCodes" to shortCodes.toList()))))
+            .andExpect(status().isOk)
+    }
+
+    private fun projectOrder(user: MockMvc): List<String> =
+        data(user, "/api/v1/auth/me").get("projectOrder").map { it.asText() }
 
     private fun assignProjects(vararg shortCodes: String) {
         val projectIDs = data(admin, "/api/v1/workspace/projects")
