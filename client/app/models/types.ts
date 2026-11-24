@@ -212,6 +212,8 @@ export interface User {
 	isActive: boolean
 	theme: UserTheme
 	defaultProjectShortCode?: string
+	// the projects the user placed in their list, in order (short codes)
+	projectOrder?: string[]
 	projectIDs?: string[]
 	notifyTestRunAssigned: boolean
 	notifyTestRunCompleted: boolean

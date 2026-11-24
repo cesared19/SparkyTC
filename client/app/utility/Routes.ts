@@ -283,6 +283,10 @@ export class APIRoute {
 		return `${this.baseAPIURL}/api/v1/auth/preferences/default-project`
 	}
 
+	static get projectOrderPreference() {
+		return `${this.baseAPIURL}/api/v1/auth/preferences/project-order`
+	}
+
 	static userProjects(userID: string) {
 		return `${this.baseAPIURL}/api/v1/admin/users/${userID}/projects`
 	}

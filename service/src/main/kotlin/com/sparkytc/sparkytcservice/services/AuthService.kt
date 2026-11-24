@@ -3,8 +3,10 @@ package com.sparkytc.sparkytcservice.services
 import com.sparkytc.sparkytcservice.dto.auth.*
 import com.sparkytc.sparkytcservice.models.ProjectMember
 import com.sparkytc.sparkytcservice.models.User
+import com.sparkytc.sparkytcservice.models.UserProjectOrder
 import com.sparkytc.sparkytcservice.models.UserSession
 import com.sparkytc.sparkytcservice.repositories.ProjectMemberRepository
+import com.sparkytc.sparkytcservice.repositories.UserProjectOrderRepository
 import com.sparkytc.sparkytcservice.repositories.UserRepository
 import com.sparkytc.sparkytcservice.repositories.UserSessionRepository
 import com.sparkytc.sparkytcservice.repositories.WorkspaceProjectRepository
@@ -24,6 +26,7 @@ class AuthService(
     private val projectRepository: WorkspaceProjectRepository,
     private val projectMemberRepository: ProjectMemberRepository,
     private val projectAccessService: ProjectAccessService,
+    private val userProjectOrderRepository: UserProjectOrderRepository,
     private val jiraService: JiraService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
@@ -83,7 +86,39 @@ class AuthService(
         val reloaded = userRepository.findById(user.id).orElseThrow()
         // a default project the user lost access to is ignored
         val defaultProject = reloaded.defaultProject?.takeIf { projectAccessService.canAccess(reloaded, it) }
-        return reloaded.toDTO().copy(defaultProjectShortCode = defaultProject?.projectShortCode)
+        return reloaded.toDTO().copy(
+            defaultProjectShortCode = defaultProject?.projectShortCode,
+            projectOrder = projectOrderOf(reloaded),
+        )
+    }
+
+    /** The projects the user placed in their list, in order. Ones they can no longer see are left out. */
+    private fun projectOrderOf(user: User): List<String> {
+        val positions = userProjectOrderRepository.findAllByUserIDOrderByPositionAsc(user.id)
+        if (positions.isEmpty()) return emptyList()
+        val projects = projectRepository.findAllById(positions.map { it.projectID }).associateBy { it.id }
+        val accessible = projectAccessService.accessibleProjects(user, projects.values.toList()).map { it.id }.toSet()
+        return positions.mapNotNull { projects[it.projectID]?.takeIf { project -> project.id in accessible }?.projectShortCode }
+    }
+
+    /** Saves the order the user wants for their project list, replacing the one before. An empty list goes back to title order. */
+    @Transactional
+    fun updateProjectOrder(user: User, request: UpdateProjectOrderDTO) {
+        // two saves at once (quick clicks on the arrows) would both insert the same rows, so they take turns
+        val reloaded = userRepository.findByIDForUpdate(user.id) ?: throw NoSuchElementException("No user found")
+        val shortCodes = request.projectShortCodes
+        require(shortCodes.size == shortCodes.toSet().size) { "A project can only be listed once" }
+        val projects = shortCodes.map { shortCode ->
+            val project = projectRepository.findByProjectShortCode(shortCode)
+            require(project != null && projectAccessService.canAccess(reloaded, project)) { "No project found" }
+            project
+        }
+        userProjectOrderRepository.deleteAllByUserID(reloaded.id)
+        // Hibernate runs inserts before deletes, which would collide with the rows being replaced
+        userProjectOrderRepository.flush()
+        userProjectOrderRepository.saveAll(projects.mapIndexed { index, project ->
+            UserProjectOrder(userID = reloaded.id, projectID = project.id, position = index)
+        })
     }
 
     @Transactional

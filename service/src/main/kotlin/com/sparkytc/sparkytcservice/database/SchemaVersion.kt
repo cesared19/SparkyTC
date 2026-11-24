@@ -25,7 +25,8 @@ enum class SchemaVersion(val value: String) {
     VERSION_0_0_21("0.0.21"),
     VERSION_0_0_22("0.0.22"),
     VERSION_0_0_23("0.0.23"),
-    VERSION_0_0_24("0.0.24");
+    VERSION_0_0_24("0.0.24"),
+    VERSION_0_0_25("0.0.25");
 
     companion object {
         fun fromValue(value: String): SchemaVersion {
@@ -33,6 +34,6 @@ enum class SchemaVersion(val value: String) {
                 ?: throw IllegalArgumentException("Unknown field type: $value")
         }
 
-        val currentVersion: SchemaVersion = VERSION_0_0_24
+        val currentVersion: SchemaVersion = VERSION_0_0_25
     }
 }

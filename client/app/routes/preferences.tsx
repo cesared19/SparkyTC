@@ -19,6 +19,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			await api.put(APIRoute.defaultProjectPreference, {
 				body: { projectShortCode: projectShortCode ?? null },
 			})
+		} else if (intent === 'projectOrder') {
+			await api.put(APIRoute.projectOrderPreference, {
+				body: { projectShortCodes: body.projectShortCodes ?? [] },
+			})
 		} else {
 			throw 'Invalid request'
 		}

@@ -1,7 +1,12 @@
 import { Link, NavLink, useFetcher, useLocation } from '@remix-run/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Project } from '~/models/project'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
+import { moveItem, orderProjects } from '~/utility/ProjectOrder'
+import {
+	setProjectListHidden,
+	useProjectListHidden,
+} from '~/utility/ProjectListVisibility'
 import { Route } from '~/utility/Routes'
 
 interface ProjectShellProps {
@@ -20,6 +25,7 @@ export function ProjectShell({
 	children,
 }: ProjectShellProps) {
 	const isAdmin = useIsAdmin()
+	const isListHidden = useProjectListHidden()
 	const location = useLocation()
 	// on phones the project list opens as a drawer
 	const [isListOpen, setIsListOpen] = useState(false)
@@ -58,7 +64,8 @@ export function ProjectShell({
 			<ProjectList
 				projects={projects}
 				currentProject={currentProject}
-				className="hidden md:flex"
+				className="hidden md:flex [html[data-project-list=hidden]_&]:md:hidden"
+				canHide
 			/>
 			{isListOpen && (
 				<div className="fixed inset-0 z-40 flex md:hidden">
@@ -83,6 +90,33 @@ export function ProjectShell({
 							onClick={() => setIsListOpen(true)}
 							aria-label="Switch project"
 							className="-ml-1 self-center rounded-md p-1 text-gray-600 hover:bg-gray-100 md:hidden"
+						>
+							<svg
+								className="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth="2"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M4 6h16M4 12h10M4 18h16"
+								/>
+							</svg>
+						</button>
+						<button
+							type="button"
+							id="show-project-list"
+							onClick={() => {
+								setProjectListHidden(false)
+								document.getElementById('hide-project-list')?.focus()
+							}}
+							aria-label="Show project list"
+							aria-expanded={!isListHidden}
+							title="Show project list"
+							className="-ml-1 hidden self-center rounded-md p-1 text-gray-600 hover:bg-gray-100 [html[data-project-list=hidden]_&]:md:inline-flex"
 						>
 							<svg
 								className="h-5 w-5"
@@ -148,16 +182,29 @@ interface ProjectListProps {
 	currentProject?: Project
 	// controls visibility and width, a fixed sidebar by default
 	className?: string
+	// offers a button to hide the list (the fixed sidebar of project pages, not the phone drawer)
+	canHide?: boolean
 }
 
 export function ProjectList({
 	projects,
 	currentProject,
 	className = 'flex',
+	canHide = false,
 }: ProjectListProps) {
 	const user = useCurrentUser()
 	const isAdmin = useIsAdmin()
 	const fetcher = useFetcher()
+	const orderFetcher = useFetcher()
+	const [isReordering, setIsReordering] = useState(false)
+	// the order while a project is being dragged, before it's dropped and saved
+	const [dragOrder, setDragOrder] = useState<string[] | null>(null)
+	const [draggingCode, setDraggingCode] = useState<string | null>(null)
+	// the order just dropped, shown until the save takes over, so the list doesn't flash the old order
+	const [droppedOrder, setDroppedOrder] = useState<string[] | null>(null)
+	const [movedMessage, setMovedMessage] = useState('')
+	const rows = useRef(new Map<string, HTMLElement>())
+	const list = useRef<HTMLElement>(null)
 
 	// reflect a default project change immediately, before the user data reloads
 	const pending = fetcher.json as
@@ -168,6 +215,24 @@ export function ProjectList({
 			? pending.projectShortCode ?? undefined
 			: user?.defaultProjectShortCode
 
+	// the same for the order: what was just saved shows before the user data reloads
+	const pendingOrder = (
+		orderFetcher.json as { projectShortCodes?: string[] } | undefined
+	)?.projectShortCodes
+	const savedOrder = pendingOrder ?? user?.projectOrder ?? []
+	const savedProjects = orderProjects(projects, savedOrder)
+	const shownProjects = orderProjects(
+		projects,
+		dragOrder ?? droppedOrder ?? savedOrder
+	)
+	const shortCodes = shownProjects.map((project) => project.projectShortCode)
+	const isTitleOrder = savedOrder.length === 0
+
+	// once the save of the dropped order is under way, it shows from there
+	useEffect(() => {
+		if (pendingOrder) setDroppedOrder(null)
+	}, [pendingOrder])
+
 	const toggleDefault = (project: Project) => {
 		const isDefault = defaultProject === project.projectShortCode
 		fetcher.submit(
@@ -175,8 +240,69 @@ export function ProjectList({
 				intent: 'defaultProject',
 				projectShortCode: isDefault ? null : project.projectShortCode,
 			},
-			{ method: 'post', action: Route.preferences, encType: 'application/json' }
+			{
+				method: 'post',
+				action: Route.preferences,
+				encType: 'application/json',
+			}
 		)
+	}
+
+	const saveOrder = (order: string[]) => {
+		orderFetcher.submit(
+			{ intent: 'projectOrder', projectShortCodes: order },
+			{
+				method: 'post',
+				action: Route.preferences,
+				encType: 'application/json',
+			}
+		)
+	}
+
+	// with the arrows, for keyboards and screen readers
+	const moveBy = (index: number, step: number) => {
+		const to = index + step
+		if (to < 0 || to >= shownProjects.length) return
+		saveOrder(moveItem(shortCodes, index, to))
+		setMovedMessage(
+			`${shownProjects[index].title} moved to position ${to + 1} of ${
+				shownProjects.length
+			}`
+		)
+	}
+
+	// with a mouse or a finger, from the grip of a project
+	const startDrag = (event: React.PointerEvent<HTMLElement>, code: string) => {
+		event.preventDefault()
+		event.currentTarget.setPointerCapture(event.pointerId)
+		setDraggingCode(code)
+		setDragOrder(shortCodes)
+	}
+	const dragTo = (event: React.PointerEvent<HTMLElement>) => {
+		if (!draggingCode || !dragOrder) return
+		// near the top or bottom of a long list, it scrolls to keep going
+		const area = list.current?.getBoundingClientRect()
+		if (area && list.current) {
+			if (event.clientY < area.top + 32) list.current.scrollBy(0, -16)
+			else if (event.clientY > area.bottom - 32) list.current.scrollBy(0, 16)
+		}
+		// the project goes before the first one whose middle is below the pointer
+		const target = dragOrder.findIndex((code) => {
+			const box = rows.current.get(code)?.getBoundingClientRect()
+			return box !== undefined && event.clientY < box.top + box.height / 2
+		})
+		const to = target === -1 ? dragOrder.length - 1 : target
+		setDragOrder(moveItem(dragOrder, dragOrder.indexOf(draggingCode), to))
+	}
+	const endDrag = (save: boolean) => {
+		// dropped where it was: nothing to save
+		const savedCodes = savedProjects.map((project) => project.projectShortCode)
+		if (save && dragOrder && dragOrder.join() !== savedCodes.join()) {
+			setDroppedOrder(dragOrder)
+			saveOrder(dragOrder)
+		}
+		setDraggingCode(null)
+		setDragOrder(null)
 	}
 
 	return (
@@ -187,20 +313,148 @@ export function ProjectList({
 				<h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
 					Projects
 				</h2>
-				{isAdmin && (
-					<Link
-						to={Route.newProject}
-						className="text-xs font-medium text-brand-600 hover:text-brand-800"
-					>
-						+ New
-					</Link>
-				)}
+				<div className="flex items-center gap-3">
+					{projects.length > 1 && (
+						<button
+							type="button"
+							onClick={() => setIsReordering(!isReordering)}
+							aria-pressed={isReordering}
+							className="text-xs font-medium text-brand-600 hover:text-brand-800"
+						>
+							{isReordering ? 'Done' : 'Reorder'}
+						</button>
+					)}
+					{isAdmin && (
+						<Link
+							to={Route.newProject}
+							className="text-xs font-medium text-brand-600 hover:text-brand-800"
+						>
+							+ New
+						</Link>
+					)}
+					{canHide && !isReordering && (
+						<button
+							type="button"
+							id="hide-project-list"
+							onClick={() => {
+								setProjectListHidden(true)
+								document.getElementById('show-project-list')?.focus()
+							}}
+							aria-label="Hide project list"
+							aria-expanded="true"
+							title="Hide project list"
+							className="-mr-1 rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+						>
+							<svg
+								className="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								strokeWidth="2"
+								aria-hidden="true"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									d="M15 19l-7-7 7-7"
+								/>
+							</svg>
+						</button>
+					)}
+				</div>
 			</div>
-			<nav className="relative flex-1 space-y-0.5 overflow-auto px-2 pb-4">
-				{projects.map((project) => {
+			{isReordering && (
+				<div className="flex items-center justify-between gap-2 px-4 pb-2 text-xs text-gray-500">
+					<span>Drag, or use the arrows</span>
+					<button
+						type="button"
+						onClick={() => {
+							saveOrder([])
+							setMovedMessage('Projects back in title order')
+						}}
+						disabled={isTitleOrder}
+						className="shrink-0 font-medium text-brand-600 hover:text-brand-800 disabled:text-gray-400 disabled:hover:text-gray-400"
+					>
+						Reset to A-Z
+					</button>
+				</div>
+			)}
+			<nav
+				ref={list}
+				className="relative flex-1 space-y-0.5 overflow-auto px-2 pb-4"
+			>
+				{shownProjects.map((project, index) => {
 					const isCurrent =
 						project.projectShortCode === currentProject?.projectShortCode
 					const isDefault = project.projectShortCode === defaultProject
+					const label = (
+						<>
+							<span
+								className={`block truncate text-sm font-medium ${
+									isCurrent ? 'text-brand-600' : 'text-gray-700'
+								}`}
+							>
+								{project.title}
+							</span>
+							<span className="block text-xs text-gray-500">
+								{project.projectShortCode}
+							</span>
+						</>
+					)
+					if (isReordering) {
+						const isDragging = draggingCode === project.projectShortCode
+						return (
+							<div
+								key={project.projectID}
+								ref={(element) => {
+									if (element)
+										rows.current.set(project.projectShortCode, element)
+									else rows.current.delete(project.projectShortCode)
+								}}
+								className={`flex items-center rounded-md ${
+									isDragging
+										? 'bg-brand-50 shadow ring-1 ring-brand-300'
+										: isCurrent
+										? 'bg-brand-50'
+										: 'hover:bg-gray-50'
+								}`}
+							>
+								<button
+									type="button"
+									aria-label={`Drag ${project.title} to move it`}
+									title="Drag to move"
+									onPointerDown={(event) =>
+										startDrag(event, project.projectShortCode)
+									}
+									onPointerMove={dragTo}
+									onPointerUp={() => endDrag(true)}
+									onPointerCancel={() => endDrag(false)}
+									className="ml-1 shrink-0 cursor-grab touch-none select-none rounded px-2 py-3 text-base leading-none text-gray-400 hover:text-gray-600 active:cursor-grabbing"
+								>
+									<span aria-hidden="true">⠿</span>
+								</button>
+								<div className="min-w-0 flex-1 px-2 py-2">{label}</div>
+								<button
+									type="button"
+									onClick={() => moveBy(index, -1)}
+									disabled={index === 0}
+									aria-label={`Move ${project.title} up`}
+									className="rounded p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 disabled:hover:bg-transparent"
+								>
+									<span aria-hidden="true">↑</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => moveBy(index, 1)}
+									disabled={index === shownProjects.length - 1}
+									aria-label={`Move ${project.title} down`}
+									className="mr-1 rounded p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 disabled:hover:bg-transparent"
+								>
+									<span aria-hidden="true">↓</span>
+								</button>
+							</div>
+						)
+					}
 					return (
 						<div
 							key={project.projectID}
@@ -213,16 +467,7 @@ export function ProjectList({
 								className="min-w-0 flex-1 px-3 py-2"
 								aria-current={isCurrent ? 'page' : undefined}
 							>
-								<span
-									className={`block truncate text-sm font-medium ${
-										isCurrent ? 'text-brand-600' : 'text-gray-700'
-									}`}
-								>
-									{project.title}
-								</span>
-								<span className="block text-xs text-gray-500">
-									{project.projectShortCode}
-								</span>
+								{label}
 							</Link>
 							<button
 								type="button"
@@ -252,6 +497,9 @@ export function ProjectList({
 				{projects.length === 0 && (
 					<p className="px-3 py-2 text-sm text-gray-500">No projects</p>
 				)}
+				<p role="status" className="sr-only">
+					{movedMessage}
+				</p>
 			</nav>
 		</aside>
 	)

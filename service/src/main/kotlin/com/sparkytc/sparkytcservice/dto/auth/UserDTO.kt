@@ -21,5 +21,7 @@ data class UserDTO(
     @JsonProperty("isSuperAdmin")
     val isSuperAdmin: Boolean = false,
     val jiraAccountID: String? = null,
-    val jiraDisplayName: String? = null
+    val jiraDisplayName: String? = null,
+    // only for the signed-in user: the projects they placed in the list, in order (short codes)
+    val projectOrder: List<String> = emptyList()
 )
