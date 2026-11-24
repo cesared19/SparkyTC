@@ -6,12 +6,15 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-11-24
+
 ### Added
 - The project list on the left can be hidden on desktop and tablet widths, to give its room to the page: an arrow button in the list's header hides it, and a button next to the project title shows it again. The choice is remembered in the browser, so it can differ between screens. On phones nothing changes.
 - Each user can reorder the project list on the left. **Reorder** turns on the reordering mode: projects are dragged with the mouse or a finger, or moved with their up and down arrows (which also work with the keyboard and screen readers), and **Reset to A-Z** goes back to title order. The order is personal and is kept on the server, so it follows the user to other devices; new projects, and ones the user is given access to, appear at the end.
 
 ### Upgrading
-- Database schema **0.0.25** (the order each user chose), migrated by `docker compose up -d --build` as usual.
+- Database schema **0.0.25** (the order each user chose), migrated by `docker compose up -d --build` as usual: the backup runs first, then the migration, then the app starts.
+- Hiding the project list needs nothing from the server: each browser remembers its own choice.
 
 ## [2.7.0] - 2026-11-23
 
@@ -135,7 +138,8 @@ First release as SparkyTC, based on [Cherry](https://github.com/bennettadam/cher
 ### Upgrading
 - Database schema 0.0.7. Signing in is now required.
 
-[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/cesared19/SparkyTC/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/cesared19/SparkyTC/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/cesared19/SparkyTC/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/cesared19/SparkyTC/compare/v2.4.0...v2.5.0
