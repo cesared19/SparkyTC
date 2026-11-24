@@ -7,6 +7,7 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 ## [Unreleased]
 
 ### Added
+- The project list on the left can be hidden on desktop and tablet widths, to give its room to the page: an arrow button in the list's header hides it, and a button next to the project title shows it again. The choice is remembered in the browser, so it can differ between screens. On phones nothing changes.
 - Each user can reorder the project list on the left. **Reorder** turns on the reordering mode: projects are dragged with the mouse or a finger, or moved with their up and down arrows (which also work with the keyboard and screen readers), and **Reset to A-Z** goes back to title order. The order is personal and is kept on the server, so it follows the user to other devices; new projects, and ones the user is given access to, appear at the end.
 
 ### Upgrading

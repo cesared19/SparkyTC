@@ -66,6 +66,7 @@ The **Test Runs** list shows each run's status, build and creation date. **Sort 
 -  Jira integration: create bugs in Jira from failed test cases, link existing issues and see their status, and close or reopen them when recording a result (see below)
 -  User accounts with Tester and Admin roles, and a record of who created, updated and executed each test case (see below)
 -  Home dashboard per project with test case and test run summaries, and a default project opened after signing in
+-  On desktop and tablet widths the project list can be hidden with the arrow button in its header, and shown again with the button next to the project title; the choice is remembered in the browser. On phones the list is a drawer, as before
 -  Each user orders the project list on the left for themselves: **Reorder** on the list turns on dragging (mouse or finger) and move up / move down arrows, **Reset to A-Z** goes back to title order. The order is kept on the server, so it follows the user across devices; projects they haven't placed (new ones) go at the end
 -  Per-project visibility: admins choose which projects each tester can see
 -  Light, dark or system theme, chosen by each user from their account page

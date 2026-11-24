@@ -14,6 +14,7 @@ import { useEffect } from 'react'
 import { User, UserTheme } from '~/models/types'
 import TopNavigation from '~/components/TopNavigation'
 import { requireUser } from '~/utility/Authorization.server'
+import { PROJECT_LIST_SCRIPT } from '~/utility/ProjectListVisibility'
 
 import './tailwind.css'
 
@@ -45,6 +46,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			<head>
 				{/* eslint-disable-next-line react/no-danger */}
 				<script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+				{/* eslint-disable-next-line react/no-danger */}
+				<script dangerouslySetInnerHTML={{ __html: PROJECT_LIST_SCRIPT }} />
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>SparkyTC</title>
