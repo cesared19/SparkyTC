@@ -6,5 +6,7 @@ enum class NotificationType {
     // an automatic Jira issue couldn't be created for a failed test case
     JIRA_ISSUE_FAILED,
     // a Jira issue was created, but Jira didn't accept the user as its reporter
-    JIRA_REPORTER_NOT_SET
+    JIRA_REPORTER_NOT_SET,
+    // sent by another app of the suite (e.g. SparkStock's loan reminders); its link opens that app
+    EXTERNAL,
 }

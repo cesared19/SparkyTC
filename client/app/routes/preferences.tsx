@@ -11,9 +11,9 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (intent === 'theme') {
 			await api.put(APIRoute.themePreference, { body: { theme } })
 		} else if (intent === 'notifications') {
-			const { testRunAssigned, testRunCompleted } = body
+			const { testRunAssigned, testRunCompleted, external } = body
 			await api.put(APIRoute.notificationPreferences, {
-				body: { testRunAssigned, testRunCompleted },
+				body: { testRunAssigned, testRunCompleted, external },
 			})
 		} else if (intent === 'defaultProject') {
 			await api.put(APIRoute.defaultProjectPreference, {

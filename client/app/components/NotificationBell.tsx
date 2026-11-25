@@ -1,6 +1,10 @@
 import { useFetcher, useLocation, useNavigate } from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
-import { AppNotification, NotificationList } from '~/models/types'
+import {
+	AppNotification,
+	NotificationList,
+	NotificationType,
+} from '~/models/types'
 import { Route } from '~/utility/Routes'
 
 const REFRESH_INTERVAL_MS = 60_000
@@ -78,7 +82,13 @@ export function NotificationBell() {
 			submit({ intent: 'read', notificationID: notification.notificationID })
 		}
 		setIsOpen(false)
-		if (notification.link) navigate(notification.link)
+		if (!notification.link) return
+		// other apps' notifications link to that app, opened in a new tab
+		if (notification.type === NotificationType.external) {
+			window.open(notification.link, '_blank', 'noopener,noreferrer')
+		} else {
+			navigate(notification.link)
+		}
 	}
 
 	return (
@@ -168,6 +178,7 @@ export function NotificationBell() {
 										</span>
 										<span className="mt-0.5 block text-xs text-gray-500">
 											{timeAgo(notification.creationDate)}
+											{notification.appName && ` · ${notification.appName}`}
 										</span>
 									</span>
 								</button>

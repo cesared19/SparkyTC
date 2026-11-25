@@ -203,6 +203,8 @@ export enum NotificationType {
 	testRunCompleted = 'TEST_RUN_COMPLETED',
 	jiraIssueFailed = 'JIRA_ISSUE_FAILED',
 	jiraReporterNotSet = 'JIRA_REPORTER_NOT_SET',
+	// sent by another app of the suite, e.g. SparkStock; its link opens that app
+	external = 'EXTERNAL',
 }
 
 export interface AppNotification {
@@ -213,6 +215,8 @@ export interface AppNotification {
 	message: string
 	link?: string
 	isRead: boolean
+	// the app that sent an external notification
+	appName?: string
 }
 
 export interface NotificationList {
@@ -249,6 +253,8 @@ export interface User {
 	projectIDs?: string[]
 	notifyTestRunAssigned: boolean
 	notifyTestRunCompleted: boolean
+	// reminders from other apps of the suite, e.g. SparkStock
+	notifyExternal?: boolean
 	isSuperAdmin: boolean
 	// the Jira user this user's issues are reported as
 	jiraAccountID?: string
