@@ -162,6 +162,8 @@ export function runResultRows(
 	// the replay columns only when some test case's result came with a replay's report
 	const reports = testCaseRuns.map((run) => latestReplayReport(run.results))
 	const hasReplay = reports.some((report) => report !== undefined)
+	// the device columns only when some result says which SparkStock device it ran on
+	const hasDevice = testCaseRuns.some((run) => run.device)
 	const header = [
 		'ID',
 		'Title',
@@ -171,6 +173,7 @@ export function runResultRows(
 		'Recorded by',
 		'Recorded at',
 		'Results recorded',
+		...(hasDevice ? ['Device', 'Device version'] : []),
 		...(hasSteps ? ['Steps', 'Step results'] : []),
 		...(testRun.trackTime ? ['Time (minutes)'] : []),
 		...(hasReplay ? ['Replay result', 'Replay p95 frame time (ms)'] : []),
@@ -186,6 +189,7 @@ export function runResultRows(
 		run.status === TestCaseRunStatus.pending ? '' : (run.executedBy ?? ''),
 		run.executedAt ? new Date(run.executedAt).toLocaleString('en-US') : '',
 		run.results.length,
+		...(hasDevice ? deviceColumns(run) : []),
 		...(hasSteps
 			? [stepResultsSummaryText(run) ?? '', stepResultLines(run)]
 			: []),
@@ -195,6 +199,13 @@ export function runResultRows(
 		testRun.build?.buildNumber ?? '',
 	])
 	return [header, ...rows]
+}
+
+/** The device of the current result: "name / tag" and its version. */
+function deviceColumns(run: TestCaseRun): string[] {
+	const device = run.device
+	if (!device) return ['', '']
+	return [[device.name, device.ref].filter(Boolean).join(' / '), device.version ?? '']
 }
 
 function replayColumns(report: ReplayReport | undefined): (string | number)[] {

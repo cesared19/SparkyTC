@@ -147,6 +147,7 @@ When creating a test run the current build is preselected.
 -  **Drafts**: what a tester marks and writes for a test case (the result, each step and its actual result, and the comment) is kept on the server as they go, until they save the result. Leaving the page, closing the browser or switching devices loses nothing, and *start over* discards it. Drafts are personal; evidence files are added when the result is saved.
 -  **Saving**: the result can be chosen next to *Save result* too, which says what's missing when it can't save yet. After saving, the next pending test case opens with a notice of the result just saved.
 -  **Steps in the run**: for test cases written as steps, the run's table shows how the steps went in the latest result (e.g. *4/5 passed · 1 failed*), and the exported results add *Steps* and *Step results* columns with each step's status and actual result.
+-  **Device**: with the project's **Devices** setting on (*Optional* or *Required*, in Settings), each result says which device it was recorded on. The picker lists the devices the tester has checked out in [SparkStock](https://github.com/cesared19/SparkStock), searches every device, and starts with the last device used in the run; the result keeps a copy of the device's name, model and version, so it reads the same if the device changes later. It shows with the result, in the history, the run report, the exported results and Jira bugs. *Required* doesn't apply to results recorded by apps through the API. See [SparkStock](#sparkstock-devices) to connect it.
 -  **Re-run**: *Re-run test cases* in the test run's menu creates a new run with the test cases that ended as failed and blocked (skipped and pending are optional), for the chosen build. It keeps the assignees and who took each test case.
 
 ### Test run report
@@ -211,7 +212,7 @@ Other apps can read a project through an API, and create test cases and test run
 | `POST /test-cases/archive` | `{ "testCaseNumbers": [..] }` | Nothing: archives the test cases created through the API (with a `sourceRef`) that no longer apply, as deleting a used test case in the app does. Runs keep their results and the history stays. Returns `archived` and `skipped` (with the reason: not found, already archived, or not created through the API). |
 | `POST /test-plans` | `{ "name", "description"?, "sectionIDs"?, "labels"?, "testCaseNumbers"?, "sourceRef"? }` | A test plan, returned like `GET /test-plans`. It needs at least one section, label or test case. |
 | `POST /test-runs` | `{ "title", "build", "testCaseNumbers"?, "testPlanID"?, "description"?, "sourceRef"? }` | An **automated** test run for a build that's already registered (the API never creates builds), with the given test cases and the plan's (same rule as starting a run from the plan), in number order. It starts open with nobody assigned, and tracks time (each result's `durationSeconds`). Returns its number, status, build, test cases (number, title, status and `webPath` in the run) and `webPath`. An unknown build, or test case numbers that don't exist or are archived, get a 400 that names them, and nothing is created. |
-| `POST /test-runs/{number}/results` | `{ "testCaseNumber", "status": "PASS" \| "FAIL" \| "BLOCKED" \| "SKIP", "notes"?, "durationSeconds"?, "report"? }` | A result for a test case of an **automated** test run, recorded like in the app: it becomes the test case's status (in the dashboard, Builds, history and run report), credited to the token, and the run completes once every test case has a final result (Blocked keeps it open). `durationSeconds` is the test case's time. `report` is what the app found, stored with the result: `{ "passed"?, "findings"?: [text], "screenshots"?: [{ "name", "differentPercent"?, "passed"? }], "metrics"?: { "recorded"?, "replay"? } }`, each metrics set with `averageFps`, `frameTimeP50Ms`, `frameTimeP95Ms`, `frameTimeP99Ms`, `overBudgetPercent`, `droppedFrames`, `cpuAvgMs`, `gpuAvgMs`, `usedMemoryPeakMB` and `batteryTemperatureMaxC`, all optional (up to 256 KB). Returns the `resultID`, the run's status and the test case's `webPath` in the run. Runs created in the app, closed runs and test cases not in the run get a 400; a run number the project doesn't have, a 404. Results are never edited or deleted through the API. The report shows with the result as a **Replay report**, and a screenshot's images are the evidence files named `<screenshot>.recording.png`, `.replay.png` and `.diff.png`. |
+| `POST /test-runs/{number}/results` | `{ "testCaseNumber", "status": "PASS" \| "FAIL" \| "BLOCKED" \| "SKIP", "notes"?, "durationSeconds"?, "report"?, "deviceRef"? }` | A result for a test case of an **automated** test run, recorded like in the app: it becomes the test case's status (in the dashboard, Builds, history and run report), credited to the token, and the run completes once every test case has a final result (Blocked keeps it open). `durationSeconds` is the test case's time. `report` is what the app found, stored with the result: `{ "passed"?, "findings"?: [text], "screenshots"?: [{ "name", "differentPercent"?, "passed"? }], "metrics"?: { "recorded"?, "replay"? } }`, each metrics set with `averageFps`, `frameTimeP50Ms`, `frameTimeP95Ms`, `frameTimeP99Ms`, `overBudgetPercent`, `droppedFrames`, `cpuAvgMs`, `gpuAvgMs`, `usedMemoryPeakMB` and `batteryTemperatureMaxC`, all optional (up to 256 KB). `deviceRef` is the SparkStock asset tag of the device it ran on (e.g. `VR-0001`), checked with SparkStock: an unknown tag, or a server without SparkStock, gets a 400. Returns the `resultID`, the run's status and the test case's `webPath` in the run. Runs created in the app, closed runs and test cases not in the run get a 400; a run number the project doesn't have, a 404. Results are never edited or deleted through the API. The report shows with the result as a **Replay report**, and a screenshot's images are the evidence files named `<screenshot>.recording.png`, `.replay.png` and `.diff.png`. |
 | `POST /test-runs/{number}/results/{resultID}/attachments` | Multipart, one or more `files` | Evidence for a result of an **automated** test run (the `resultID` the result endpoint returned), shown with the result like the evidence uploaded in the app, credited to the token. Images, videos and `.zip` files (for example a replay's whole report); a `.zip` is only ever downloaded, never opened in SparkyTC. Each file can be up to `ATTACHMENT_MAX_FILE_SIZE`. If one file isn't valid, none is stored. A run or result the project doesn't have gets a 404. |
 
 -  **`sourceRef`** is the app's own reference, up to 200 characters, such as `cobord:<boardId>:<elementId>`. Creating a test case, plan or test run with a `sourceRef` the project already has returns the existing one instead of a new one, with `"created": false` (`true` when it was created), so retries never create duplicates. An archived test case frees its reference.
@@ -222,6 +223,34 @@ Other apps can read a project through an API, and create test cases and test run
 -  Every item has a `webPath` to open it in SparkyTC.
 -  Apps on other machines (for example re-Play on a tester's PC) call the API on the app's own address, e.g. `http://<server>:3000/api/integration/v1/...`: the client service forwards `/api/integration/v1` to the backend, with the token, and nothing else of the backend. The app's session isn't used there; a request without a token gets a 401. Until SparkyTC is served over HTTPS, tokens travel unencrypted on the network, like the app's session cookie.
 -  The backend itself is only published on `127.0.0.1:8080`. Apps in other Docker Compose projects on the same server can also reach it by joining the SparkyTC network (`docker network ls` shows its name, such as `sparkytc_app-network`) and calling `http://backend-service:8080`.
+
+### SparkStock (devices)
+
+[SparkStock](https://github.com/cesared19/SparkStock) is the suite's device stock: VR headsets lent to testers and IT equipment. People sign in to it with their SparkyTC account. SparkyTC reads it to record the device of each result:
+
+```
+STOCK_API_URL=http://stock-backend:8080     # SparkStock's backend, on SparkyTC's docker network
+STOCK_INTEGRATION_TOKEN=<shared secret>     # the same value as in SparkStock's .env
+```
+
+Without them the **Devices** setting still works, and testers type the device's asset tag (e.g. `VR-0001`). If SparkStock stops answering, the picker falls back to typing the tag, and *Required* still accepts it.
+
+With the same token, SparkStock sends reminders to the bell: a loan due within a day, an overdue loan (every day until it's returned), and to admins, warranties ending soon. They show *SparkStock* and open it in a new tab; each user can turn them off in **Account → Notifications**. Apps on the same server send them with `POST http://backend-service:8080/api/system/v1/notifications` and `Authorization: Bearer <STOCK_INTEGRATION_TOKEN>`:
+
+| Field | |
+| --- | --- |
+| `userID` | The SparkyTC user's ID, as in `/auth/me` |
+| `app` | The app's name, shown with the notification (up to 50 characters) |
+| `title`, `message` | Up to 200 and 2000 characters |
+| `link` | An `http(s)://` address in the app, opened in a new tab (optional) |
+| `sourceRef` | The app's reference (up to 200 characters): sending it again for the same user keeps one notification |
+
+SparkStock also reads, with the same token, what its coverage matrix needs:
+
+-  `GET /api/system/v1/projects`: every project with its device setting and its builds, newest first.
+-  `GET /api/system/v1/projects/{code}/device-results?build=`: for a build (the current one by default), each device and version results were recorded on, with how many test cases passed, failed, were blocked or skipped there (the latest result of each test case on that device). Results without a device are left out; an unknown project or build gets a 404.
+
+The notifications endpoint answers `created` (`false` when the `sourceRef` was already sent, or the user turned these notifications off, with the reason in `skipped`); an unknown user gets a 404. The client service doesn't forward `/api/system`, so it's only reachable on the docker network.
 
 ## Architecture Overview
 

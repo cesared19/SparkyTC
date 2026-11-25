@@ -43,6 +43,11 @@ export class Route {
 		return '/api-tokens'
 	}
 
+	// SparkStock devices for the device picker: the user's own, or a search over all
+	static stockDevices(query?: string) {
+		return `/stock-devices${query ? `?${new URLSearchParams({ q: query })}` : ''}`
+	}
+
 	static jiraIssueTypes(projectKey: string) {
 		return `/jira-issue-types?${new URLSearchParams({ projectKey }).toString()}`
 	}
@@ -361,6 +366,17 @@ export class APIRoute {
 
 	static testCaseHistory(testCaseID: string) {
 		return `${this.baseAPIURL}/api/v1/workspace/test-cases/${testCaseID}/history`
+	}
+
+	static get stockConfiguration() {
+		return `${this.baseAPIURL}/api/v1/workspace/stock/configuration`
+	}
+
+	static stockDevices(options: { mine?: boolean; query?: string }) {
+		const params = new URLSearchParams()
+		if (options.mine) params.set('mine', 'true')
+		if (options.query) params.set('q', options.query)
+		return `${this.baseAPIURL}/api/v1/workspace/stock/devices?${params}`
 	}
 
 	static get jiraConfiguration() {

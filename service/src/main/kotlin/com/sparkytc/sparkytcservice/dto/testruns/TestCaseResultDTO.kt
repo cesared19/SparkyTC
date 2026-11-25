@@ -18,4 +18,6 @@ data class TestCaseResultDTO(
     val stepResults: List<StepResultDTO> = emptyList(),
     // what an app reported with the result through the integration API (JSON), e.g. a replay's comparison
     val report: String? = null,
+    // the SparkStock device it was recorded on
+    val device: ResultDeviceDTO? = null,
 )

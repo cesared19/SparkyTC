@@ -29,4 +29,6 @@ data class TestCaseRunDTO(
     val results: List<TestCaseResultDTO> = emptyList(),
     val format: TestCaseFormat = TestCaseFormat.TEXT,
     val steps: List<TestCaseRunStepDTO> = emptyList(),
+    // the device of the latest result
+    val device: ResultDeviceDTO? = null,
 )

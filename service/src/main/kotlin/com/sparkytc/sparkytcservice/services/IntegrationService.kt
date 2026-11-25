@@ -229,6 +229,7 @@ class IntegrationService(
                     },
                     evidenceCount = result.attachments.size,
                     webPath = "/test-runs/${project.projectShortCode}/${run.testRunNumber}/${testCase.testCaseNumber}",
+                    device = result.device?.toDTO(),
                 )
             },
         )

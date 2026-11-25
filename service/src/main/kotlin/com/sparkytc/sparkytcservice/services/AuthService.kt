@@ -133,6 +133,7 @@ class AuthService(
         val reloaded = userRepository.findById(user.id).orElseThrow()
         reloaded.notifyTestRunAssigned = request.testRunAssigned
         reloaded.notifyTestRunCompleted = request.testRunCompleted
+        request.external?.let { reloaded.notifyExternal = it }
         userRepository.save(reloaded)
     }
 

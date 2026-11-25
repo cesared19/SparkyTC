@@ -1,4 +1,4 @@
-import type { JiraFailureMode } from './types'
+import type { DeviceMode, JiraFailureMode } from './types'
 
 export interface Project {
 	projectID: string
@@ -9,6 +9,8 @@ export interface Project {
 	jiraFailureMode: JiraFailureMode
 	jiraProjectKey?: string
 	jiraIssueType?: string
+	// whether results say which SparkStock device they were recorded on
+	deviceMode: DeviceMode
 }
 
 export type NewProject = {

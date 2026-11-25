@@ -175,6 +175,8 @@ data class IntegrationHistoryEntryDTO(
     val evidenceCount: Int,
     /** The test case in that run, in the SparkyTC app. */
     val webPath: String,
+    /** The SparkStock device it was recorded on, if any. */
+    val device: com.sparkytc.sparkytcservice.dto.testruns.ResultDeviceDTO? = null,
 )
 
 data class IntegrationStepResultDTO(
@@ -230,6 +232,8 @@ data class IntegrationRecordResultDTO(
     /** How long the test case took; it's the test case's time in the run. */
     val durationSeconds: Long? = null,
     val report: IntegrationResultReportDTO? = null,
+    /** The SparkStock asset tag of the device it ran on, e.g. VR-0001. */
+    val deviceRef: String? = null,
 )
 
 /** What an app found, stored with the result and shown in SparkyTC, e.g. a replay compared with its recording. */

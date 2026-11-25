@@ -7,6 +7,7 @@ import com.sparkytc.sparkytcservice.dto.testruns.TestCaseHistoryEntryDTO
 import com.sparkytc.sparkytcservice.dto.testruns.TestCaseRunStatus
 import com.sparkytc.sparkytcservice.dto.testruns.TestRunStatus
 import com.sparkytc.sparkytcservice.models.ProjectApiToken
+import com.sparkytc.sparkytcservice.models.ResultDevice
 import com.sparkytc.sparkytcservice.models.TestCaseAttachment
 import com.sparkytc.sparkytcservice.models.TestCaseResult
 import com.sparkytc.sparkytcservice.models.TestCaseRun
@@ -42,6 +43,7 @@ class TestCaseResultService(
         actor: User?,
         token: ProjectApiToken? = null,
         report: String? = null,
+        device: ResultDevice? = null,
     ): TestCaseResult {
         require(status != TestCaseRunStatus.PENDING) { "Choose a result: pass, fail, blocked or skip" }
         val result = testCaseResultRepository.save(TestCaseResult(
@@ -52,6 +54,7 @@ class TestCaseResultService(
             recordedAt = Date(),
             recordedByToken = token,
             report = report,
+            device = device,
         ))
         applyLatest(testCaseRun, result)
         return result
@@ -118,6 +121,7 @@ class TestCaseResultService(
         testCaseRun.status = latest?.status ?: TestCaseRunStatus.PENDING
         testCaseRun.notes = latest?.notes
         testCaseRun.executedBy = latest?.recordedBy
+        testCaseRun.device = latest?.device
         testCaseRun.executedByToken = latest?.recordedByToken
         testCaseRun.executedAt = latest?.recordedAt
         testCaseRunRepository.save(testCaseRun)

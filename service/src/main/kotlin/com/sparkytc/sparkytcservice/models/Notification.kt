@@ -39,8 +39,15 @@ class Notification(
 
     @Column(name = "is_read", nullable = false)
     var isRead: Boolean = false,
+
+    // for EXTERNAL notifications: the app that sent it, and its reference that keeps it from being sent twice
+    @Column(name = "app_name")
+    val appName: String? = null,
+
+    @Column(name = "source_ref")
+    val sourceRef: String? = null,
 ) {
     fun toDTO(): NotificationDTO {
-        return NotificationDTO(externalID, creationDate, type, title, message, link, isRead)
+        return NotificationDTO(externalID, creationDate, type, title, message, link, isRead, appName)
     }
 }

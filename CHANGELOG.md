@@ -6,6 +6,16 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+### Added
+- Results can say which device they were recorded on, from [SparkStock](https://github.com/cesared19/SparkStock), the suite's device stock (#65). A new **Devices** setting per project chooses *Off* (the default), *Optional* or *Required*. When recording a result, the **Device** picker lists the devices the tester has checked out in SparkStock, can search all of them, and starts with the last device used in the run. The result keeps a copy of the device's name, model and version, shown with the result, in the history, the run report, the exported results (*Device* and *Device version*) and the bugs created in Jira. If SparkStock can't be reached, the tester types the asset tag from the device's label.
+- Other apps of the suite can put notifications in a user's bell (#66), e.g. SparkStock reminding a tester to return a VR headset. They show the app's name and open that app in a new tab. Each user can turn them off in **Account → Notifications**. For apps on the same server: `POST /api/system/v1/notifications` with the shared `STOCK_INTEGRATION_TOKEN`; the same `sourceRef` sent twice keeps one notification.
+- SparkStock can read, for its device coverage matrix, every project with its builds (`GET /api/system/v1/projects`) and how the test cases went on each device and version in a build (`GET /api/system/v1/projects/{code}/device-results?build=`, the current build by default), with the shared `STOCK_INTEGRATION_TOKEN` (#67).
+- The integration API accepts an optional `deviceRef` (a SparkStock asset tag) when recording a result in an automated test run, and returns the `device` in a test case's history.
+
+### Upgrading
+- Database schemas **0.0.26** (the device of each result, and the project setting) and **0.0.27** (notifications from other apps, and the preference), migrated by `docker compose up -d --build` as usual.
+- To use SparkStock, set `STOCK_API_URL` (e.g. `http://stock-backend:8080`, SparkStock's backend on SparkyTC's docker network) and `STOCK_INTEGRATION_TOKEN` (the same secret as in SparkStock's `.env`) in `.env`. Without them the setting still works, and testers type the asset tag.
+
 ## [2.8.0] - 2026-11-24
 
 ### Added

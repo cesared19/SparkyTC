@@ -70,6 +70,10 @@ class TestCaseRun(
     @Column(name = "executed_at")
     var executedAt: Date? = null,
 
+    // the device of the latest result
+    @Embedded
+    var device: ResultDevice? = null,
+
     // copied from the test case when the run is created
     @Column(name = "format", nullable = false)
     @Enumerated(EnumType.STRING)
@@ -99,6 +103,7 @@ class TestCaseRun(
             results = results.map { it.toDTO() },
             format = format,
             steps = steps.map { it.toDTO() },
+            device = device?.toDTO(),
         )
     }
 }

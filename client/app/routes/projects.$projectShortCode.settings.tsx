@@ -16,8 +16,10 @@ import { ErrorMessage } from '~/components/ErrorMessage'
 import { ProjectShell } from '~/components/ProjectShell'
 import { Project } from '~/models/project'
 import {
+	DeviceMode,
 	FetchResponse,
 	JiraConfiguration,
+	StockConfiguration,
 	JiraFailureMode,
 	JiraIssueType,
 	JiraSpace,
@@ -31,9 +33,10 @@ import { Tools } from '~/utility/Tools'
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { api } = await requireAdmin(request)
 	const projectShortCode = params.projectShortCode ?? ''
-	const [projects, jira] = await Promise.all([
+	const [projects, jira, stock] = await Promise.all([
 		api.get<FetchResponse<Project[]>>(APIRoute.projects),
 		api.get<FetchResponse<JiraConfiguration>>(APIRoute.jiraConfiguration),
+		api.get<FetchResponse<StockConfiguration>>(APIRoute.stockConfiguration),
 	])
 	const project = projects.data.find(
 		(p) => p.projectShortCode === params.projectShortCode
@@ -81,6 +84,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		projects: projects.data,
 		project,
 		jira: jira.data,
+		stock: stock.data,
 		builds: builds.data,
 		apiTokens: apiTokens.data,
 		spaces,
@@ -101,6 +105,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					String(formData.get('jiraProjectKey') ?? '').trim() || null,
 				jiraIssueType:
 					String(formData.get('jiraIssueType') ?? '').trim() || null,
+				deviceMode: formData.get('deviceMode') ?? undefined,
 			},
 		})
 		return { ok: true as const }
@@ -130,11 +135,32 @@ const MODES = [
 	},
 ]
 
+const DEVICE_MODES = [
+	{
+		value: DeviceMode.off,
+		label: 'Off',
+		description: "Results don't say which device they were recorded on.",
+	},
+	{
+		value: DeviceMode.optional,
+		label: 'Optional',
+		description:
+			'Testers can choose the device they tested on, from the ones they have checked out in SparkStock.',
+	},
+	{
+		value: DeviceMode.required,
+		label: 'Required',
+		description:
+			"A result can't be saved without its device. Results recorded by apps through the API are exempt.",
+	},
+]
+
 export default function ProjectSettings() {
 	const {
 		projects,
 		project,
 		jira,
+		stock,
 		builds,
 		apiTokens,
 		spaces,
@@ -145,6 +171,9 @@ export default function ProjectSettings() {
 	const actionData = useActionData<typeof action>()
 	const navigation = useNavigation()
 	const [mode, setMode] = useState(project.jiraFailureMode)
+	const [deviceMode, setDeviceMode] = useState(
+		project.deviceMode ?? DeviceMode.off
+	)
 
 	return (
 		<ProjectShell projects={projects} currentProject={project}>
@@ -213,6 +242,48 @@ export default function ProjectSettings() {
 					initialIssueTypes={issueTypes}
 					initialCanModifyReporter={canModifyReporter}
 				/>
+
+				<fieldset className="space-y-3 border-t border-gray-200 pt-6">
+					<legend className="text-lg font-semibold text-gray-900">
+						Devices
+					</legend>
+					<p className="text-sm text-gray-500">
+						Which device (from SparkStock, the device stock) each result was
+						recorded on. It shows in the results, the report, the export and
+						Jira bugs.
+						{!stock.isEnabled &&
+							" SparkStock isn't configured on the server yet (STOCK_API_URL and STOCK_INTEGRATION_TOKEN), so testers type the asset tag."}
+					</p>
+					{DEVICE_MODES.map((option) => (
+						// the label text is nested one level deeper than the rule checks
+						// eslint-disable-next-line jsx-a11y/label-has-associated-control
+						<label
+							key={option.value}
+							className={`flex cursor-pointer gap-3 rounded-md border p-3 ${
+								deviceMode === option.value
+									? 'border-brand-600 bg-brand-50'
+									: 'border-gray-200 hover:bg-gray-50'
+							}`}
+						>
+							<input
+								type="radio"
+								name="deviceMode"
+								value={option.value}
+								checked={deviceMode === option.value}
+								onChange={() => setDeviceMode(option.value)}
+								className="mt-1 h-4 w-4 border-gray-300 text-brand-600 focus:ring-brand-500"
+							/>
+							<span>
+								<span className="block text-sm font-medium text-gray-900">
+									{option.label}
+								</span>
+								<span className="block text-sm text-gray-600">
+									{option.description}
+								</span>
+							</span>
+						</label>
+					))}
+				</fieldset>
 
 				<button
 					type="submit"

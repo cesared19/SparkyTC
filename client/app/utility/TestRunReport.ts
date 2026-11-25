@@ -11,6 +11,7 @@ import {
 import { formatDuration } from '~/components/TimeTracking'
 import { Route } from '~/utility/Routes'
 import { Tools } from '~/utility/Tools'
+import { deviceText } from '~/utility/Devices'
 
 /**
  * The downloadable report of a test run, generated in the browser: a .zip with a visual summary as a .png
@@ -1137,6 +1138,13 @@ async function casesPdf(data: ReportData): Promise<Blob> {
 				y + 11.5
 			)
 			y += 22
+			if (result.device) {
+				paragraph(`Device: ${deviceText(result.device)}`, {
+					size: 9,
+					indent: 12,
+					gap: 3,
+				})
+			}
 			if (result.notes?.trim()) {
 				paragraph(result.notes.trim(), { size: 10, indent: 12, gap: 4 })
 			} else {
