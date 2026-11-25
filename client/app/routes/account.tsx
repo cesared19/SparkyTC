@@ -198,11 +198,12 @@ function NotificationPreferences() {
 	const user = useCurrentUser()
 	const fetcher = useFetcher()
 	const pending = fetcher.json as
-		| { testRunAssigned: boolean; testRunCompleted: boolean }
+		| { testRunAssigned: boolean; testRunCompleted: boolean; external: boolean }
 		| undefined
 	const preferences = pending ?? {
 		testRunAssigned: user?.notifyTestRunAssigned ?? true,
 		testRunCompleted: user?.notifyTestRunCompleted ?? true,
+		external: user?.notifyExternal ?? true,
 	}
 
 	const update = (change: Partial<typeof preferences>) =>
@@ -219,6 +220,11 @@ function NotificationPreferences() {
 		{
 			key: 'testRunCompleted' as const,
 			label: 'A test run in one of my projects is completed',
+		},
+		{
+			key: 'external' as const,
+			label:
+				'Another app of the suite reminds me of something, e.g. SparkStock about a device to return',
 		},
 	]
 

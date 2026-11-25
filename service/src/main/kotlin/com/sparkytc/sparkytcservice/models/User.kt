@@ -56,6 +56,10 @@ class User(
     @Column(name = "notify_test_run_completed", nullable = false)
     var notifyTestRunCompleted: Boolean = true,
 
+    // reminders from other apps of the suite, e.g. SparkStock's overdue loans
+    @Column(name = "notify_external", nullable = false)
+    var notifyExternal: Boolean = true,
+
     // the ADMIN_USERNAME account, the only one that can reset other users' passwords
     @Column(name = "is_super_admin", nullable = false)
     var isSuperAdmin: Boolean = false,
@@ -68,6 +72,6 @@ class User(
     var jiraDisplayName: String? = null,
 ) {
     fun toDTO(projectIDs: List<UUID>? = null): UserDTO {
-        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted, isSuperAdmin, jiraAccountID, jiraDisplayName)
+        return UserDTO(externalID, creationDate, username, displayName, role, isActive, theme, defaultProject?.projectShortCode, projectIDs, notifyTestRunAssigned, notifyTestRunCompleted, isSuperAdmin, jiraAccountID, jiraDisplayName, notifyExternal = notifyExternal)
     }
 }

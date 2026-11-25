@@ -691,6 +691,14 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.26")
                 }
                 SchemaVersion.VERSION_0_0_26 -> {
+                    // notifications sent by other apps of the suite (SparkStock), once per sourceRef and user
+                    jdbcTemplate.execute("ALTER TABLE notifications ADD COLUMN app_name TEXT, ADD COLUMN source_ref TEXT")
+                    jdbcTemplate.execute("CREATE UNIQUE INDEX notifications_user_source_ref ON notifications (user_id, source_ref) WHERE source_ref IS NOT NULL")
+                    jdbcTemplate.execute("ALTER TABLE users ADD COLUMN notify_external BOOLEAN NOT NULL DEFAULT TRUE")
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.27")
+                }
+                SchemaVersion.VERSION_0_0_27 -> {
                     break
                 }
             }

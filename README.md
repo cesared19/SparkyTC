@@ -235,6 +235,23 @@ STOCK_INTEGRATION_TOKEN=<shared secret>     # the same value as in SparkStock's 
 
 Without them the **Devices** setting still works, and testers type the device's asset tag (e.g. `VR-0001`). If SparkStock stops answering, the picker falls back to typing the tag, and *Required* still accepts it.
 
+With the same token, SparkStock sends reminders to the bell: a loan due within a day, an overdue loan (every day until it's returned), and to admins, warranties ending soon. They show *SparkStock* and open it in a new tab; each user can turn them off in **Account → Notifications**. Apps on the same server send them with `POST http://backend-service:8080/api/system/v1/notifications` and `Authorization: Bearer <STOCK_INTEGRATION_TOKEN>`:
+
+| Field | |
+| --- | --- |
+| `userID` | The SparkyTC user's ID, as in `/auth/me` |
+| `app` | The app's name, shown with the notification (up to 50 characters) |
+| `title`, `message` | Up to 200 and 2000 characters |
+| `link` | An `http(s)://` address in the app, opened in a new tab (optional) |
+| `sourceRef` | The app's reference (up to 200 characters): sending it again for the same user keeps one notification |
+
+SparkStock also reads, with the same token, what its coverage matrix needs:
+
+-  `GET /api/system/v1/projects`: every project with its device setting and its builds, newest first.
+-  `GET /api/system/v1/projects/{code}/device-results?build=`: for a build (the current one by default), each device and version results were recorded on, with how many test cases passed, failed, were blocked or skipped there (the latest result of each test case on that device). Results without a device are left out; an unknown project or build gets a 404.
+
+The notifications endpoint answers `created` (`false` when the `sourceRef` was already sent, or the user turned these notifications off, with the reason in `skipped`); an unknown user gets a 404. The client service doesn't forward `/api/system`, so it's only reachable on the docker network.
+
 ## Architecture Overview
 
 SparkyTC follows a three-tier architecture:

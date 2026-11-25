@@ -14,6 +14,8 @@ interface NotificationRepository : JpaRepository<Notification, Long> {
 
     fun findByExternalIDAndUser(externalID: UUID, user: User): Notification?
 
+    fun findByUserAndSourceRef(user: User, sourceRef: String): Notification?
+
     @Modifying
     @Query("UPDATE notifications n SET n.isRead = true WHERE n.user = :user AND n.isRead = false")
     fun markAllRead(user: User)

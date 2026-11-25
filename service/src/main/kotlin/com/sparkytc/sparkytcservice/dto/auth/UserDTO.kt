@@ -23,5 +23,7 @@ data class UserDTO(
     val jiraAccountID: String? = null,
     val jiraDisplayName: String? = null,
     // only for the signed-in user: the projects they placed in the list, in order (short codes)
-    val projectOrder: List<String> = emptyList()
+    val projectOrder: List<String> = emptyList(),
+    // reminders from other apps of the suite
+    val notifyExternal: Boolean = true,
 )
