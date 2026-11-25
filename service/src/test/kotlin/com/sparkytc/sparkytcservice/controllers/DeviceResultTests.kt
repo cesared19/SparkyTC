@@ -233,6 +233,53 @@ class DeviceResultTests {
         assertEquals("6.0", history.get("results")[0].get("device").get("version").asText())
     }
 
+    @Test
+    fun `SparkStock reads the projects and how each device did in a build`() {
+        setMode("OPTIONAL")
+        val values = data(admin.perform(get("/api/v1/workspace/properties")))
+            .filter { it.get("isRequired").asBoolean() }
+            .associate { UUID.fromString(it.get("propertyConfigurationID").asText()) to it.get("defaultValue").asText() }
+        send(post("/api/v1/workspace/test-cases/VR"), CreateTestCaseDTO("Teleport", null, null, values)).andExpect(status().isOk)
+        val build = data(send(post("/api/v1/workspace/projects/VR/builds"), mapOf("buildNumber" to "1.0"))).get("buildID").asText()
+        val testCaseIDs = data(admin.perform(get("/api/v1/workspace/test-cases/VR"))).map { UUID.fromString(it.get("testCaseID").asText()) }
+        send(post("/api/v1/workspace/test-runs/VR"), CreateTestRunDTO("Build run", null, testCaseIDs, buildID = UUID.fromString(build))).andExpect(status().isOk)
+        val caseRuns = data(admin.perform(get("/api/v1/workspace/test-case-runs/VR/1"))).associate { it.get("title").asText() to it.get("testCaseRunID").asText() }
+        fun result(title: String, status: String, device: String?) =
+            send(put("/api/v1/workspace/test-case-runs/${caseRuns.getValue(title)}"), mapOf("status" to status, "notes" to null, "deviceRef" to device)).andExpect(status().isOk)
+        result("Grab an object", "FAIL", "VR-0001")
+        result("Grab an object", "PASS", "VR-0001") // the latest on VR-0001 counts
+        result("Teleport", "PASS", "VR-0001")
+        result("Grab an object", "FAIL", "VR-0002")
+        result("Teleport", "SKIP", null) // no device: not counted
+
+        fun system(path: String, token: String? = FakeSparkStock.TOKEN): ResultActions {
+            val request = get(path)
+            token?.let { request.header(HttpHeaders.AUTHORIZATION, "Bearer $it") }
+            return TestAuth.anonymousMockMvc(context).perform(request)
+        }
+        system("/api/system/v1/projects", token = null).andExpect(status().isUnauthorized)
+        val projects = data(system("/api/system/v1/projects"))
+        val project = projects.first { it.get("projectShortCode").asText() == "VR" }
+        assertEquals("OPTIONAL", project.get("deviceMode").asText())
+        assertEquals(listOf("1.0"), project.get("builds").map { it.asText() })
+
+        val results = data(system("/api/system/v1/projects/vr/device-results"))
+        assertEquals("1.0", results.get("build").asText())
+        val byRef = results.get("devices").associateBy { it.get("ref").asText() }
+        assertEquals(setOf("VR-0001", "VR-0002"), byRef.keys)
+        val headset1 = byRef.getValue("VR-0001")
+        assertEquals(2, headset1.get("passed").asInt())
+        assertEquals(0, headset1.get("failed").asInt())
+        assertEquals(2, headset1.get("testCases").asInt())
+        assertEquals("Focus 3", headset1.get("model").asText())
+        assertEquals("SKQ1.230810.001", headset1.get("version").asText())
+        assertEquals(1, byRef.getValue("VR-0002").get("failed").asInt())
+
+        assertEquals("1.0", data(system("/api/system/v1/projects/VR/device-results?build=1.0")).get("build").asText())
+        system("/api/system/v1/projects/VR/device-results?build=9.9").andExpect(status().isNotFound)
+        system("/api/system/v1/projects/NOPE/device-results").andExpect(status().isNotFound)
+    }
+
     private fun send(request: MockHttpServletRequestBuilder, body: Any?): ResultActions {
         request.contentType(MediaType.APPLICATION_JSON)
         if (body != null) request.content(objectMapper.writeValueAsString(body))
