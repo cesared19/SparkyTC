@@ -40,6 +40,7 @@ class IntegrationWriteService(
     private val testPlanService: TestPlanService,
     private val stepService: StepService,
     private val stepRepository: TestCaseStepRepository,
+    private val stockService: StockService,
     private val integrationService: IntegrationService,
     transactionManager: PlatformTransactionManager,
 ) {
@@ -233,6 +234,8 @@ class IntegrationWriteService(
         val duration = request.durationSeconds
         require(duration == null || duration in 0..MAX_DURATION_SECONDS) { "The durationSeconds must be between 0 and $MAX_DURATION_SECONDS (24 hours)" }
         val report = request.report?.let { reportJson(it) }
+        // checked with SparkStock before the transaction, it's a network call
+        val device = stockService.integrationDevice(request.deviceRef)
 
         return transaction.execute {
             val (project, token) = projectAndToken()
@@ -242,7 +245,7 @@ class IntegrationWriteService(
             val testCaseRun = testCaseRunRepository.findAllByTestRun(testRun).firstOrNull { it.testCase.testCaseNumber == testCaseNumber }
             requireNotNull(testCaseRun) { "Test case #$testCaseNumber is not in test run $testRunNumber" }
 
-            val result = workspaceService.recordResultByToken(testCaseRun, status, notes, duration, report, token)
+            val result = workspaceService.recordResultByToken(testCaseRun, status, notes, duration, report, token, device)
             val runPath = "/test-runs/${project.projectShortCode}/$testRunNumber"
             IntegrationRecordedResultDTO(
                 resultID = result.externalID,

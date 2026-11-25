@@ -11,6 +11,7 @@ import {
 } from '@remix-run/react'
 import { APIRoute, Route } from '~/utility/Routes'
 import {
+	DeviceMode,
 	ProjectBuild,
 	ProjectTestCaseRunsOutletContext,
 	TestCaseRunStatus,
@@ -43,6 +44,8 @@ import { TestRunBuild } from '~/components/Builds'
 import { TestCaseTimer } from '~/components/TimeTracking'
 import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
 import { ResultChooser } from '~/components/ResultChooser'
+import { DevicePicker } from '~/components/DevicePicker'
+import { rememberDevice, rememberedDevice } from '~/utility/Devices'
 import {
 	SavedResultNotice,
 	withSavedResult,
@@ -64,6 +67,7 @@ type UpdateTestCaseRun = {
 	notes?: string
 	jiraTransitions?: JiraIssueTransition[]
 	stepResults?: StepResult[]
+	deviceRef?: string
 }
 
 interface UpdateTestCaseRunResult {
@@ -254,6 +258,14 @@ function TestCaseRunView({
 	>([])
 
 	// steps left without a status or an actual result aren't sent
+	// the SparkStock device tested on, when the project asks for it; starts with the last one used in the run
+	const deviceMode = project.deviceMode ?? DeviceMode.off
+	const [deviceRef, setDeviceRef] = useState('')
+	useEffect(() => {
+		if (deviceMode !== DeviceMode.off)
+			setDeviceRef(rememberedDevice(testRun.testRunID))
+	}, [deviceMode, testRun.testRunID])
+
 	const markedSteps = Object.values(stepResults).filter(
 		(result) => result.status || result.actual?.trim()
 	)
@@ -311,7 +323,9 @@ function TestCaseRunView({
 				? { jiraTransitions }
 				: {}),
 			...(isSteps ? { stepResults: markedSteps } : {}),
+			...(deviceMode !== DeviceMode.off && deviceRef ? { deviceRef } : {}),
 		}
+		if (deviceRef) rememberDevice(testRun.testRunID, deviceRef)
 
 		setEvidenceError(undefined)
 		fetcher.submit(
@@ -376,6 +390,8 @@ function TestCaseRunView({
 		? 'Choose Pass, Fail, Blocked or Skip to save the result'
 		: !jiraTransitions
 		? 'Choose a transition for each Jira issue to update'
+		: deviceMode === DeviceMode.required && !deviceRef.trim()
+		? 'Choose the device you tested on'
 		: undefined
 
 	return (
@@ -485,6 +501,14 @@ function TestCaseRunView({
 						disabled={isLocked}
 						label="Result"
 					/>
+					{deviceMode !== DeviceMode.off && (
+						<DevicePicker
+							value={deviceRef}
+							onChange={setDeviceRef}
+							required={deviceMode === DeviceMode.required}
+							disabled={isLocked}
+						/>
+					)}
 					<JiraResultTransitions
 						testCaseRunID={testCaseRun.testCaseRunID}
 						testCaseID={testCaseRun.testCase.testCaseID}

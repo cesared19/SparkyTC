@@ -676,6 +676,21 @@ class DatabaseMigrator(
                     jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.25")
                 }
                 SchemaVersion.VERSION_0_0_25 -> {
+                    // the device (from SparkStock) a result was recorded on: its asset tag and a copy of what it was
+                    jdbcTemplate.execute("ALTER TABLE workspace_projects ADD COLUMN device_mode TEXT NOT NULL DEFAULT 'OFF'")
+                    for (table in listOf("test_case_results", "test_case_runs")) {
+                        jdbcTemplate.execute("""
+                            ALTER TABLE $table
+                                ADD COLUMN device_ref TEXT,
+                                ADD COLUMN device_name TEXT,
+                                ADD COLUMN device_model TEXT,
+                                ADD COLUMN device_version TEXT
+                        """.trimIndent())
+                    }
+
+                    jdbcTemplate.update("INSERT INTO schema_version (version) VALUES (?);", "0.0.26")
+                }
+                SchemaVersion.VERSION_0_0_26 -> {
                     break
                 }
             }

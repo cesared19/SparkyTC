@@ -57,6 +57,10 @@ class TestCaseResult(
     // what the app reported with the result (JSON of IntegrationResultReportDTO), e.g. a replay's comparison
     @Column(name = "report")
     val report: String? = null,
+
+    // the SparkStock device it was recorded on
+    @Embedded
+    val device: ResultDevice? = null,
 ) {
     /** Who recorded it: the user, or the app's token as "Name (API token)". */
     val recorderName: String?
@@ -73,6 +77,7 @@ class TestCaseResult(
             attachments = attachments.map { it.toDTO() },
             stepResults = stepResults.sortedBy { it.step.position }.map { it.toDTO() },
             report = report,
+            device = device?.toDTO(),
         )
     }
 }

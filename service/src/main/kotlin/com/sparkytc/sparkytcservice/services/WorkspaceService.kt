@@ -58,6 +58,7 @@ class WorkspaceService(
     private val stepService: StepService,
     private val testPlanService: TestPlanService,
     private val resultDraftService: ResultDraftService,
+    private val stockService: StockService,
 ) {
     private val log: Log = LogFactory.getLog(javaClass)
 
@@ -654,7 +655,8 @@ class WorkspaceService(
             testCaseRun.assignedTo = actor
         }
         // every recording adds a result, the latest one is the test case's status
-        val result = testCaseResultService.record(testCaseRun, updateDTO.status, updateDTO.notes, actor)
+        val device = stockService.resultDevice(testCaseRun.testRun.project, updateDTO.deviceRef)
+        val result = testCaseResultService.record(testCaseRun, updateDTO.status, updateDTO.notes, actor, device = device)
         stepService.recordStepResults(result, testCaseRun, updateDTO.stepResults)
         resultDraftService.discard(testCaseRun, actor)
         timeTrackingService.resultRecorded(testCaseRun, actor, updateDTO.manualSeconds)
@@ -701,8 +703,9 @@ class WorkspaceService(
         durationSeconds: Long?,
         report: String?,
         token: ProjectApiToken,
+        device: ResultDevice? = null,
     ): TestCaseResult {
-        val result = testCaseResultService.record(testCaseRun, status, notes, actor = null, token = token, report = report)
+        val result = testCaseResultService.record(testCaseRun, status, notes, actor = null, token = token, report = report, device = device)
         timeTrackingService.resultRecorded(testCaseRun, null, durationSeconds)
         updateTestRunStatusAfterResult(testCaseRun.testRun)
         return result
@@ -916,6 +919,7 @@ class WorkspaceService(
         project.jiraFailureMode = request.jiraFailureMode
         project.jiraProjectKey = jiraProjectKey
         project.jiraIssueType = jiraIssueType
+        request.deviceMode?.let { project.deviceMode = it }
         projectRepository.save(project)
         return project.toDTO()
     }
@@ -1027,6 +1031,7 @@ class WorkspaceService(
             .heading("Expected result").paragraph(request.expectedResult)
             .heading("Actual result").paragraph(request.actualResult)
             .heading("Build number").paragraph(request.buildNumber)
+        testCaseRun.device?.let { description.heading("Device").paragraph(it.description) }
 
         if (appBaseURL != null) {
             // media stays in SparkyTC and is only linked, so the issue doesn't use jira storage

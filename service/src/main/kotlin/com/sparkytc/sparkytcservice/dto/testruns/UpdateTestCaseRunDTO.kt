@@ -14,4 +14,6 @@ data class UpdateTestCaseRunDTO(
     val jiraTransitions: List<JiraIssueTransitionDTO> = emptyList(),
     // how each step went, for test cases written as steps
     val stepResults: List<StepResultDTO> = emptyList(),
+    // the SparkStock asset tag of the device tested on, see the project's device mode
+    val deviceRef: String? = null,
 )

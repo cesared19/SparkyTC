@@ -16,6 +16,7 @@ import { ErrorMessage } from './ErrorMessage'
 import { ReplayReportView } from './ReplayReportView'
 import { StepResultsSummary } from './StepsView'
 import { replayReport, replaySummary } from '~/utility/ReplayReport'
+import { deviceText } from '~/utility/Devices'
 
 function formatDateTime(date: number) {
 	return new Date(date).toLocaleString('en-US', {
@@ -88,6 +89,12 @@ function ResultItem({
 				)}
 			</div>
 			{error && <ErrorMessage message={error} />}
+			{result.device && (
+				<p className="text-sm text-gray-700">
+					<span className="text-gray-500">Device:</span>{' '}
+					{deviceText(result.device)}
+				</p>
+			)}
 			{result.notes ? (
 				<div className="whitespace-pre-wrap text-sm text-gray-900">
 					<LinkifiedText text={result.notes} />
@@ -239,6 +246,9 @@ export function TestCaseHistory({
 						<div className="flex flex-wrap gap-x-3 text-xs text-gray-500">
 							<span>{entry.result.recordedBy ?? 'Unknown user'}</span>
 							<span>{formatDateTime(entry.result.recordedAt)}</span>
+							{entry.result.device && (
+								<span>on {deviceText(entry.result.device)}</span>
+							)}
 							{entry.result.attachments.length > 0 && (
 								<span>
 									{entry.result.attachments.length} evidence file

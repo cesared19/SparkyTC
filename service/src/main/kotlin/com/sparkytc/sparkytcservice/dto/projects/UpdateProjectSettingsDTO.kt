@@ -5,5 +5,7 @@ data class UpdateProjectSettingsDTO(
     // null uses the default JIRA_PROJECT_KEY
     val jiraProjectKey: String?,
     // null uses the default JIRA_ISSUE_TYPE
-    val jiraIssueType: String? = null
+    val jiraIssueType: String? = null,
+    // null keeps the current mode
+    val deviceMode: DeviceMode? = null,
 )

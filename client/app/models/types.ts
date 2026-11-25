@@ -160,6 +160,38 @@ export interface UserSummary {
 	displayName: string
 }
 
+// whether testers say which device (from SparkStock) they tested on
+export enum DeviceMode {
+	off = 'OFF',
+	optional = 'OPTIONAL',
+	required = 'REQUIRED',
+}
+
+// the device a result was recorded on: its SparkStock asset tag and a copy of its details
+export interface ResultDevice {
+	ref: string
+	name?: string
+	model?: string
+	version?: string
+}
+
+// a device as SparkStock lists it
+export interface StockDevice {
+	ref: string
+	name?: string
+	manufacturer?: string
+	model?: string
+	type?: string
+	version?: string
+	status?: string
+	holderUserID?: string
+	holderName?: string
+}
+
+export interface StockConfiguration {
+	isEnabled: boolean
+}
+
 export enum JiraFailureMode {
 	disabled = 'DISABLED',
 	manual = 'MANUAL',
@@ -480,6 +512,8 @@ export interface TestCaseRun {
 	// copied from the test case when the run was created
 	format?: TestCaseFormat
 	steps?: TestCaseRunStep[]
+	// the device of the latest result
+	device?: ResultDevice
 }
 
 export interface TestCaseResult {
@@ -495,6 +529,8 @@ export interface TestCaseResult {
 	stepResults?: StepResult[]
 	// what an app reported with the result through the integration API (JSON), e.g. a replay's comparison
 	report?: string
+	// the SparkStock device it was recorded on
+	device?: ResultDevice
 }
 
 // a result of a test case in any test run of its project

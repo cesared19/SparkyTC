@@ -1,5 +1,6 @@
 package com.sparkytc.sparkytcservice.models
 
+import com.sparkytc.sparkytcservice.dto.projects.DeviceMode
 import com.sparkytc.sparkytcservice.dto.projects.JiraFailureMode
 import com.sparkytc.sparkytcservice.dto.projects.WorkspaceProjectDTO
 import jakarta.persistence.*
@@ -44,9 +45,14 @@ class WorkspaceProject(
     // issue type name used for bugs, null uses the default JIRA_ISSUE_TYPE
     @Column(name = "jira_issue_type")
     var jiraIssueType: String? = null,
+
+    // whether results say which SparkStock device they were recorded on
+    @Column(name = "device_mode", nullable = false)
+    @Enumerated(EnumType.STRING)
+    var deviceMode: DeviceMode = DeviceMode.OFF,
 ) {
 
     fun toDTO(): WorkspaceProjectDTO {
-        return WorkspaceProjectDTO(externalID, creationDate, title, projectShortCode, description, jiraFailureMode, jiraProjectKey, jiraIssueType)
+        return WorkspaceProjectDTO(externalID, creationDate, title, projectShortCode, description, jiraFailureMode, jiraProjectKey, jiraIssueType, deviceMode)
     }
 }
