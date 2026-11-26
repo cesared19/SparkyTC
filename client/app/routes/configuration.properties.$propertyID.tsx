@@ -1,4 +1,4 @@
-import { Outlet, useOutletContext, useParams } from '@remix-run/react'
+import { Outlet, useOutletContext, useParams } from 'react-router'
 import {
 	PropertyConfigurationDetailsOutletContext,
 	PropertyConfigurationOutletContext,
@@ -13,7 +13,7 @@ export default function PropertyDetailsIndex() {
 	}
 
 	const property = properties.find(
-		(property) => property.propertyConfigurationID === propertyID
+		(property) => property.propertyConfigurationID === propertyID,
 	)
 	if (!property) {
 		return <div>Property not found</div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from '@remix-run/react'
+import { Link } from 'react-router'
 
 export interface ActionMenuItem {
 	label: string
@@ -20,10 +20,7 @@ export function ActionMenu({ items, label = 'Actions' }: ActionMenuProps) {
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
-			if (
-				menuRef.current &&
-				!menuRef.current.contains(event.target as Node)
-			) {
+			if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
 				setIsOpen(false)
 			}
 		}
@@ -70,9 +67,7 @@ export function ActionMenu({ items, label = 'Actions' }: ActionMenuProps) {
 									to={item.href}
 									reloadDocument={item.reloadDocument}
 									className={`block w-full px-4 py-2 text-left text-sm ${
-										item.variant === 'danger'
-											? 'text-red-600'
-											: 'text-gray-700'
+										item.variant === 'danger' ? 'text-red-600' : 'text-gray-700'
 									} hover:bg-gray-100`}
 									role="menuitem"
 								>
@@ -83,15 +78,13 @@ export function ActionMenu({ items, label = 'Actions' }: ActionMenuProps) {
 									key={item.label}
 									onClick={() => handleMenuItemClick(item.action!)}
 									className={`block w-full px-4 py-2 text-left text-sm ${
-										item.variant === 'danger'
-											? 'text-red-600'
-											: 'text-gray-700'
+										item.variant === 'danger' ? 'text-red-600' : 'text-gray-700'
 									} hover:bg-gray-100`}
 									role="menuitem"
 								>
 									{item.label}
 								</button>
-							)
+							),
 						)}
 					</div>
 				</div>

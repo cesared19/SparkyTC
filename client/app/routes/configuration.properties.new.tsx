@@ -1,5 +1,9 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
-import { useActionData, useSubmit } from '@remix-run/react'
+import {
+	type ActionFunctionArgs,
+	redirect,
+	useActionData,
+	useSubmit,
+} from 'react-router'
 import type { PropertyFormData } from '~/components/PropertyForm'
 import PropertyForm, { PropertyFormMode } from '~/components/PropertyForm'
 import { Route, APIRoute } from '~/utility/Routes'
@@ -31,9 +35,7 @@ export default function NewProperty() {
 	return (
 		<div>
 			<div className="mb-6">
-				<h2 className="text-2xl font-semibold text-gray-900">
-					New Property
-				</h2>
+				<h2 className="text-2xl font-semibold text-gray-900">New Property</h2>
 			</div>
 
 			<PropertyForm

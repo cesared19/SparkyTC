@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/node'
+import { type ActionFunctionArgs } from 'react-router'
 import { FetchResponse, ProjectApiToken } from '~/models/types'
 import { requireAdmin } from '~/utility/Authorization.server'
 import { APIRoute } from '~/utility/Routes'

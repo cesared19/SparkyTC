@@ -1,10 +1,9 @@
-import { LoaderFunctionArgs } from '@remix-run/node'
+import { LoaderFunctionArgs, Outlet, useLoaderData } from 'react-router'
 import { APIRoute } from '~/utility/Routes'
 import {
 	PropertyConfigurationOutletContext,
 	PropertyConfigurationResponse,
 } from '~/models/types'
-import { Outlet, useLoaderData } from '@remix-run/react'
 import { requireAPI } from '~/utility/API.server'
 
 export async function loader({ request }: LoaderFunctionArgs) {

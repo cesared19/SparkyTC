@@ -1,11 +1,12 @@
-import { ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	ActionFunctionArgs,
+	redirect,
 	useNavigate,
 	useSubmit,
 	useOutletContext,
 	useActionData,
 	useSearchParams,
-} from '@remix-run/react'
+} from 'react-router'
 import { APIRoute, Route } from '~/utility/Routes'
 import { TestCaseForm, TestCaseFormMode } from '~/components/TestCaseForm'
 import { ProjectTestCasesOutletContext, ErrorResponse } from '~/models/types'
@@ -27,7 +28,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return redirect(
 			`${Route.viewProjectTestCases(projectShortCode)}${
 				new URL(request.url).search
-			}`
+			}`,
 		)
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), { status: 400 })

@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useState } from 'react'
 import {
 	ErrorResponse,
@@ -32,11 +32,11 @@ function defaultTransition(transitions: JiraTransition[], mode: Mode) {
 	const category = mode === 'close' ? 'done' : 'new'
 	const status = mode === 'close' ? 'done' : 'to do'
 	const inCategory = transitions.filter(
-		(transition) => transition.toStatusCategory === category
+		(transition) => transition.toStatusCategory === category,
 	)
 	return (
 		inCategory.find(
-			(transition) => transition.toStatus?.toLowerCase() === status
+			(transition) => transition.toStatus?.toLowerCase() === status,
 		) ?? inCategory[0]
 	)
 }
@@ -67,15 +67,16 @@ function AssigneePicker({
 		const timeout = setTimeout(
 			() =>
 				searchFetcher.load(
-					Route.jiraAssignees(testCaseRunID, issue.issueKey, query.trim())
+					Route.jiraAssignees(testCaseRunID, issue.issueKey, query.trim()),
 				),
-			SEARCH_DELAY_MS
+			SEARCH_DELAY_MS,
 		)
 		return () => clearTimeout(timeout)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [query])
 
-	const results = query.trim().length < 2 ? [] : searchFetcher.data?.users ?? []
+	const results =
+		query.trim().length < 2 ? [] : (searchFetcher.data?.users ?? [])
 	const searchError =
 		query.trim().length < 2 ? undefined : searchFetcher.data?.message
 
@@ -202,7 +203,7 @@ function TransitionRow({
 	useEffect(() => {
 		if (selection.checked && !transitionsFetcher.data) {
 			transitionsFetcher.load(
-				Route.jiraTransitions(testCaseRunID, issue.issueKey)
+				Route.jiraTransitions(testCaseRunID, issue.issueKey),
 			)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -326,26 +327,26 @@ export function JiraResultTransitions({
 		status === TestCaseRunStatus.pass
 			? 'close'
 			: status === TestCaseRunStatus.fail
-			? 'reopen'
-			: undefined
+				? 'reopen'
+				: undefined
 	const linkedKeys = links.map((link) => link.issueKey)
 	const loadedIssues: JiraIssue[] =
 		issuesFetcher.data && 'issues' in issuesFetcher.data
 			? issuesFetcher.data.issues
 			: []
 	const issues = loadedIssues.filter(
-		(issue) => linkedKeys.includes(issue.issueKey) && !issue.error
+		(issue) => linkedKeys.includes(issue.issueKey) && !issue.error,
 	)
 	const eligible = issues.filter((issue) =>
 		mode === 'close'
 			? issue.statusCategory !== 'done'
-			: mode === 'reopen' && issue.statusCategory === 'done'
+			: mode === 'reopen' && issue.statusCategory === 'done',
 	)
 	const eligibleKeys = eligible.map((issue) => issue.issueKey).join(',')
 
 	useEffect(() => {
 		const checked = eligible.filter(
-			(issue) => selections[issue.issueKey]?.checked
+			(issue) => selections[issue.issueKey]?.checked,
 		)
 		if (checked.some((issue) => !selections[issue.issueKey].transitionID)) {
 			onChange(undefined)
@@ -361,7 +362,7 @@ export function JiraResultTransitions({
 						? { assigneeAccountID: selection.assignee.accountID }
 						: {}),
 				}
-			})
+			}),
 		)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [selections, eligibleKeys, mode])

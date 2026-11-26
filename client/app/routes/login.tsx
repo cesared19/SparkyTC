@@ -3,13 +3,11 @@ import {
 	type LoaderFunctionArgs,
 	type MetaFunction,
 	redirect,
-} from '@remix-run/node'
-import {
 	Form,
 	useActionData,
 	useNavigation,
 	useSearchParams,
-} from '@remix-run/react'
+} from 'react-router'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { FetchResponse, User } from '~/models/types'
 import { APIClient, UnauthorizedError } from '~/utility/APIClient'
@@ -44,7 +42,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		>(APIRoute.login, { body: { username, password } })
 		return createUserSession(
 			response.data.token,
-			safeRedirect(formData.get('redirectTo'))
+			safeRedirect(formData.get('redirectTo')),
 		)
 	} catch (error) {
 		if (error instanceof UnauthorizedError) {

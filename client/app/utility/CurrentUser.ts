@@ -1,4 +1,4 @@
-import { useRouteLoaderData } from '@remix-run/react'
+import { useRouteLoaderData } from 'react-router'
 import { User, UserRole } from '~/models/types'
 
 /** The signed in user, loaded by the root route. */

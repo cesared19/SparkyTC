@@ -1,7 +1,4 @@
-import {
-	type ActionFunctionArgs,
-	type LoaderFunctionArgs,
-} from '@remix-run/node'
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
 import { APIRoute } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'

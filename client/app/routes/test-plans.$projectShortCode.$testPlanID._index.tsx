@@ -1,12 +1,13 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
+	redirect,
 	Link,
 	useActionData,
 	useNavigate,
 	useOutletContext,
 	useParams,
 	useSubmit,
-} from '@remix-run/react'
+} from 'react-router'
 import { BackButton } from '~/components/BackButton'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { LabelChip } from '~/components/LabelInput'
@@ -53,11 +54,11 @@ export default function TestPlanDetails() {
 
 	const matches = planTestCases(plan, testCases, sections)
 	const reasons = new Map(
-		matches.map((match) => [match.testCase.testCaseID, match.reasons])
+		matches.map((match) => [match.testCase.testCaseID, match.reasons]),
 	)
 	const groups = groupBySection(
 		sections,
-		matches.map((match) => match.testCase)
+		matches.map((match) => match.testCase),
 	)
 	const runs = testRuns
 		.filter((run) => run.testPlanID === plan.testPlanID)
@@ -116,7 +117,7 @@ export default function TestPlanDetails() {
 							onClick={() => {
 								if (
 									confirm(
-										`Delete the test plan ${plan.name}? Test runs started from it keep their test cases and results.`
+										`Delete the test plan ${plan.name}? Test runs started from it keep their test cases and results.`,
 									)
 								) {
 									submit(null, { method: 'post' })
@@ -130,7 +131,7 @@ export default function TestPlanDetails() {
 					<Link
 						to={Route.newTestRunFromPlan(
 							project.projectShortCode,
-							plan.testPlanID
+							plan.testPlanID,
 						)}
 						aria-disabled={matches.length === 0}
 						className={`rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 ${
@@ -194,8 +195,8 @@ export default function TestPlanDetails() {
 								navigate(
 									Route.viewTestCase(
 										project.projectShortCode,
-										testCase.testCaseNumber
-									)
+										testCase.testCaseNumber,
+									),
 								)
 							}
 						/>
@@ -216,7 +217,7 @@ export default function TestPlanDetails() {
 								<Link
 									to={Route.viewTestRun(
 										project.projectShortCode,
-										run.testRunNumber
+										run.testRunNumber,
 									)}
 									className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
 								>

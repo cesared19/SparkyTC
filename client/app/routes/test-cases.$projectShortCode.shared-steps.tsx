@@ -1,4 +1,4 @@
-import { useFetcher, useOutletContext } from '@remix-run/react'
+import { useFetcher, useOutletContext } from 'react-router'
 import { useEffect, useState } from 'react'
 import { BackButton } from '~/components/BackButton'
 import { ErrorMessage } from '~/components/ErrorMessage'
@@ -55,7 +55,7 @@ function SharedStepEditor({
 						method: 'post',
 						action: Route.sharedSteps,
 						encType: 'application/json',
-					}
+					},
 				)
 			}}
 		>
@@ -152,7 +152,7 @@ function SharedStepCard({
 										method: 'post',
 										action: Route.sharedSteps,
 										encType: 'application/json',
-									}
+									},
 								)
 							}
 						}}

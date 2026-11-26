@@ -1,10 +1,10 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
 import {
+	type LoaderFunctionArgs,
 	Link,
 	useLoaderData,
 	useNavigate,
 	useSearchParams,
-} from '@remix-run/react'
+} from 'react-router'
 import { useCallback, useEffect } from 'react'
 import { FetchResponse, TestRun } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
@@ -33,7 +33,7 @@ const SORT_STORAGE_KEY = 'sparkytc.testRunSort'
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const api = await requireAPI(request)
 	const response = await api.get<FetchResponse<TestRun[]>>(
-		APIRoute.projectTestRuns(params.projectShortCode ?? '')
+		APIRoute.projectTestRuns(params.projectShortCode ?? ''),
 	)
 	return { testRuns: response.data }
 }
@@ -60,10 +60,10 @@ export default function TestRunsIndex() {
 					else next.set(name, value)
 					return next
 				},
-				{ replace: true, preventScrollReset: true }
+				{ replace: true, preventScrollReset: true },
 			)
 		},
-		[setSearchParams]
+		[setSearchParams],
 	)
 
 	const chooseSort = (next: TestRunSort) => {
@@ -138,7 +138,7 @@ export default function TestRunsIndex() {
 								setParam(
 									'kind',
 									event.target.value as TestRunKind,
-									DEFAULT_TEST_RUN_KIND
+									DEFAULT_TEST_RUN_KIND,
 								)
 							}
 							className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
@@ -183,7 +183,7 @@ export default function TestRunsIndex() {
 					(testRun) => ({
 						id: testRun.testRunID,
 						data: testRun,
-					})
+					}),
 				)}
 				columns={columns}
 				onRowClick={(testRun) => navigate(testRun.testRunNumber.toString())}

@@ -13,7 +13,13 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
 	{
 		// what .gitignore left out of the lint
-		ignores: ['build/', '.cache/', 'e2e-results/', 'e2e-report/'],
+		ignores: [
+			'build/',
+			'.cache/',
+			'.react-router/',
+			'e2e-results/',
+			'e2e-report/',
+		],
 	},
 
 	// Base config
@@ -71,5 +77,5 @@ export default tseslint.config(
 	{
 		files: ['eslint.config.js', '*.config.{js,ts}'],
 		languageOptions: { globals: globals.node },
-	}
+	},
 )

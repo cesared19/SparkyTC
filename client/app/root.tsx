@@ -1,5 +1,5 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
 import {
+	type LoaderFunctionArgs,
 	isRouteErrorResponse,
 	Links,
 	Meta,
@@ -9,7 +9,7 @@ import {
 	useLoaderData,
 	useRouteError,
 	useRouteLoaderData,
-} from '@remix-run/react'
+} from 'react-router'
 import { useEffect } from 'react'
 import { User, UserTheme } from '~/models/types'
 import TopNavigation from '~/components/TopNavigation'
@@ -28,7 +28,7 @@ function useTheme(theme: UserTheme) {
 			document.documentElement.classList.toggle(
 				'dark',
 				theme === UserTheme.dark ||
-					(theme === UserTheme.system && query.matches)
+					(theme === UserTheme.system && query.matches),
 			)
 		apply()
 		query.addEventListener('change', apply)
@@ -106,8 +106,8 @@ export function ErrorBoundary() {
 			? 'You do not have permission to view this page.'
 			: `${error.status} ${error.statusText || error.data}`
 		: error instanceof Error
-		? error.message
-		: 'An unexpected error occurred'
+			? error.message
+			: 'An unexpected error occurred'
 
 	return (
 		<div className="flex h-app items-center justify-center p-6">

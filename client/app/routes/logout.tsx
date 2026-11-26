@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
+import { type ActionFunctionArgs, redirect } from 'react-router'
 import { APIClient } from '~/utility/APIClient'
 import { APIRoute } from '~/utility/Routes'
 import { getSessionToken, sessionStorage } from '~/utility/Session.server'

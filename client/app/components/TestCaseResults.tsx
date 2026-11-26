@@ -1,4 +1,4 @@
-import { Link, useFetcher } from '@remix-run/react'
+import { Link, useFetcher } from 'react-router'
 import { useEffect } from 'react'
 import { AttachmentGallery } from '~/components/AttachmentGallery'
 import { LinkifiedText } from '~/components/LinkifiedText'
@@ -73,7 +73,7 @@ function ResultItem({
 						onClick={() => {
 							if (
 								confirm(
-									'Delete this result? Its evidence is deleted too, and the test case goes back to its previous result.'
+									'Delete this result? Its evidence is deleted too, and the test case goes back to its previous result.',
 								)
 							) {
 								deleteFetcher.submit(null, {
@@ -199,7 +199,7 @@ export function TestCaseHistory({
 	}
 
 	const entries = fetcher.data.history.filter(
-		(entry) => entry.testRunID !== excludeTestRunID
+		(entry) => entry.testRunID !== excludeTestRunID,
 	)
 	const shown = limit ? entries.slice(0, limit) : entries
 	if (entries.length === 0) {
@@ -228,7 +228,7 @@ export function TestCaseHistory({
 								to={Route.viewTestCaseRun(
 									projectShortCode,
 									entry.testRunNumber,
-									testCaseNumber
+									testCaseNumber,
 								)}
 								className="min-w-0 truncate font-medium text-gray-900 hover:text-brand-700 hover:underline"
 							>

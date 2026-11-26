@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
+import { type LoaderFunctionArgs } from 'react-router'
 import { APIRoute } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { FetchResponse, JiraConfiguration, JiraIssue } from '~/models/types'
@@ -10,13 +10,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const keys = new URL(request.url).searchParams.getAll('keys')
 
 		const configuration = await api.get<FetchResponse<JiraConfiguration>>(
-			APIRoute.jiraConfiguration
+			APIRoute.jiraConfiguration,
 		)
 
 		let issues: JiraIssue[] = []
 		if (configuration.data.isEnabled && keys.length > 0) {
 			const response = await api.get<FetchResponse<JiraIssue[]>>(
-				APIRoute.jiraIssues(keys)
+				APIRoute.jiraIssues(keys),
 			)
 			issues = response.data
 		}

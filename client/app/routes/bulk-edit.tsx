@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/node'
+import { type ActionFunctionArgs } from 'react-router'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
 import { Tools } from '~/utility/Tools'
@@ -14,19 +14,19 @@ export async function action({ request }: ActionFunctionArgs) {
 			case 'edit':
 				response = await api.put<FetchResponse<BulkEditResult>>(
 					APIRoute.bulkEditTestCases,
-					{ body }
+					{ body },
 				)
 				break
 			case 'delete':
 				response = await api.post<FetchResponse<BulkEditResult>>(
 					APIRoute.bulkDeleteTestCases,
-					{ body }
+					{ body },
 				)
 				break
 			case 'assign':
 				response = await api.put<FetchResponse<BulkEditResult>>(
 					APIRoute.bulkAssignTestCaseRuns,
-					{ body }
+					{ body },
 				)
 				break
 			default:

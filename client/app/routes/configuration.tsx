@@ -1,5 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { Outlet } from '@remix-run/react'
+import { type LoaderFunctionArgs, Outlet } from 'react-router'
 import { requireAdmin } from '~/utility/Authorization.server'
 import Sidebar from '~/components/Sidebar'
 

@@ -1,4 +1,4 @@
-import { createCookieSessionStorage, redirect } from '@remix-run/node'
+import { createCookieSessionStorage, redirect } from 'react-router'
 import { randomBytes } from 'node:crypto'
 
 const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60
@@ -9,7 +9,7 @@ function sessionSecret() {
 	}
 	// without a configured secret every restart signs everyone out, but sessions are still safe
 	console.warn(
-		'SESSION_SECRET is not set, using a random secret. Users will be signed out whenever the client service restarts.'
+		'SESSION_SECRET is not set, using a random secret. Users will be signed out whenever the client service restarts.',
 	)
 	return randomBytes(32).toString('hex')
 }
@@ -71,7 +71,7 @@ export async function redirectToLogin(request: Request) {
 
 /** Only allows redirects to paths within SparkyTC after signing in. */
 export function safeRedirect(
-	to: FormDataEntryValue | string | null | undefined
+	to: FormDataEntryValue | string | null | undefined,
 ) {
 	if (
 		!to ||

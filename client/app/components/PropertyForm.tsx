@@ -1,4 +1,4 @@
-import { Form, Link } from '@remix-run/react'
+import { Form, Link } from 'react-router'
 import { useState } from 'react'
 import { PropertyConfiguration, PropertyType } from '~/models/types'
 import { SelectDropdown } from './SelectDropdown'
@@ -37,7 +37,7 @@ interface SelectOption {
 
 const createInitialSelectState = (
 	selectOptions?: string[],
-	defaultValue?: string
+	defaultValue?: string,
 ): { options: SelectOption[]; defaultId?: string } => {
 	if (!selectOptions?.length) {
 		return {
@@ -72,8 +72,8 @@ export default function PropertyForm({
 	] = useState(() =>
 		createInitialSelectState(
 			defaultValues?.selectOptions,
-			defaultValues?.defaultValue
-		)
+			defaultValues?.defaultValue,
+		),
 	)
 
 	// Rename setters
@@ -84,13 +84,13 @@ export default function PropertyForm({
 		setSelectState((state) => ({ ...state, defaultId: newId }))
 
 	const [selectedType, setSelectedType] = useState<PropertyType>(
-		defaultValues?.propertyType || PropertyType.text
+		defaultValues?.propertyType || PropertyType.text,
 	)
 	const [isRequired, setIsRequired] = useState<boolean>(
-		defaultValues?.isRequired ?? false
+		defaultValues?.isRequired ?? false,
 	)
 	const [textDefaultValue, setTextDefaultValue] = useState<string>(
-		defaultValues?.defaultValue || ''
+		defaultValues?.defaultValue || '',
 	)
 
 	const addOption = () => {
@@ -99,7 +99,7 @@ export default function PropertyForm({
 
 	const updateOption = (id: string, value: string) => {
 		setSelectOptions(
-			selectOptions.map((opt) => (opt.id === id ? { ...opt, value } : opt))
+			selectOptions.map((opt) => (opt.id === id ? { ...opt, value } : opt)),
 		)
 	}
 
@@ -208,7 +208,7 @@ export default function PropertyForm({
 			selectedType === PropertyType.singleSelectList
 		) {
 			const firstValidOption = selectOptions.find(
-				(opt) => opt.value.trim() !== ''
+				(opt) => opt.value.trim() !== '',
 			)
 			setSelectedDefaultValueId(firstValidOption?.id)
 		}
@@ -341,7 +341,7 @@ export default function PropertyForm({
 						}
 						onChange={(label) => {
 							const option = propertyTypeOptions.find(
-								(opt) => opt.label === label
+								(opt) => opt.label === label,
 							)
 							if (option) {
 								setSelectedType(option.value)

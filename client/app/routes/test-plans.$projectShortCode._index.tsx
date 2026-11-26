@@ -1,4 +1,4 @@
-import { Link, useOutletContext } from '@remix-run/react'
+import { Link, useOutletContext } from 'react-router'
 import { ProjectTestPlansOutletContext, TestRun } from '~/models/types'
 import { sectionPath } from '~/utility/Sections'
 import { planTestCases } from '~/utility/TestPlans'
@@ -47,10 +47,10 @@ export default function TestPlans() {
 					{testPlans.map((plan) => {
 						const count = planTestCases(plan, testCases, sections).length
 						const runs = testRuns.filter(
-							(run) => run.testPlanID === plan.testPlanID
+							(run) => run.testPlanID === plan.testPlanID,
 						)
 						const lastRun = runs.sort(
-							(a, b) => b.creationDate - a.creationDate
+							(a, b) => b.creationDate - a.creationDate,
 						)[0]
 						const rules = [
 							...plan.sectionIDs.map((id) => sectionPath(sections, id)),

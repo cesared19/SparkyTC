@@ -1,4 +1,4 @@
-import { Link, useOutletContext } from '@remix-run/react'
+import { Link, useOutletContext } from 'react-router'
 import { PropertyConfigurationDetailsOutletContext } from '~/models/types'
 import { Tools } from '~/utility/Tools'
 import { BackButton } from '~/components/BackButton'
@@ -27,9 +27,7 @@ export default function PropertyDetailsIndex() {
 
 				<dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
 					<div>
-						<dt className="text-sm font-medium text-gray-500">
-							Property Type
-						</dt>
+						<dt className="text-sm font-medium text-gray-500">Property Type</dt>
 						<dd className="mt-1 text-sm text-gray-900">
 							{Tools.propertyTypeToDisplayText(property.propertyType)}
 						</dd>
@@ -43,18 +41,14 @@ export default function PropertyDetailsIndex() {
 					</div>
 
 					<div>
-						<dt className="text-sm font-medium text-gray-500">
-							Required
-						</dt>
+						<dt className="text-sm font-medium text-gray-500">Required</dt>
 						<dd className="mt-1 text-sm text-gray-900">
 							{property.isRequired ? 'Yes' : 'No'}
 						</dd>
 					</div>
 
 					<div>
-						<dt className="text-sm font-medium text-gray-500">
-							Default Value
-						</dt>
+						<dt className="text-sm font-medium text-gray-500">Default Value</dt>
 						<dd className="mt-1 text-sm text-gray-900">
 							{property.defaultValue || '-'}
 						</dd>
