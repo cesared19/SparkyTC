@@ -6,6 +6,8 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-11-26
+
 ### Added
 - Results can say which device they were recorded on, from [SparkStock](https://github.com/cesared19/SparkStock), the suite's device stock (#65). A new **Devices** setting per project chooses *Off* (the default), *Optional* or *Required*. When recording a result, the **Device** picker lists the devices the tester has checked out in SparkStock, can search all of them, and starts with the last device used in the run. The result keeps a copy of the device's name, model and version, shown with the result, in the history, the run report, the exported results (*Device* and *Device version*) and the bugs created in Jira. If SparkStock can't be reached, the tester types the asset tag from the device's label.
 - Other apps of the suite can put notifications in a user's bell (#66), e.g. SparkStock reminding a tester to return a VR headset. They show the app's name and open that app in a new tab. Each user can turn them off in **Account → Notifications**. For apps on the same server: `POST /api/system/v1/notifications` with the shared `STOCK_INTEGRATION_TOKEN`; the same `sourceRef` sent twice keeps one notification.
@@ -148,7 +150,8 @@ First release as SparkyTC, based on [Cherry](https://github.com/bennettadam/cher
 ### Upgrading
 - Database schema 0.0.7. Signing in is now required.
 
-[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/cesared19/SparkyTC/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/cesared19/SparkyTC/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/cesared19/SparkyTC/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/cesared19/SparkyTC/compare/v2.5.0...v2.6.0
