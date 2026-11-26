@@ -6,6 +6,14 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-11-26
+
+### Changed
+- The client now runs on React Router 7, the continuation of Remix 2, and its lint on ESLint 9. Both were updates of tools that no longer got new versions. Nothing changes in how the app looks or works: the same pages, links and sessions.
+
+### Upgrading
+- No database changes. Run `docker compose up -d --build`: the backup and migration steps run as usual and find nothing to migrate, and the client image is rebuilt on React Router 7. Check that the login and a few pages open.
+
 ## [2.9.0] - 2026-11-26
 
 ### Added
@@ -150,7 +158,8 @@ First release as SparkyTC, based on [Cherry](https://github.com/bennettadam/cher
 ### Upgrading
 - Database schema 0.0.7. Signing in is now required.
 
-[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/cesared19/SparkyTC/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/cesared19/SparkyTC/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/cesared19/SparkyTC/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/cesared19/SparkyTC/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/cesared19/SparkyTC/compare/v2.6.0...v2.7.0

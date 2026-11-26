@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.sparkytc"
-version = "2.9.0"
+version = "2.10.0"
 
 java {
     toolchain {
