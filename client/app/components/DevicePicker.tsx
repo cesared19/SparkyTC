@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useId, useState } from 'react'
 import { StockDevice } from '~/models/types'
 import { deviceText } from '~/utility/Devices'
@@ -43,7 +43,7 @@ export function DevicePicker({
 
 	const unavailable = mine.data?.message
 	const own = mine.data?.devices ?? []
-	const found = query.trim().length >= 2 ? search.data?.devices ?? [] : []
+	const found = query.trim().length >= 2 ? (search.data?.devices ?? []) : []
 	const options = [
 		...own,
 		...found.filter((d) => !own.some((o) => o.ref === d.ref)),

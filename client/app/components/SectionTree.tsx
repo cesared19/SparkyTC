@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useState } from 'react'
 import { ErrorMessage } from '~/components/ErrorMessage'
 import { SectionSelect } from '~/components/SectionSelect'
@@ -11,8 +11,7 @@ import {
 } from '~/utility/Sections'
 
 type Editing =
-	| { mode: 'rename' | 'add' | 'move'; sectionID: string }
-	| { mode: 'suite' }
+	{ mode: 'rename' | 'add' | 'move'; sectionID: string } | { mode: 'suite' }
 
 const inputClassName =
 	'block w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
@@ -113,7 +112,7 @@ export function SectionTree({
 	const countFor = (sectionID: string) => {
 		const ids = sectionAndDescendants(sections, sectionID)
 		return testCases.filter(
-			(testCase) => testCase.sectionID && ids.has(testCase.sectionID)
+			(testCase) => testCase.sectionID && ids.has(testCase.sectionID),
 		).length
 	}
 
@@ -168,8 +167,8 @@ export function SectionTree({
 							isSelected
 								? 'font-medium text-brand-700'
 								: node.depth === 0
-								? 'font-medium text-gray-900'
-								: 'text-gray-700'
+									? 'font-medium text-gray-900'
+									: 'text-gray-700'
 						}`}
 						title={section.name}
 					>
@@ -184,7 +183,7 @@ export function SectionTree({
 						aria-expanded={menuFor === section.sectionID}
 						onClick={() =>
 							setMenuFor(
-								menuFor === section.sectionID ? undefined : section.sectionID
+								menuFor === section.sectionID ? undefined : section.sectionID,
 							)
 						}
 						className="shrink-0 rounded px-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
@@ -264,7 +263,7 @@ export function SectionTree({
 							onClick={() => {
 								if (
 									confirm(
-										`Delete ${section.name}? Only empty sections can be deleted.`
+										`Delete ${section.name}? Only empty sections can be deleted.`,
 									)
 								) {
 									if (isSelected) onSelect(undefined)
@@ -330,7 +329,7 @@ export function SectionTree({
 									emptyLabel="Top level (as a suite)"
 									excludeIDs={sectionAndDescendants(
 										sections,
-										section.sectionID
+										section.sectionID,
 									)}
 									className="min-w-0 flex-1 py-1"
 								/>

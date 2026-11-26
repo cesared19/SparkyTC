@@ -1,7 +1,4 @@
-import {
-	type ActionFunctionArgs,
-	type LoaderFunctionArgs,
-} from '@remix-run/node'
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
 import { FetchResponse, JiraUser } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
@@ -17,7 +14,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	try {
 		const response = await api.get<FetchResponse<JiraUser[]>>(
-			APIRoute.jiraUsers(query)
+			APIRoute.jiraUsers(query),
 		)
 		return { users: response.data }
 	} catch (error) {
@@ -32,7 +29,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const { userID, accountID } = await request.json()
 		await api.put(
 			userID ? APIRoute.userJiraUser(userID) : APIRoute.ownJiraUser,
-			{ body: { accountID: accountID ?? null } }
+			{ body: { accountID: accountID ?? null } },
 		)
 		return { ok: true }
 	} catch (error) {

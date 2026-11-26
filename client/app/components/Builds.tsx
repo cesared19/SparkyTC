@@ -1,4 +1,4 @@
-import { Link, useFetcher } from '@remix-run/react'
+import { Link, useFetcher } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import { isTestRunClosed } from '~/components/Assignments'
 import { DateDisplay } from '~/components/DateDisplay'
@@ -299,8 +299,8 @@ export function TestRunBuild({
 	const pending = fetcher.json as { buildID?: string | null } | undefined
 	const value =
 		fetcher.state !== 'idle' && pending
-			? pending.buildID ?? ''
-			: testRun.build?.buildID ?? ''
+			? (pending.buildID ?? '')
+			: (testRun.build?.buildID ?? '')
 
 	if (isTestRunClosed(testRun)) {
 		return (

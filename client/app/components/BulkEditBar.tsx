@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useState } from 'react'
 import { LabelFilter, LabelInput, projectLabels } from '~/components/LabelInput'
 import { SectionSelect } from '~/components/SectionSelect'
@@ -16,8 +16,7 @@ import {
 import { Route } from '~/utility/Routes'
 
 type BulkResponse =
-	| ErrorResponse
-	| { ok: true; intent: string; result: BulkEditResult }
+	ErrorResponse | { ok: true; intent: string; result: BulkEditResult }
 
 type Action = 'move' | 'addLabels' | 'removeLabels' | 'property' | 'format'
 
@@ -127,13 +126,13 @@ export function BulkEditBar({
 	const [sectionID, setSectionID] = useState(sections[0]?.sectionID ?? '')
 	const [labels, setLabels] = useState<string[]>([])
 	const [propertyID, setPropertyID] = useState(
-		properties[0]?.propertyConfigurationID ?? ''
+		properties[0]?.propertyConfigurationID ?? '',
 	)
 	const [propertyValue, setPropertyValue] = useState('')
 	const [format, setFormat] = useState<TestCaseFormat>(TestCaseFormat.steps)
 
 	const property = properties.find(
-		(candidate) => candidate.propertyConfigurationID === propertyID
+		(candidate) => candidate.propertyConfigurationID === propertyID,
 	)
 	const testCaseIDs = selected.map((testCase) => testCase.testCaseID)
 	const actions = isAdmin
@@ -161,8 +160,8 @@ export function BulkEditBar({
 				if (
 					window.confirm(
 						`Delete ${plural(
-							selected.length
-						)}? The ones used in test runs are archived so the runs keep their results.`
+							selected.length,
+						)}? The ones used in test runs are archived so the runs keep their results.`,
 					)
 				) {
 					send({ intent: 'delete', testCaseIDs })

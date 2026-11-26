@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ErrorResponse, TestCaseAttachment } from '~/models/types'
 import { Route } from '~/utility/Routes'
@@ -114,7 +114,7 @@ export function AttachmentGallery({
 			? deleteFetcher.formAction?.split('/').pop()
 			: undefined
 	const visibleAttachments = attachments.filter(
-		(attachment) => attachment.attachmentID !== deletingAttachmentID
+		(attachment) => attachment.attachmentID !== deletingAttachmentID,
 	)
 
 	return (

@@ -1,12 +1,13 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
+	redirect,
 	useActionData,
 	useNavigate,
 	useNavigation,
 	useOutletContext,
 	useSearchParams,
 	useSubmit,
-} from '@remix-run/react'
+} from 'react-router'
 import { useState } from 'react'
 import { APIRoute, Route } from '~/utility/Routes'
 import {
@@ -43,7 +44,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return redirect(
 			`${Route.viewProjectTestCases(projectShortCode)}${
 				sectionID ? `?section=${sectionID}` : ''
-			}`
+			}`,
 		)
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), { status: 400 })
@@ -57,7 +58,7 @@ export default function ImportTestCases() {
 	const [sectionID, setSectionID] = useState(
 		searchParams.get('section') ??
 			sections.find((section) => !section.parentID)?.sectionID ??
-			''
+			'',
 	)
 	const navigate = useNavigate()
 	const navigation = useNavigation()
@@ -76,7 +77,7 @@ export default function ImportTestCases() {
 	const isSubmitting = navigation.state !== 'idle'
 
 	const handleFileChange = async (
-		event: React.ChangeEvent<HTMLInputElement>
+		event: React.ChangeEvent<HTMLInputElement>,
 	) => {
 		const file = event.target.files?.[0]
 		if (!file) {
@@ -106,7 +107,7 @@ export default function ImportTestCases() {
 		if (!result || !canImport) return
 		submit(
 			{ testCases: result.rows.map((row) => row.testCase), sectionID },
-			{ method: 'POST', encType: 'application/json' }
+			{ method: 'POST', encType: 'application/json' },
 		)
 	}
 

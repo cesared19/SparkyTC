@@ -1,4 +1,4 @@
-import { Link, useOutletContext } from '@remix-run/react'
+import { Link, useOutletContext } from 'react-router'
 import { TestCaseFormat, TestCaseOutletContext } from '~/models/types'
 import { BackButton } from '~/components/BackButton'
 import { DateDisplay } from '~/components/DateDisplay'
@@ -45,7 +45,7 @@ export default function TestCaseDetails() {
 				{testCase.sectionID && (
 					<Link
 						to={`${Route.viewProjectTestCases(
-							project.projectShortCode
+							project.projectShortCode,
 						)}?section=${testCase.sectionID}`}
 						className="mt-1 inline-block text-sm text-gray-500 hover:text-gray-900 hover:underline"
 					>

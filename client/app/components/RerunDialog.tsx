@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useState } from 'react'
 import { BuildSelect } from '~/components/Builds'
 import { ErrorMessage } from '~/components/ErrorMessage'
@@ -34,7 +34,7 @@ export function RerunDialog({
 }) {
 	const fetcher = useFetcher<ErrorResponse>()
 	const [statuses, setStatuses] = useState(
-		OPTIONS.filter((option) => option.checked).map((option) => option.status)
+		OPTIONS.filter((option) => option.checked).map((option) => option.status),
 	)
 	// the newest build is the one being tested now
 	const [buildID, setBuildID] = useState(builds[0]?.buildID ?? '')
@@ -50,7 +50,7 @@ export function RerunDialog({
 
 	const count = (status: TestCaseRunStatus) =>
 		testCaseRuns.filter(
-			(run) => run.status === status && !run.testCase.isArchived
+			(run) => run.status === status && !run.testCase.isArchived,
 		).length
 	const selectedCount = statuses.reduce((sum, status) => sum + count(status), 0)
 	const isSubmitting = fetcher.state !== 'idle'
@@ -63,7 +63,7 @@ export function RerunDialog({
 				testRunID: testRun.testRunID,
 				rerun: { statuses, buildID: buildID || null, title },
 			},
-			{ method: 'post', encType: 'application/json' }
+			{ method: 'post', encType: 'application/json' },
 		)
 	}
 
@@ -114,7 +114,7 @@ export function RerunDialog({
 										setStatuses((current) =>
 											event.target.checked
 												? [...current, option.status]
-												: current.filter((status) => status !== option.status)
+												: current.filter((status) => status !== option.status),
 										)
 									}
 									className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"

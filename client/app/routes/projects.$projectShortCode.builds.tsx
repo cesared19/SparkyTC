@@ -1,5 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { Link, useLoaderData } from '@remix-run/react'
+import { type LoaderFunctionArgs, Link, useLoaderData } from 'react-router'
 import { DateDisplay } from '~/components/DateDisplay'
 import { ProjectShell } from '~/components/ProjectShell'
 import { formatRate, RateChart } from '~/components/RateChart'
@@ -21,13 +20,13 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const projectShortCode = params.projectShortCode ?? ''
 	const projects = await api.get<FetchResponse<Project[]>>(APIRoute.projects)
 	const project = projects.data.find(
-		(p) => p.projectShortCode === projectShortCode
+		(p) => p.projectShortCode === projectShortCode,
 	)
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
 	}
 	const builds = await api.get<FetchResponse<BuildResults[]>>(
-		APIRoute.projectBuildResults(projectShortCode)
+		APIRoute.projectBuildResults(projectShortCode),
 	)
 	return { projects: projects.data, project, builds: builds.data }
 }
@@ -197,7 +196,7 @@ function BuildCard({
 									<Link
 										to={Route.viewTestRun(
 											projectShortCode,
-											testRun.testRunNumber
+											testRun.testRunNumber,
 										)}
 										className="min-w-0 truncate text-sm font-medium text-gray-900 hover:text-brand-600 hover:underline"
 									>

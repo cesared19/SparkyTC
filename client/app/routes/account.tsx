@@ -1,14 +1,12 @@
 import {
 	type ActionFunctionArgs,
 	type LoaderFunctionArgs,
-} from '@remix-run/node'
-import {
 	Form,
 	useActionData,
 	useFetcher,
 	useLoaderData,
 	useNavigation,
-} from '@remix-run/react'
+} from 'react-router'
 import { FetchResponse, JiraConfiguration, UserTheme } from '~/models/types'
 import { useEffect, useRef } from 'react'
 import { ErrorMessage } from '~/components/ErrorMessage'
@@ -21,7 +19,7 @@ import { Tools } from '~/utility/Tools'
 export async function loader({ request }: LoaderFunctionArgs) {
 	const api = await requireAPI(request)
 	const jira = await api.get<FetchResponse<JiraConfiguration>>(
-		APIRoute.jiraConfiguration
+		APIRoute.jiraConfiguration,
 	)
 	return { jira: jira.data }
 }
@@ -181,7 +179,7 @@ function ThemeSelector() {
 										method: 'post',
 										action: Route.preferences,
 										encType: 'application/json',
-									}
+									},
 								)
 							}
 							className="sr-only"
@@ -209,7 +207,11 @@ function NotificationPreferences() {
 	const update = (change: Partial<typeof preferences>) =>
 		fetcher.submit(
 			{ intent: 'notifications', ...preferences, ...change },
-			{ method: 'post', action: Route.preferences, encType: 'application/json' }
+			{
+				method: 'post',
+				action: Route.preferences,
+				encType: 'application/json',
+			},
 		)
 
 	const options = [

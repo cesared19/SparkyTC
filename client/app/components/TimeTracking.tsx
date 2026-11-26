@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { isTestRunClosed } from '~/components/Assignments'
 import {
@@ -67,7 +67,7 @@ export function TestCaseTimer({
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	const loadedAt = useMemo(() => Date.now(), [testCaseRun])
 	const isMineRunning = testCaseRun.runningTimers.some(
-		(timer) => timer.userID === currentUser?.userID
+		(timer) => timer.userID === currentUser?.userID,
 	)
 	const runningCount = testCaseRun.runningTimers.length
 	const now = useNow(runningCount > 0)
@@ -76,7 +76,7 @@ export function TestCaseTimer({
 		testCaseRun.timeSeconds +
 		(runningCount * Math.max(0, now - loadedAt)) / 1000
 	const others = testCaseRun.runningTimers.filter(
-		(timer) => timer.userID !== currentUser?.userID
+		(timer) => timer.userID !== currentUser?.userID,
 	)
 	const isClosed = isTestRunClosed(testRun)
 	const isSubmitting = fetcher.state !== 'idle'
@@ -121,8 +121,8 @@ export function TestCaseTimer({
 						{isMineRunning
 							? 'Pause timer'
 							: testCaseRun.timeSeconds > 0
-							? 'Resume timer'
-							: 'Start timer'}
+								? 'Resume timer'
+								: 'Start timer'}
 					</button>
 				)}
 				{isMineRunning && (
@@ -153,7 +153,7 @@ function localDay(date: number) {
 	const day = new Date(date)
 	return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(
 		2,
-		'0'
+		'0',
 	)}-${String(day.getDate()).padStart(2, '0')}`
 }
 
@@ -184,7 +184,7 @@ export function TestRunTimeSection({
 		setDays(
 			[...totals.entries()]
 				.sort(([a], [b]) => a.localeCompare(b))
-				.map(([day, seconds]) => ({ day, seconds }))
+				.map(([day, seconds]) => ({ day, seconds })),
 		)
 	}, [time.entries])
 

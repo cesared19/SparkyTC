@@ -1,5 +1,9 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { useLoaderData, Outlet, useOutletContext } from '@remix-run/react'
+import {
+	type LoaderFunctionArgs,
+	useLoaderData,
+	Outlet,
+	useOutletContext,
+} from 'react-router'
 import { APIRoute } from '~/utility/Routes'
 import type {
 	FetchResponse,
@@ -29,7 +33,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	// the test run first, so an unknown number is a 404
 	const testRunResponse = await api
 		.get<FetchResponse<TestRun>>(
-			APIRoute.projectTestRun(projectShortCode, testRunNumber)
+			APIRoute.projectTestRun(projectShortCode, testRunNumber),
 		)
 		.catch(() => undefined)
 	const testRun = testRunResponse?.data
@@ -46,20 +50,20 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		time,
 	] = await Promise.all([
 		api.get<FetchResponse<TestCaseRun[]>>(
-			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber)
+			APIRoute.projectTestCaseRuns(projectShortCode, testRunNumber),
 		),
 		api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
 		api.get<FetchResponse<UserSummary[]>>(
-			APIRoute.projectUsers(projectShortCode)
+			APIRoute.projectUsers(projectShortCode),
 		),
 		api.get<FetchResponse<ProjectBuild[]>>(
-			APIRoute.projectBuilds(projectShortCode)
+			APIRoute.projectBuilds(projectShortCode),
 		),
 		api.get<FetchResponse<TestCaseSection[]>>(
-			APIRoute.projectSections(projectShortCode)
+			APIRoute.projectSections(projectShortCode),
 		),
 		api.get<FetchResponse<TestRunTime>>(
-			APIRoute.testRunTime(testRun.testRunID)
+			APIRoute.testRunTime(testRun.testRunID),
 		),
 	])
 	return {

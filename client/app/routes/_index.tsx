@@ -1,5 +1,9 @@
-import { type LoaderFunctionArgs, redirect } from '@remix-run/node'
-import { Link, useLoaderData } from '@remix-run/react'
+import {
+	type LoaderFunctionArgs,
+	redirect,
+	Link,
+	useLoaderData,
+} from 'react-router'
 import { ProjectList } from '~/components/ProjectShell'
 import { Project } from '~/models/project'
 import { FetchResponse } from '~/models/types'
@@ -14,7 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	const target =
 		projects.data.find(
-			(project) => project.projectShortCode === user.defaultProjectShortCode
+			(project) => project.projectShortCode === user.defaultProjectShortCode,
 		) ?? projects.data[0]
 	if (target) {
 		return redirect(Route.viewProjectDashboard(target.projectShortCode))

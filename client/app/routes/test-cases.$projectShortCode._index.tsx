@@ -3,7 +3,7 @@ import {
 	useNavigate,
 	useOutletContext,
 	useSearchParams,
-} from '@remix-run/react'
+} from 'react-router'
 import { ProjectTestCasesOutletContext, TestCase } from '~/models/types'
 import { Table, type Column } from '~/components/Table'
 import { DateDisplay } from '~/components/DateDisplay'
@@ -49,7 +49,7 @@ export default function TestCasesIndex() {
 	// the chosen section is kept in the address so it survives going back from a test case
 	const [searchParams, setSearchParams] = useSearchParams()
 	const selectedID = sections.some(
-		(section) => section.sectionID === searchParams.get('section')
+		(section) => section.sectionID === searchParams.get('section'),
 	)
 		? (searchParams.get('section') as string)
 		: undefined
@@ -71,17 +71,17 @@ export default function TestCasesIndex() {
 	const isVisible = (testCase: TestCase) =>
 		!visibleIDs || (!!testCase.sectionID && visibleIDs.has(testCase.sectionID))
 	const visibleTestCases = testCases.filter(
-		(testCase) => isVisible(testCase) && hasAllLabels(testCase, selectedLabels)
+		(testCase) => isVisible(testCase) && hasAllLabels(testCase, selectedLabels),
 	)
 	const groups = groupBySection(sections, visibleTestCases)
 	// only the ones on screen, so a filter never changes hidden test cases
 	const selectedTestCases = visibleTestCases.filter((testCase) =>
-		selectedIDs.has(testCase.testCaseID)
+		selectedIDs.has(testCase.testCaseID),
 	)
 
 	// Find property configuration IDs for priority and type
 	const priorityConfig = properties.find(
-		(p) => p.title.toLowerCase() === 'priority'
+		(p) => p.title.toLowerCase() === 'priority',
 	)
 	const typeConfig = properties.find((p) => p.title.toLowerCase() === 'type')
 
@@ -170,9 +170,9 @@ export default function TestCasesIndex() {
 									project,
 									groups.flatMap((group) => group.testCases),
 									properties,
-									sections
+									sections,
 								),
-								format
+								format,
 							)
 						}
 					/>

@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
+import { type LoaderFunctionArgs } from 'react-router'
 import { FetchResponse, JiraUser } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
@@ -18,8 +18,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			APIRoute.jiraAssignableUsers(
 				params.get('testCaseRunID') ?? '',
 				params.get('issueKey') ?? '',
-				query
-			)
+				query,
+			),
 		)
 		return { users: response.data }
 	} catch (error) {

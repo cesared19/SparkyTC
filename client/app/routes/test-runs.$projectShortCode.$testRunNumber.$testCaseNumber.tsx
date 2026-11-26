@@ -1,5 +1,5 @@
-import { type ActionFunctionArgs } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
 	Link,
 	redirect,
 	redirectDocument,
@@ -8,7 +8,7 @@ import {
 	useOutletContext,
 	useParams,
 	useRevalidator,
-} from '@remix-run/react'
+} from 'react-router'
 import { APIRoute, Route } from '~/utility/Routes'
 import {
 	DeviceMode,
@@ -105,7 +105,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		if (intent === 'createJiraIssue') {
 			const response = await api.post<FetchResponse<JiraLink>>(
 				APIRoute.createJiraIssue(testCaseRunID),
-				{ body: { ...jiraIssue, appBaseURL: publicBaseURL(request) } }
+				{ body: { ...jiraIssue, appBaseURL: publicBaseURL(request) } },
 			)
 			return { ok: true, issueKey: response.data.issueKey }
 		}
@@ -120,12 +120,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		// the public URL lets automatically created Jira issues link back to SparkyTC
 		const result = await api.put<FetchResponse<UpdateTestCaseRunResult>>(
 			APIRoute.testCaseRun(testCaseRunID),
-			{ body: { ...testCaseRunUpdate, appBaseURL: publicBaseURL(request) } }
+			{ body: { ...testCaseRunUpdate, appBaseURL: publicBaseURL(request) } },
 		)
 		// the result is saved, the tester stays to see what Jira refused
 		const jiraErrors = result.data?.jiraTransitionErrors ?? []
 		const jiraMessage = `The result was saved, but Jira wasn't fully updated. ${jiraErrors.join(
-			' '
+			' ',
 		)}`
 		const message = jiraErrors.length > 0 ? jiraMessage : undefined
 
@@ -162,7 +162,7 @@ export default function TestCaseRunDetails() {
 	}
 
 	const testCaseRun = testCaseRuns.find(
-		(run) => run.testCase.testCaseNumber === testCaseNumber
+		(run) => run.testCase.testCaseNumber === testCaseNumber,
 	)
 	if (!testCaseRun) {
 		return <p>Test case run not found</p>
@@ -202,10 +202,10 @@ interface TestCaseRunViewProps {
 function propertyValue(
 	testCaseRun: TestCaseRun,
 	properties: PropertyConfiguration[],
-	title: string
+	title: string,
 ) {
 	const property = properties.find(
-		(property) => property.title.trim().toLowerCase() === title
+		(property) => property.title.trim().toLowerCase() === title,
 	)
 	return property
 		? testCaseRun.testCase.propertyValues[property.propertyConfigurationID]
@@ -234,7 +234,7 @@ function TestCaseRunView({
 	const [isEditing, setIsEditing] = useState(false)
 	// each save adds a result, so none is chosen until the tester picks one
 	const [selectedStatus, setSelectedStatus] = useState<TestCaseRunStatus>(
-		TestCaseRunStatus.pending
+		TestCaseRunStatus.pending,
 	)
 	// how each step went, for test cases written as steps
 	const [stepResults, setStepResults] = useState<Record<string, StepResult>>({})
@@ -267,7 +267,7 @@ function TestCaseRunView({
 	}, [deviceMode, testRun.testRunID])
 
 	const markedSteps = Object.values(stepResults).filter(
-		(result) => result.status || result.actual?.trim()
+		(result) => result.status || result.actual?.trim(),
 	)
 
 	// what the tester marks and writes is kept as a draft until the result is saved
@@ -280,8 +280,8 @@ function TestCaseRunView({
 		setNotes(draft.loaded.notes ?? '')
 		setStepResults(
 			Object.fromEntries(
-				draft.loaded.stepResults.map((result) => [result.stepID, result])
-			)
+				draft.loaded.stepResults.map((result) => [result.stepID, result]),
+			),
 		)
 		setRestoredAt(draft.loaded.updatedAt ?? Date.now())
 	}, [draft.loaded])
@@ -337,7 +337,7 @@ function TestCaseRunView({
 			{
 				method: 'post',
 				encType: 'application/json',
-			}
+			},
 		)
 	}
 
@@ -365,7 +365,7 @@ function TestCaseRunView({
 				setEvidenceError(
 					`The result was saved, but its evidence couldn't be uploaded (${
 						error instanceof Error ? error.message : error
-					}). Add it from the results below.`
+					}). Add it from the results below.`,
 				)
 				setIsUploadingEvidence(false)
 				revalidator.revalidate()
@@ -387,12 +387,12 @@ function TestCaseRunView({
 	const saveBlocker = isLocked
 		? 'This test case is assigned to someone else'
 		: selectedStatus === TestCaseRunStatus.pending
-		? 'Choose Pass, Fail, Blocked or Skip to save the result'
-		: !jiraTransitions
-		? 'Choose a transition for each Jira issue to update'
-		: deviceMode === DeviceMode.required && !deviceRef.trim()
-		? 'Choose the device you tested on'
-		: undefined
+			? 'Choose Pass, Fail, Blocked or Skip to save the result'
+			: !jiraTransitions
+				? 'Choose a transition for each Jira issue to update'
+				: deviceMode === DeviceMode.required && !deviceRef.trim()
+					? 'Choose the device you tested on'
+					: undefined
 
 	return (
 		<div className="space-y-6">
@@ -417,7 +417,7 @@ function TestCaseRunView({
 						<Link
 							to={Route.viewTestCase(
 								project.projectShortCode,
-								testCaseRun.testCase.testCaseNumber
+								testCaseRun.testCase.testCaseNumber,
 							)}
 							className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
 						>
@@ -641,7 +641,7 @@ function TestCaseRunView({
 								selectedStatus === TestCaseRunStatus.blocked,
 							defaults: (): CreateJiraIssue => {
 								const form = document.getElementById(
-									'testCaseForm'
+									'testCaseForm',
 								) as HTMLFormElement | null
 								const notes = form
 									? (new FormData(form).get('notes') as string)
@@ -650,7 +650,7 @@ function TestCaseRunView({
 									summary: testCaseRun.title,
 									stepsToReproduce: isSteps
 										? runStepsText(testCaseRun.steps ?? [], stepResults)
-										: testCaseRun.testInstructions ?? '',
+										: (testCaseRun.testInstructions ?? ''),
 									expectedResult:
 										propertyValue(testCaseRun, properties, 'expected result') ??
 										'',
@@ -758,8 +758,8 @@ function TestCaseRunView({
 							{isUploadingEvidence
 								? 'Uploading evidence...'
 								: fetcher.state !== 'idle'
-								? 'Saving...'
-								: 'Save result'}
+									? 'Saving...'
+									: 'Save result'}
 						</button>
 					</div>
 					{saveBlocker && !isLocked && (
@@ -832,7 +832,7 @@ function TestCaseRunDetailsEditor({
 				testCaseRunID: testCaseRun.testCaseRunID,
 				detailsUpdate,
 			},
-			{ method: 'post', encType: 'application/json' }
+			{ method: 'post', encType: 'application/json' },
 		)
 	}
 

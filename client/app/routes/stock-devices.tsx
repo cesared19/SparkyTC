@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
+import { type LoaderFunctionArgs } from 'react-router'
 import { FetchResponse, StockDevice } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
@@ -10,7 +10,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const query = new URL(request.url).searchParams.get('q')?.trim() ?? ''
 	try {
 		const response = await api.get<FetchResponse<StockDevice[]>>(
-			APIRoute.stockDevices(query ? { query } : { mine: true })
+			APIRoute.stockDevices(query ? { query } : { mine: true }),
 		)
 		return { devices: response.data, query }
 	} catch (error) {

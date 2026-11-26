@@ -1,10 +1,11 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
+	redirect,
 	useActionData,
 	useNavigate,
 	useOutletContext,
 	useSubmit,
-} from '@remix-run/react'
+} from 'react-router'
 import { APIRoute, Route } from '~/utility/Routes'
 import { TestCaseForm, TestCaseFormMode } from '~/components/TestCaseForm'
 import {
@@ -64,19 +65,19 @@ export default function EditTestCase() {
 			{
 				method: 'PUT',
 				encType: 'application/json',
-			}
+			},
 		)
 	}
 
 	async function handleDelete() {
 		if (
 			confirm(
-				'Are you sure you want to delete this test case? If it was used in test runs it is archived instead, and those runs keep its results.'
+				'Are you sure you want to delete this test case? If it was used in test runs it is archived instead, and those runs keep its results.',
 			)
 		) {
 			submit(
 				{ testCaseID: testCase.testCaseID },
-				{ method: 'DELETE', encType: 'application/json' }
+				{ method: 'DELETE', encType: 'application/json' },
 			)
 		}
 	}

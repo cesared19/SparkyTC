@@ -1,4 +1,4 @@
-import { Link, NavLink, useFetcher, useLocation } from '@remix-run/react'
+import { Link, NavLink, useFetcher, useLocation } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import { Project } from '~/models/project'
 import { useCurrentUser, useIsAdmin } from '~/utility/CurrentUser'
@@ -208,11 +208,10 @@ export function ProjectList({
 
 	// reflect a default project change immediately, before the user data reloads
 	const pending = fetcher.json as
-		| { projectShortCode?: string | null }
-		| undefined
+		{ projectShortCode?: string | null } | undefined
 	const defaultProject =
 		pending !== undefined
-			? pending.projectShortCode ?? undefined
+			? (pending.projectShortCode ?? undefined)
 			: user?.defaultProjectShortCode
 
 	// the same for the order: what was just saved shows before the user data reloads
@@ -223,7 +222,7 @@ export function ProjectList({
 	const savedProjects = orderProjects(projects, savedOrder)
 	const shownProjects = orderProjects(
 		projects,
-		dragOrder ?? droppedOrder ?? savedOrder
+		dragOrder ?? droppedOrder ?? savedOrder,
 	)
 	const shortCodes = shownProjects.map((project) => project.projectShortCode)
 	const isTitleOrder = savedOrder.length === 0
@@ -244,7 +243,7 @@ export function ProjectList({
 				method: 'post',
 				action: Route.preferences,
 				encType: 'application/json',
-			}
+			},
 		)
 	}
 
@@ -255,7 +254,7 @@ export function ProjectList({
 				method: 'post',
 				action: Route.preferences,
 				encType: 'application/json',
-			}
+			},
 		)
 	}
 
@@ -267,7 +266,7 @@ export function ProjectList({
 		setMovedMessage(
 			`${shownProjects[index].title} moved to position ${to + 1} of ${
 				shownProjects.length
-			}`
+			}`,
 		)
 	}
 
@@ -415,8 +414,8 @@ export function ProjectList({
 									isDragging
 										? 'bg-brand-50 shadow ring-1 ring-brand-300'
 										: isCurrent
-										? 'bg-brand-50'
-										: 'hover:bg-gray-50'
+											? 'bg-brand-50'
+											: 'hover:bg-gray-50'
 								}`}
 							>
 								<button

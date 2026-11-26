@@ -1,5 +1,6 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
+	redirect,
 	Form,
 	useNavigate,
 	useLoaderData,
@@ -7,7 +8,7 @@ import {
 	useOutletContext,
 	useActionData,
 	Link,
-} from '@remix-run/react'
+} from 'react-router'
 import { APIRoute, Route } from '~/utility/Routes'
 import { useState } from 'react'
 import type {
@@ -50,19 +51,19 @@ export async function loader({ request, params }: ActionFunctionArgs) {
 		await Promise.all([
 			api.get<FetchResponse<PropertyConfiguration[]>>(APIRoute.properties),
 			api.get<FetchResponse<TestCase[]>>(
-				APIRoute.projectTestCases(projectShortCode)
+				APIRoute.projectTestCases(projectShortCode),
 			),
 			api.get<FetchResponse<UserSummary[]>>(
-				APIRoute.projectUsers(projectShortCode)
+				APIRoute.projectUsers(projectShortCode),
 			),
 			api.get<FetchResponse<ProjectBuild[]>>(
-				APIRoute.projectBuilds(projectShortCode)
+				APIRoute.projectBuilds(projectShortCode),
 			),
 			api.get<FetchResponse<TestCaseSection[]>>(
-				APIRoute.projectSections(projectShortCode)
+				APIRoute.projectSections(projectShortCode),
 			),
 			api.get<FetchResponse<TestPlan[]>>(
-				APIRoute.projectTestPlans(projectShortCode)
+				APIRoute.projectTestPlans(projectShortCode),
 			),
 		])
 	// started from a test plan: its test cases come chosen
@@ -112,7 +113,7 @@ export default function NewTestRun() {
 	const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>(() => {
 		if (!testPlan) return []
 		return planTestCases(testPlan, testCases, sections).map(
-			(match) => match.testCase
+			(match) => match.testCase,
 		)
 	})
 	const submit = useSubmit()
@@ -126,7 +127,7 @@ export default function NewTestRun() {
 		.replace(/\//g, '-')
 	// kept in state so they survive switching to the test case selector and back
 	const [title, setTitle] = useState(
-		`${todayDateString} ${testPlan?.name ?? 'Test Run'}`
+		`${todayDateString} ${testPlan?.name ?? 'Test Run'}`,
 	)
 	const [description, setDescription] = useState('')
 
@@ -161,7 +162,7 @@ export default function NewTestRun() {
 						<Link
 							to={Route.viewTestPlan(
 								project.projectShortCode,
-								testPlan.testPlanID
+								testPlan.testPlanID,
 							)}
 							className="font-medium text-brand-600 hover:underline"
 						>

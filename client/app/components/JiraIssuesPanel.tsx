@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useState } from 'react'
 import {
 	CreateJiraIssue,
@@ -111,7 +111,7 @@ export function JiraIssuesPanel({
 				method: 'post',
 				action: Route.testCaseJiraLinks(testCaseID),
 				encType: 'application/json',
-			}
+			},
 		)
 
 	const handleLink = (event: React.FormEvent<HTMLFormElement>) => {
@@ -123,7 +123,7 @@ export function JiraIssuesPanel({
 	const handleUnlink = (link: JiraLink) => {
 		if (
 			!confirm(
-				`Unlink ${link.issueKey} from this test case? The Jira issue is not modified.`
+				`Unlink ${link.issueKey} from this test case? The Jira issue is not modified.`,
 			)
 		) {
 			return
@@ -150,7 +150,7 @@ export function JiraIssuesPanel({
 				<ul className="divide-y divide-gray-200 rounded-md border border-gray-200 bg-white">
 					{visibleLinks.map((link) => {
 						const issue = issuesData?.issues.find(
-							(issue) => issue.issueKey === link.issueKey
+							(issue) => issue.issueKey === link.issueKey,
 						)
 						return (
 							<li
@@ -320,7 +320,7 @@ function CreateJiraIssueForm({
 	}, [])
 
 	const similarIssues = (similarFetcher.data?.issues ?? []).filter(
-		(issue) => !linkedKeys.includes(issue.issueKey)
+		(issue) => !linkedKeys.includes(issue.issueKey),
 	)
 
 	useEffect(() => {
@@ -343,7 +343,7 @@ function CreateJiraIssueForm({
 
 		fetcher.submit(
 			{ intent: 'createJiraIssue', testCaseRunID, jiraIssue },
-			{ method: 'post', encType: 'application/json' }
+			{ method: 'post', encType: 'application/json' },
 		)
 	}
 

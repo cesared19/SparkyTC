@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useState } from 'react'
 import { ErrorResponse, JiraUser, User } from '~/models/types'
 import { Route } from '~/utility/Routes'
@@ -29,7 +29,7 @@ export function JiraUserPicker({
 		if (query.trim().length < 2) return
 		const timeout = setTimeout(
 			() => searchFetcher.load(Route.jiraUsers(query.trim())),
-			SEARCH_DELAY_MS
+			SEARCH_DELAY_MS,
 		)
 		return () => clearTimeout(timeout)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,14 +53,15 @@ export function JiraUserPicker({
 				method: 'post',
 				action: Route.linkJiraUser,
 				encType: 'application/json',
-			}
+			},
 		)
 
 	const saveError =
 		saveFetcher.data && 'message' in saveFetcher.data
 			? saveFetcher.data.message
 			: undefined
-	const results = query.trim().length < 2 ? [] : searchFetcher.data?.users ?? []
+	const results =
+		query.trim().length < 2 ? [] : (searchFetcher.data?.users ?? [])
 	const searchError =
 		query.trim().length < 2 ? undefined : searchFetcher.data?.message
 	const isSaving = saveFetcher.state !== 'idle'

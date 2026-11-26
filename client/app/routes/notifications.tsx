@@ -1,7 +1,4 @@
-import {
-	type ActionFunctionArgs,
-	type LoaderFunctionArgs,
-} from '@remix-run/node'
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
 import { FetchResponse, NotificationList } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
@@ -10,7 +7,7 @@ import { Tools } from '~/utility/Tools'
 export async function loader({ request }: LoaderFunctionArgs) {
 	const api = await requireAPI(request)
 	const response = await api.get<FetchResponse<NotificationList>>(
-		APIRoute.notifications
+		APIRoute.notifications,
 	)
 	return response.data
 }

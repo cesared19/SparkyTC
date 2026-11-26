@@ -1,7 +1,4 @@
-import {
-	type ActionFunctionArgs,
-	type LoaderFunctionArgs,
-} from '@remix-run/node'
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
 import { APIRoute } from '~/utility/Routes'
 import { requireAPI } from '~/utility/API.server'
 import { Tools } from '~/utility/Tools'
@@ -12,7 +9,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const api = await requireAPI(request)
 	try {
 		const response = await api.get<FetchResponse<ResultDraft>>(
-			APIRoute.testCaseRunDraft(params.testCaseRunID ?? '')
+			APIRoute.testCaseRunDraft(params.testCaseRunID ?? ''),
 		)
 		return response.data
 	} catch (error) {

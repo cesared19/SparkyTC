@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
+import { type LoaderFunctionArgs } from 'react-router'
 import { FetchResponse, SimilarJiraIssue } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
@@ -15,7 +15,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	try {
 		const response = await api.get<FetchResponse<SimilarJiraIssue[]>>(
-			APIRoute.similarJiraIssues(testCaseRunID, summary)
+			APIRoute.similarJiraIssues(testCaseRunID, summary),
 		)
 		return { issues: response.data }
 	} catch (error) {

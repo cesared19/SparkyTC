@@ -1,4 +1,4 @@
-import { useOutletContext, Link, useNavigate } from '@remix-run/react'
+import { useOutletContext, Link, useNavigate } from 'react-router'
 import {
 	PropertyConfiguration,
 	PropertyConfigurationOutletContext,

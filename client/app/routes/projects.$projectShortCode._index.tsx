@@ -1,5 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { Link, useLoaderData } from '@remix-run/react'
+import { type LoaderFunctionArgs, Link, useLoaderData } from 'react-router'
 import { CurrentBuildCard } from '~/components/Builds'
 import { RateChart } from '~/components/RateChart'
 import { DateDisplay } from '~/components/DateDisplay'
@@ -29,7 +28,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response('Project not found', { status: 404 })
 	}
 	const dashboard = await api.get<FetchResponse<ProjectDashboard>>(
-		APIRoute.projectDashboard(projectShortCode)
+		APIRoute.projectDashboard(projectShortCode),
 	)
 	return { projects: projects.data, dashboard: dashboard.data }
 }
@@ -39,7 +38,7 @@ export default function ProjectDashboardPage() {
 	const { project } = dashboard
 	const totalRuns = Object.values(dashboard.testRunCounts).reduce(
 		(sum, count) => sum + count,
-		0
+		0,
 	)
 
 	return (
@@ -128,7 +127,7 @@ export default function ProjectDashboardPage() {
 							No test runs in progress.{' '}
 							<Link
 								to={`${Route.viewProjectTestRuns(
-									project.projectShortCode
+									project.projectShortCode,
 								)}/new`}
 								className="text-brand-600 hover:underline"
 							>
@@ -190,7 +189,7 @@ export default function ProjectDashboardPage() {
 												<Link
 													to={Route.viewTestRun(
 														project.projectShortCode,
-														testRun.testRunNumber
+														testRun.testRunNumber,
 													)}
 													className="font-medium text-gray-900 hover:text-brand-600 hover:underline"
 												>

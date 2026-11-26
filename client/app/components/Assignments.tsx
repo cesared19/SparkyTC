@@ -1,4 +1,4 @@
-import { useFetcher } from '@remix-run/react'
+import { useFetcher } from 'react-router'
 import { useEffect, useState } from 'react'
 import {
 	ErrorResponse,
@@ -23,7 +23,7 @@ export function isTestRunClosed(testRun: TestRun) {
  */
 function withAssigned(projectUsers: UserSummary[], assigned: UserSummary[]) {
 	const missing = assigned.filter(
-		(user) => !projectUsers.some((other) => other.userID === user.userID)
+		(user) => !projectUsers.some((other) => other.userID === user.userID),
 	)
 	return [...projectUsers, ...missing]
 }
@@ -44,7 +44,7 @@ export function AssigneePicker({
 		onChange(
 			selectedIDs.includes(userID)
 				? selectedIDs.filter((id) => id !== userID)
-				: [...selectedIDs, userID]
+				: [...selectedIDs, userID],
 		)
 
 	return (
@@ -91,7 +91,7 @@ export function TestRunAssignees({
 	const fetcher = useFetcher<ErrorResponse | { ok: true }>()
 	const [isEditing, setIsEditing] = useState(false)
 	const [selectedIDs, setSelectedIDs] = useState(
-		testRun.assignees.map((user) => user.userID)
+		testRun.assignees.map((user) => user.userID),
 	)
 	const canEdit = isAdmin && !isTestRunClosed(testRun)
 
@@ -127,7 +127,7 @@ export function TestRunAssignees({
 									method: 'post',
 									action: Route.assignments,
 									encType: 'application/json',
-								}
+								},
 							)
 						}
 						className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
@@ -213,18 +213,22 @@ export function TestCaseAssignment({
 				testCaseRunID: testCaseRun.testCaseRunID,
 				userID,
 			},
-			{ method: 'post', action: Route.assignments, encType: 'application/json' }
+			{
+				method: 'post',
+				action: Route.assignments,
+				encType: 'application/json',
+			},
 		)
 
 	// the run's assignees come first when an admin picks someone
 	const runAssigneeIDs = new Set(testRun.assignees.map((user) => user.userID))
 	const options = withAssigned(
 		projectUsers,
-		testCaseRun.assignedTo ? [testCaseRun.assignedTo] : []
+		testCaseRun.assignedTo ? [testCaseRun.assignedTo] : [],
 	).sort(
 		(a, b) =>
 			Number(runAssigneeIDs.has(b.userID)) -
-			Number(runAssigneeIDs.has(a.userID))
+			Number(runAssigneeIDs.has(a.userID)),
 	)
 
 	const buttonClassName =

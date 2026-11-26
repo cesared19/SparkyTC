@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from '@remix-run/react'
+import { Link, useSearchParams } from 'react-router'
 import { Project } from '~/models/project'
 import { TestCaseRun } from '~/models/types'
 import { TestCaseRunStatusBadge } from '~/components/TestCaseRunStatusBadge'
@@ -21,7 +21,7 @@ export function SavedResultNotice({
 	const [searchParams, setSearchParams] = useSearchParams()
 	const savedNumber = Number(searchParams.get(SAVED_PARAM))
 	const saved = testCaseRuns.find(
-		(run) => run.testCase.testCaseNumber === savedNumber
+		(run) => run.testCase.testCaseNumber === savedNumber,
 	)
 	if (!saved) return null
 
@@ -42,7 +42,7 @@ export function SavedResultNotice({
 					to={Route.viewTestCaseRun(
 						project.projectShortCode,
 						testRunNumber,
-						savedNumber
+						savedNumber,
 					)}
 					className="font-medium underline"
 				>

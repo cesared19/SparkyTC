@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
+import { type LoaderFunctionArgs } from 'react-router'
 import { FetchResponse, JiraTransition } from '~/models/types'
 import { requireAPI } from '~/utility/API.server'
 import { APIRoute } from '~/utility/Routes'
@@ -12,8 +12,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const response = await api.get<FetchResponse<JiraTransition[]>>(
 			APIRoute.jiraTransitions(
 				params.get('testCaseRunID') ?? '',
-				params.get('issueKey') ?? ''
-			)
+				params.get('issueKey') ?? '',
+			),
 		)
 		return { transitions: response.data }
 	} catch (error) {

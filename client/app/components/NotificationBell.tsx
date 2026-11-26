@@ -1,4 +1,4 @@
-import { useFetcher, useLocation, useNavigate } from '@remix-run/react'
+import { useFetcher, useLocation, useNavigate } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import {
 	AppNotification,
@@ -66,7 +66,7 @@ export function NotificationBell() {
 				(pending?.intent === 'deleteRead' && notification.isRead) ||
 				(pending?.intent === 'delete' &&
 					pending.notificationID === notification.notificationID)
-			)
+			),
 	)
 	const hasRead = notifications.some((notification) => notification.isRead)
 

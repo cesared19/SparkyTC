@@ -1,11 +1,12 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
+	redirect,
 	useActionData,
 	useNavigate,
 	useNavigation,
 	useOutletContext,
 	useSubmit,
-} from '@remix-run/react'
+} from 'react-router'
 import { BackButton } from '~/components/BackButton'
 import { TestPlanForm } from '~/components/TestPlanForm'
 import {
@@ -24,10 +25,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		const projectShortCode = params.projectShortCode ?? ''
 		const response = await api.post<FetchResponse<TestPlan>>(
 			APIRoute.projectTestPlans(projectShortCode),
-			{ body: await request.json() }
+			{ body: await request.json() },
 		)
 		return redirect(
-			Route.viewTestPlan(projectShortCode, response.data.testPlanID)
+			Route.viewTestPlan(projectShortCode, response.data.testPlanID),
 		)
 	} catch (error) {
 		return Response.json(Tools.mapErrorToResponse(error), { status: 400 })

@@ -1,10 +1,11 @@
-import { type ActionFunctionArgs, redirect } from '@remix-run/node'
 import {
+	type ActionFunctionArgs,
+	redirect,
 	useNavigate,
 	useSubmit,
 	useOutletContext,
 	Link,
-} from '@remix-run/react'
+} from 'react-router'
 import { Route, APIRoute } from '~/utility/Routes'
 import {
 	FetchResponse,
@@ -62,10 +63,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		try {
 			const response = await api.post<FetchResponse<TestRun>>(
 				APIRoute.rerunTestRun(testRunID),
-				{ body: rerun }
+				{ body: rerun },
 			)
 			return redirect(
-				Route.viewTestRun(projectShortCode, response.data.testRunNumber)
+				Route.viewTestRun(projectShortCode, response.data.testRunNumber),
 			)
 		} catch (error) {
 			return Response.json(Tools.mapErrorToResponse(error), { status: 400 })
@@ -117,7 +118,7 @@ export default function TestRunDetails() {
 	const assignOptions = [...projectUsers].sort(
 		(a, b) =>
 			Number(runAssigneeIDs.has(b.userID)) -
-			Number(runAssigneeIDs.has(a.userID))
+			Number(runAssigneeIDs.has(a.userID)),
 	)
 
 	const allMenuItems: ActionMenuItem[] = (() => {
@@ -126,7 +127,7 @@ export default function TestRunDetails() {
 			action: () => {
 				if (
 					window.confirm(
-						'Are you sure you want to delete this test run? This action cannot be undone.'
+						'Are you sure you want to delete this test run? This action cannot be undone.',
 					)
 				) {
 					submit(
@@ -134,7 +135,7 @@ export default function TestRunDetails() {
 						{
 							method: 'POST',
 							encType: 'application/json',
-						}
+						},
 					)
 				}
 			},
@@ -175,7 +176,7 @@ export default function TestRunDetails() {
 								{
 									method: 'POST',
 									encType: 'application/json',
-								}
+								},
 							)
 						},
 					},
@@ -203,7 +204,7 @@ export default function TestRunDetails() {
 								{
 									method: 'POST',
 									encType: 'application/json',
-								}
+								},
 							)
 						},
 					},
@@ -246,7 +247,7 @@ export default function TestRunDetails() {
 
 	// how the steps went in the latest result, for test cases written as steps
 	const hasSteps = testCaseRuns.some(
-		(testCaseRun) => testCaseRun.format === TestCaseFormat.steps
+		(testCaseRun) => testCaseRun.format === TestCaseFormat.steps,
 	)
 	const stepsColumn: Column<TestCaseRun> = {
 		header: 'Steps',
@@ -350,7 +351,7 @@ export default function TestRunDetails() {
 							<Link
 								to={Route.viewTestPlan(
 									project.projectShortCode,
-									testRun.testPlanID
+									testRun.testPlanID,
 								)}
 								className="text-brand-600 hover:underline"
 							>
@@ -403,7 +404,7 @@ export default function TestRunDetails() {
 								`${project.projectShortCode}-test-run-${testRun.testRunNumber}-results`,
 								`Test run ${testRun.testRunNumber}`,
 								runResultRows(project, testRun, testCaseRuns, sections),
-								format
+								format,
 							)
 						}
 					/>
@@ -442,7 +443,7 @@ export default function TestRunDetails() {
 			{isChoosing && (
 				<BulkAssignBar
 					selected={testCaseRuns.filter((testCaseRun) =>
-						selectedIDs.has(testCaseRun.testCaseRunID)
+						selectedIDs.has(testCaseRun.testCaseRunID),
 					)}
 					users={assignOptions}
 					onClear={() => setSelectedIDs(new Set())}

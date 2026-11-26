@@ -1,14 +1,12 @@
 import {
 	type ActionFunctionArgs,
 	type LoaderFunctionArgs,
-} from '@remix-run/node'
-import {
 	Form,
 	useActionData,
 	useFetcher,
 	useLoaderData,
 	useNavigation,
-} from '@remix-run/react'
+} from 'react-router'
 import { useEffect, useState } from 'react'
 import { ApiTokens } from '~/components/ApiTokens'
 import { BuildManager } from '~/components/Builds'
@@ -39,17 +37,17 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		api.get<FetchResponse<StockConfiguration>>(APIRoute.stockConfiguration),
 	])
 	const project = projects.data.find(
-		(p) => p.projectShortCode === params.projectShortCode
+		(p) => p.projectShortCode === params.projectShortCode,
 	)
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
 	}
 	const [builds, apiTokens] = await Promise.all([
 		api.get<FetchResponse<ProjectBuild[]>>(
-			APIRoute.projectBuilds(projectShortCode)
+			APIRoute.projectBuilds(projectShortCode),
 		),
 		api.get<FetchResponse<ProjectApiToken[]>>(
-			APIRoute.projectApiTokens(projectShortCode)
+			APIRoute.projectApiTokens(projectShortCode),
 		),
 	])
 
@@ -70,7 +68,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			try {
 				issueTypes = (
 					await api.get<FetchResponse<JiraIssueType[]>>(
-						APIRoute.jiraIssueTypes(spaceKey)
+						APIRoute.jiraIssueTypes(spaceKey),
 					)
 				).data
 			} catch {
@@ -172,7 +170,7 @@ export default function ProjectSettings() {
 	const navigation = useNavigation()
 	const [mode, setMode] = useState(project.jiraFailureMode)
 	const [deviceMode, setDeviceMode] = useState(
-		project.deviceMode ?? DeviceMode.off
+		project.deviceMode ?? DeviceMode.off,
 	)
 
 	return (
@@ -517,7 +515,7 @@ function JiraTargetFields({
 /** Whether the shared Jira account can report issues in other users' names, null when unknown. */
 async function reporterPermission(
 	api: Awaited<ReturnType<typeof requireAdmin>>['api'],
-	spaceKey: string
+	spaceKey: string,
 ) {
 	try {
 		const response = await api.get<

@@ -1,5 +1,4 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { Outlet, useLoaderData } from '@remix-run/react'
+import { type LoaderFunctionArgs, Outlet, useLoaderData } from 'react-router'
 import { ProjectShell } from '~/components/ProjectShell'
 import { Project } from '~/models/project'
 import {
@@ -23,7 +22,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	// only lists the projects the user can access, so unknown and hidden projects both 404
 	const projectData = await api.get<FetchResponse<Project[]>>(APIRoute.projects)
 	const project = projectData.data.find(
-		(project) => project.projectShortCode === projectShortCode
+		(project) => project.projectShortCode === projectShortCode,
 	)
 	if (!project) {
 		throw new Response('Project not found', { status: 404 })
@@ -31,16 +30,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const [testPlans, testCases, sections, testRuns] = await Promise.all([
 		api.get<FetchResponse<TestPlan[]>>(
-			APIRoute.projectTestPlans(projectShortCode)
+			APIRoute.projectTestPlans(projectShortCode),
 		),
 		api.get<FetchResponse<TestCase[]>>(
-			APIRoute.projectTestCases(projectShortCode)
+			APIRoute.projectTestCases(projectShortCode),
 		),
 		api.get<FetchResponse<TestCaseSection[]>>(
-			APIRoute.projectSections(projectShortCode)
+			APIRoute.projectSections(projectShortCode),
 		),
 		api.get<FetchResponse<TestRun[]>>(
-			APIRoute.projectTestRuns(projectShortCode)
+			APIRoute.projectTestRuns(projectShortCode),
 		),
 	])
 

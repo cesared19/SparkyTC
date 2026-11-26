@@ -256,10 +256,10 @@ The notifications endpoint answers `created` (`false` when the `sourceRef` was a
 
 SparkyTC follows a three-tier architecture:
 
-1. **Client service (Remix + React)**
+1. **Client service (React Router + React)**
 
    -  Handles UI rendering and client-side state
-   -  Uses Remix for server-side rendering and data loading
+   -  Uses React Router (framework mode, formerly Remix) for server-side rendering and data loading
    -  Communicates with backend via REST API
 
 2. **Backend service (Spring Boot)**
@@ -273,7 +273,7 @@ SparkyTC follows a three-tier architecture:
 
 ```mermaid
 graph TD
-    A[Browser] -->|HTTP/HTTPS| B[Remix Server]
+    A[Browser] -->|HTTP/HTTPS| B[React Router Server]
     B -->|API Calls| C[Spring Boot Backend]
     C -->|SQL| D[(PostgreSQL)]
 ```

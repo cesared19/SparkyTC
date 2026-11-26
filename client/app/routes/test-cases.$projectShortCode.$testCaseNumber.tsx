@@ -1,4 +1,4 @@
-import { useParams, Outlet, useOutletContext } from '@remix-run/react'
+import { useParams, Outlet, useOutletContext } from 'react-router'
 import {
 	ProjectTestCasesOutletContext,
 	PropertyValue,
@@ -18,7 +18,7 @@ export default function TestCaseDetailsRoot() {
 	}
 
 	const testCase = testCases.find(
-		(testCase) => testCase.testCaseNumber === testCaseNumber
+		(testCase) => testCase.testCaseNumber === testCaseNumber,
 	)
 	if (!testCase) {
 		return <p>Test case not found</p>
@@ -26,7 +26,7 @@ export default function TestCaseDetailsRoot() {
 
 	const propertyValues: PropertyValue[] = Tools.mapTestCaseProperties(
 		testCase,
-		properties
+		properties,
 	)
 
 	const context: TestCaseOutletContext = {

@@ -1,4 +1,4 @@
-import { Form, Link, useLocation } from '@remix-run/react'
+import { Form, Link, useLocation } from 'react-router'
 import { useEffect, useState } from 'react'
 import { User, UserRole } from '~/models/types'
 import { Route } from '~/utility/Routes'
@@ -16,8 +16,8 @@ export default function TopNavigation({ user }: TopNavigationProps) {
 	const roleLabel = user.isSuperAdmin
 		? 'Super admin'
 		: isAdmin
-		? 'Admin'
-		: 'Tester'
+			? 'Admin'
+			: 'Tester'
 	const adminLinks = [
 		{ to: Route.viewProperties, label: 'Configuration' },
 		{ to: Route.users, label: 'Users' },

@@ -1,4 +1,4 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
+import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router'
 
 /**
  * Forwards the integration API (/api/integration/v1/...) to the backend, which is only published on the server
@@ -28,7 +28,7 @@ async function forward(request: Request) {
 		return jsonError(
 			502,
 			'Bad Gateway',
-			'The app has no backend address (VITE_API_URL)'
+			'The app has no backend address (VITE_API_URL)',
 		)
 	}
 
@@ -68,7 +68,7 @@ async function forward(request: Request) {
 		return jsonError(
 			502,
 			'Bad Gateway',
-			"SparkyTC's backend didn't answer. Try again in a moment."
+			"SparkyTC's backend didn't answer. Try again in a moment.",
 		)
 	}
 

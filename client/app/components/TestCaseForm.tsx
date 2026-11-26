@@ -1,4 +1,4 @@
-import { Form } from '@remix-run/react'
+import { Form } from 'react-router'
 import {
 	PropertyConfiguration,
 	TestCase,
@@ -59,36 +59,39 @@ export function TestCaseForm({
 		() => {
 			if (mode === TestCaseFormMode.create) {
 				// Create mode - use default values from properties
-				return properties.reduce((acc, property) => {
-					if (property.defaultValue) {
-						acc[property.propertyConfigurationID] = property.defaultValue
-					}
-					return acc
-				}, {} as Record<string, string>)
+				return properties.reduce(
+					(acc, property) => {
+						if (property.defaultValue) {
+							acc[property.propertyConfigurationID] = property.defaultValue
+						}
+						return acc
+					},
+					{} as Record<string, string>,
+				)
 			} else if (mode === TestCaseFormMode.edit) {
 				// Edit mode - use existing values
 				return defaultValues?.propertyValues || {}
 			}
 			return {}
-		}
+		},
 	)
 
 	const [sectionID, setSectionID] = useState(
 		defaultValues?.sectionID ??
 			defaultSectionID ??
 			sections.find((section) => !section.parentID)?.sectionID ??
-			''
+			'',
 	)
 
 	const [labels, setLabels] = useState<string[]>(defaultValues?.labels ?? [])
 	const [format, setFormat] = useState(
-		defaultValues?.format ?? TestCaseFormat.text
+		defaultValues?.format ?? TestCaseFormat.text,
 	)
 	const [steps, setSteps] = useState<EditableStep[]>(() =>
-		stepsFromTestCase(defaultValues?.steps)
+		stepsFromTestCase(defaultValues?.steps),
 	)
 	const [instructions, setInstructions] = useState(
-		defaultValues?.testInstructions ?? ''
+		defaultValues?.testInstructions ?? '',
 	)
 
 	// nothing is lost when switching: the text becomes the first step, and the steps become text
@@ -231,7 +234,7 @@ export function TestCaseForm({
 								onUnset={() =>
 									handlePropertyChange(
 										property.propertyConfigurationID,
-										undefined
+										undefined,
 									)
 								}
 							/>
