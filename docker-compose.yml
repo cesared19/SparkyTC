@@ -4,6 +4,23 @@ x-database: &database
    DATABASE_USERNAME: ${DATABASE_USERNAME}
    DATABASE_PASSWORD: ${DATABASE_PASSWORD}
 
+# How many backups to keep and how much space they may use (see "Disk space" in the README).
+x-backup-settings: &backup-settings
+   TZ: ${TZ:-UTC}
+   BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
+   BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
+   BACKUP_KEEP_PRE_MIGRATION: ${BACKUP_KEEP_PRE_MIGRATION:-5}
+   BACKUP_KEEP_MANUAL: ${BACKUP_KEEP_MANUAL:-5}
+   BACKUP_MAX_GB: ${BACKUP_MAX_GB:-10}
+   BACKUP_MIN_FREE_GB: ${BACKUP_MIN_FREE_GB:-5}
+
+# Container logs are rotated, so they can't fill the disk.
+x-logging: &logging
+   driver: json-file
+   options:
+      max-size: ${LOG_MAX_SIZE:-10m}
+      max-file: ${LOG_MAX_FILES:-3}
+
 # pg_dump and pg_restore must be the PostgreSQL server's major version or newer.
 x-backup-tools: &backup-tools
    image: ${BACKUP_IMAGE:-postgres:16}
@@ -11,6 +28,7 @@ x-backup-tools: &backup-tools
    volumes:
       - ./deploy/backup:/scripts:ro
       - ${BACKUP_DIR:-./backups}:/backups
+   logging: *logging
    networks:
       - app-network
 
@@ -20,11 +38,8 @@ services:
       <<: *backup-tools
       command: ['schedule']
       environment:
-         <<: *database
-         TZ: ${TZ:-UTC}
+         <<: [*database, *backup-settings]
          BACKUP_TIME: ${BACKUP_TIME:-03:00}
-         BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-14}
-         BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-8}
       healthcheck:
          test: ['CMD', 'bash', '/scripts/backup.sh', 'healthy']
          interval: 1h
@@ -37,9 +52,7 @@ services:
       <<: *backup-tools
       command: ['now', 'pre-migration']
       environment:
-         <<: *database
-         TZ: ${TZ:-UTC}
-         BACKUP_KEEP_PRE_MIGRATION: ${BACKUP_KEEP_PRE_MIGRATION:-10}
+         <<: [*database, *backup-settings]
       restart: 'no'
 
    database-migration:
@@ -55,6 +68,7 @@ services:
          pre-migration-backup:
             condition: service_completed_successfully
       restart: 'no'
+      logging: *logging
       networks:
          - app-network
 
@@ -82,6 +96,7 @@ services:
       depends_on:
          database-migration:
             condition: service_completed_successfully
+      logging: *logging
       networks:
          - app-network
 
@@ -99,6 +114,7 @@ services:
          - '3000:3000'
       depends_on:
          - backend-service
+      logging: *logging
       networks:
          - app-network
 

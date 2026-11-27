@@ -36,7 +36,7 @@ A pull request is ready to merge when:
 - **The checks pass locally**, run before pushing (the repository has no automated CI):
   - backend: `cd service && ./gradlew test`;
   - client: `cd client && npx tsc && npm run lint && npm run build`, with no lint problems;
-  - for changes to Docker files or `deploy/`, `docker compose build` and `shellcheck --external-sources deploy/backup/*.sh`.
+  - for changes to Docker files or `deploy/`, `docker compose build`, `shellcheck --external-sources deploy/*/*.sh` and `bash deploy/backup/test.sh` (the backup retention tests).
 - **Tests cover the change**: new behavior has tests, and a fixed bug has a test that failed before the fix.
 - **UI changes pass the end-to-end tests** (`npm run e2e`, see below), which check every page at 390 px, 820 px and desktop, in light and dark mode, and that no page scrolls as a whole past its content. A new page is added to `e2e/layout.spec.ts`, and new behavior in the browser gets a test.
 - **The changelog has a line** under **Unreleased** in [CHANGELOG.md](./CHANGELOG.md), in the right group (Added, Changed, Fixed, Removed, Security), written for users. Changes users don't notice don't need one.

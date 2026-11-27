@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # where the backups folder is mounted
-export BACKUP_ROOT=/backups
+export BACKUP_ROOT="${BACKUP_ROOT:-/backups}"
 
 log() {
 	echo "$(date '+%Y-%m-%d %H:%M:%S %Z') $*"

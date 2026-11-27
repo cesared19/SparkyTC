@@ -364,19 +364,24 @@ The `database-backup` service backs up the database with `pg_dump` every day, in
 
 | Folder | What | Kept |
 | --- | --- | --- |
-| `backups/daily` | The backup made each day at `BACKUP_TIME` | The last `BACKUP_KEEP_DAILY` (14) |
-| `backups/weekly` | A copy of Sunday's daily backup | The last `BACKUP_KEEP_WEEKLY` (8) |
-| `backups/pre-migration` | The backup made by each `docker compose up` | The last `BACKUP_KEEP_PRE_MIGRATION` (10) |
-| `backups/manual` | Backups made by hand | All of them; delete them yourself |
+| `backups/daily` | The backup made each day at `BACKUP_TIME` | The last `BACKUP_KEEP_DAILY` (7) |
+| `backups/weekly` | Sunday's daily backup, under a second name (it doesn't use the space twice) | The last `BACKUP_KEEP_WEEKLY` (4) |
+| `backups/pre-migration` | The backup made by each `docker compose up` | The last `BACKUP_KEEP_PRE_MIGRATION` (5) |
+| `backups/manual` | Backups made by hand | The last `BACKUP_KEEP_MANUAL` (5) |
+
+Together they stay under `BACKUP_MAX_GB` (10): past it, the oldest copies are deleted first, but the newest copy of each folder is always kept. See [Disk space](#disk-space).
 
 Each backup is a compressed `pg_dump` file (custom format) that is checked with `pg_restore` before it's kept. Optional settings in `.env`:
 
 ```
 BACKUP_TIME=03:00          # when the daily backup runs (HH:MM)
 TZ=America/Mexico_City     # the time zone of BACKUP_TIME and of the file names (UTC by default)
-BACKUP_KEEP_DAILY=14
-BACKUP_KEEP_WEEKLY=8
-BACKUP_KEEP_PRE_MIGRATION=10
+BACKUP_KEEP_DAILY=7
+BACKUP_KEEP_WEEKLY=4
+BACKUP_KEEP_PRE_MIGRATION=5
+BACKUP_KEEP_MANUAL=5
+BACKUP_MAX_GB=10           # all the backups together, in GB (0 = no limit)
+BACKUP_MIN_FREE_GB=5       # free space to leave on the disk, in GB, besides the size of the database
 BACKUP_DIR=./backups       # where backups are written on this server
 BACKUP_IMAGE=postgres:16   # pg_dump must be the PostgreSQL server's major version or newer
 ```
@@ -389,6 +394,27 @@ BACKUP_IMAGE=postgres:16   # pg_dump must be the PostgreSQL server's major versi
 ```bash
 docker compose run --rm database-backup now
 ```
+
+### Disk space
+
+A full disk stops everything (imports fail, the database refuses writes), so the app takes care of what it can:
+
+-  **Backups** are the biggest user: each one holds the whole database, with every image, video and evidence `.zip` (they live in the database). The retention and `BACKUP_MAX_GB` above keep them in check, and they apply to the copies that already exist the next time the stack starts or a backup is made. `docker compose run --rm database-backup prune` applies them right now.
+-  **Before each backup** there must be room for it: the size of the database plus `BACKUP_MIN_FREE_GB`. If not, the oldest copies are deleted first (never the newest of each folder); if that isn't enough, the backup fails **without deleting anything** and says how much space is missing. A failed backup before an upgrade stops the upgrade, so it never runs without a copy of the data. The `database-backup` health check also shows *unhealthy* when the disk has less than `BACKUP_MIN_FREE_GB` free.
+-  **Container logs** are rotated: each container keeps 3 files of 10 MB (`LOG_MAX_FILES` and `LOG_MAX_SIZE` change it). It applies to new containers, so `docker compose up -d` after updating.
+-  **Docker** leaves the images and build cache of earlier builds behind after every `docker compose up --build`. `deploy/maintenance/cleanup.sh` removes them (never volumes, never what a running container uses; `--dry-run` only shows, `--all-images` also removes unused images over 30 days old). Run it after an upgrade, or every week from cron:
+
+```
+0 4 * * 0  cd /path/to/sparkytc && deploy/maintenance/cleanup.sh >> /var/log/sparkytc-cleanup.log 2>&1
+```
+
+**What uses the disk?** `deploy/maintenance/disk-report.sh` shows the disk, Docker, the containers' logs (with `sudo`), the backups by folder, and the database: its size, its largest tables and its attachments by type. It only reads.
+
+**The disk is full:**
+
+1. `deploy/maintenance/cleanup.sh` frees what Docker left behind.
+2. `docker compose run --rm database-backup prune` applies the retention; lower `BACKUP_KEEP_*` or `BACKUP_MAX_GB` in `.env` and run it again to free more.
+3. If the database itself is the big one (`disk-report.sh` says so), the attachments are what grows it: delete the evidence of old test runs you don't need, or move the server to a bigger disk. Deleting rows doesn't give the space back to the disk until PostgreSQL vacuums the table (`VACUUM FULL`, which locks it while it runs).
 
 ### Restoring a backup
 

@@ -6,6 +6,17 @@ When a version changes the database, its entry says so under **Upgrading**. Sinc
 
 ## [Unreleased]
 
+### Added
+- The backups look after the disk. A backup only starts when there's room for it (the size of the database plus `BACKUP_MIN_FREE_GB`, 5 GB by default): if not, the oldest copies are deleted first, never the newest of each kind, and if that isn't enough it fails with a message that says how much space is missing, without deleting anything. All the copies together stay under `BACKUP_MAX_GB` (10 by default), and the `database-backup` health check shows *unhealthy* when the disk is running out. `docker compose run --rm database-backup prune` applies the retention right away, and `report` shows what the backups and the database use.
+- `deploy/maintenance/disk-report.sh` shows what uses the server's disk (disk, Docker, container logs, backups, and the database's largest tables and attachments), and `deploy/maintenance/cleanup.sh` removes the images and build cache that earlier builds left behind, never volumes. The README has a *Disk space* section, with a cron example and what to do when the disk is full.
+
+### Changed
+- The backups keep fewer copies by default: 7 daily, 4 weekly and 5 before migrating (it was 14, 8 and 10), and the 5 newest manual ones (they were all kept). A weekly copy is a second name of the daily file, so it doesn't use the space twice. The new limits apply to the copies that already exist at the next start, so the first run deletes the older ones: set `BACKUP_KEEP_*` and `BACKUP_MAX_GB` in `.env` to keep more.
+- The containers' logs are rotated (3 files of 10 MB each), so they can't fill the disk.
+
+### Upgrading
+- No database changes. Run `docker compose up -d --build`; the containers are recreated to rotate their logs. Check the new retention against your disk (`BACKUP_MAX_GB`, `BACKUP_KEEP_*`) and run `deploy/maintenance/cleanup.sh` once to remove the old images.
+
 ## [2.10.0] - 2026-11-26
 
 ### Changed
